@@ -1,4 +1,4 @@
-import { IsEnum } from 'class-validator';
+import { IsEnum, IsString } from 'class-validator';
 
 enum Network {
   PUBLIC = 'public',
@@ -6,6 +6,7 @@ enum Network {
 }
 
 export class GetListFilesDto {
+  @IsString()
   @IsEnum(Network, { message: 'Network must be either public or private' })
   network: Network;
 }
