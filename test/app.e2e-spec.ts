@@ -62,9 +62,6 @@ describe('AppController (e2e)', () => {
         'etherdoc-auth=',
       );
       expect(loginResponse.body).toBeDefined();
-
-      console.info(loginResponse.headers['set-cookie'][0]);
-      console.info(`login response body: ${loginResponse.body}`);
     });
   });
 
