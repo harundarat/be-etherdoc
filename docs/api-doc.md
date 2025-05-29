@@ -124,14 +124,22 @@ GET /documents?network=public
 **Response:**
 ```json
 {
-  "files": [
-    {
-      "id": "QmHash123...",
-      "name": "document1.pdf",
-      "size": 1024,
-      "timestamp": "2024-01-01T00:00:00Z"
-    }
-  ]
+  "data": {
+    "files": [
+      {
+        "id": "01971577-4ac7-7554-9571-a5757e212f9e",
+        "name": "challenge.png",
+        "cid": "bafkreib5aab5slldbyqnhx7cgbs2x6tsdrohy3manpnlfcxmnmdmlzckhi",
+        "size": 94360,
+        "number_of_files": 1,
+        "mime_type": "image/png",
+        "group_id": null,
+        "keyvalues": {},
+        "created_at": "2025-05-28T05:57:09.735132Z"
+      }
+    ],
+    "next_page_token": "MDE5NzE1NzYtZTJmYy03Njc5LThiY2YtNzliNzNiYTVhMjYz"
+  }
 }
 ```
 
