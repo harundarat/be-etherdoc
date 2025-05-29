@@ -157,6 +157,54 @@ GET /documents?network=public
 
 ---
 
+#### `POST /documents/groups`
+
+Create a new group in the specified network.
+
+🔒 **Authentication Required**: This endpoint requires a valid JWT token obtained from the login process.
+
+**Headers:**
+```
+Content-Type: application/json
+Authorization: Bearer <jwt_token>
+```
+
+**Request Body:**
+```json
+{
+  "network": "public",
+  "groupName": "My New Group"
+}
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `network` | string | ✅ | Network type: `public` or `private` |
+| `groupName` | string | ✅ | Name of the group to create |
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "f960765b-e861-4ac7-a5e9-d109eb3bc378",
+    "name": "test",
+    "created_at": "2025-05-29T12:07:34.319357Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid network parameter or missing groupName
+- `401 Unauthorized`: Missing or invalid JWT token (authentication required)
+- `500 Internal Server Error`: Pinata API error or server configuration issue
+
+**Authentication Notes:**
+- You must first authenticate using the `/auth/login` endpoint to obtain a JWT token
+- Include the JWT token in the `Authorization` header as `Bearer <token>`
+- JWT tokens expire after 5 minutes (configurable via `JWT_EXPIRES_IN`)
+
+---
+
 #### `GET /documents/groups`
 
 Get list of groups from specified network.

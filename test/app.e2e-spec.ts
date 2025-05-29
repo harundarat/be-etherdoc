@@ -141,7 +141,7 @@ describe('AppController (e2e)', () => {
       expect(response.body.message).toEqual('Unauthorized');
     });
 
-    it('Should get list of public groups after successful login', async () => {
+    it('Should get list of public groups after successful sign in', async () => {
       // 1. Get nonce
       const nonceResponse = await agent.get('/auth/nonce').expect(200);
       const { messageString } = nonceResponse.body;
@@ -165,6 +165,39 @@ describe('AppController (e2e)', () => {
       expect(documentsResponse.body).toBeDefined();
       expect(documentsResponse.body.data).toBeDefined();
       expect(Array.isArray(documentsResponse.body.data.groups)).toBe(true);
+    });
+
+    it('Should return 401 when trying to create group without authentication', async () => {
+      const response = await agent
+        .post('/documents/groups?network=public')
+        .send({ network: 'public', groupName: 'test' })
+        .expect(401);
+
+      expect(response.body.message).toEqual('Unauthorized');
+    });
+
+    it('Should create a new public group after successfully sign in', async () => {
+      // 1. Get nonce
+      const nonceResponse = await agent.get('/auth/nonce').expect(200);
+      const { messageString } = nonceResponse.body;
+
+      // 2. Sign message
+      if (!process.env.EVM_WALLET_PRIVATE_KEY) {
+        throw new Error('EVM_WALLET_PRIVATE_KEY is not set for testing');
+      }
+      const wallet = new Wallet(process.env.EVM_WALLET_PRIVATE_KEY);
+      const signature = await wallet.signMessage(messageString);
+
+      // 3. Login (agent automatically store the cookie "etherdoc-auth")
+      await agent.post('/auth/login').send({ signature }).expect(201);
+
+      // 4. Create a new public group
+      const response = await agent
+        .post('/documents/groups')
+        .send({ network: 'public', groupName: 'test' })
+        .expect(201);
+
+      expect(response.body.data.name).toEqual('test');
     });
   });
 });
