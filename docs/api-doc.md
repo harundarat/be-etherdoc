@@ -105,6 +105,8 @@ Set-Cookie: etherdoc-auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 Get list of files from specified network.
 
+🔒 **Authentication Required**: This endpoint requires a valid JWT token obtained from the login process.
+
 **Headers:**
 ```
 Content-Type: application/json
@@ -145,8 +147,13 @@ GET /documents?network=public
 
 **Error Responses:**
 - `400 Bad Request`: Invalid network parameter
-- `401 Unauthorized`: Missing or invalid JWT token
+- `401 Unauthorized`: Missing or invalid JWT token (authentication required)
 - `500 Internal Server Error`: Pinata API error or server configuration issue
+
+**Authentication Notes:**
+- You must first authenticate using the `/auth/login` endpoint to obtain a JWT token
+- Include the JWT token in the `Authorization` header as `Bearer <token>`
+- JWT tokens expire after 5 minutes (configurable via `JWT_EXPIRES_IN`)
 
 ---
 
