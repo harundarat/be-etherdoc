@@ -58,7 +58,7 @@ export class DocumentsService {
     }
   }
 
-  async getListFiles(network: string) {
+  async getListFiles(network: string, groupId?: string) {
     const pinataApiUrl =
       this.configService.getOrThrow<string>('PINATA_API_URL');
     const pinataJwtToken =
@@ -72,10 +72,14 @@ export class DocumentsService {
         },
       };
 
-      const rawResponse = await fetch(
-        `${pinataApiUrl}/files/${network}`,
-        options,
-      );
+      const baseUrl = `${pinataApiUrl}/files/${network}`;
+      const url = new URL(baseUrl);
+
+      if (groupId) {
+        url.searchParams.append('group', groupId);
+      }
+
+      const rawResponse = await fetch(url.toString(), options);
 
       if (!rawResponse.ok) {
         this.logger.error(`Pinata API error: ${rawResponse.status}`);
@@ -86,7 +90,6 @@ export class DocumentsService {
       }
 
       const response = rawResponse.json();
-
       return response;
     } catch (error) {
       this.logger.error(

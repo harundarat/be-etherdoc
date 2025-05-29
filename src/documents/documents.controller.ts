@@ -10,7 +10,10 @@ export class DocumentsController {
   @UseGuards(JwtAuthGuard)
   @Get()
   async getListFiles(@Query() getListFilesDto: GetListFilesDto) {
-    return await this.documentsService.getListFiles(getListFilesDto.network);
+    return await this.documentsService.getListFiles(
+      getListFilesDto.network,
+      getListFilesDto.groupId,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
