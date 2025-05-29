@@ -18,7 +18,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<LoginResponseDto> {
     const jwtToken = await this.authService.signIn(loginDto.signature);
-    response.cookie('etherdoc-auth', jwtToken);
+    response.cookie('etherdoc-auth', jwtToken.accessToken);
 
     return jwtToken;
   }
