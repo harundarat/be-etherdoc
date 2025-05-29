@@ -4,6 +4,37 @@
 
 EtherDoc is a blockchain-based document management system that uses Ethereum wallet signatures for authentication. The API provides endpoints for user authentication and document management through IPFS via Pinata.
 
+<br>
+
+## 📑 Table of Contents
+
+- [🌟 Overview](#-overview)
+- [📑 Table of Contents](#-table-of-contents)
+- [🔐 Authentication Flow](#-authentication-flow)
+- [🚀 Base URL](#-base-url)
+- [📋 Endpoints](#-endpoints)
+  - [🏠 Health Check](#-health-check)
+    - [`GET /`](#get-)
+  - [🔑 Authentication](#-authentication)
+    - [`GET /auth/nonce`](#get-authnonce)
+    - [`POST /auth/login`](#post-authlogin)
+  - [📄 Documents](#-documents)
+    - [`GET /documents`](#get-documents)
+    - [`POST /documents/groups`](#post-documentsgroups)
+    - [`GET /documents/groups`](#get-documentsgroups)
+- [🛡️ Authentication Example](#️-authentication-example)
+- [⚠️ Error Handling](#️-error-handling)
+- [🔧 Configuration](#-configuration)
+- [📝 Validation Rules](#-validation-rules)
+- [🎯 Best Practices](#-best-practices)
+- [🔗 Related Resources](#-related-resources)
+
+<br>
+
+---
+
+<br>
+
 ## 🔐 Authentication Flow
 
 EtherDoc uses a **signature-based authentication** system:
@@ -13,19 +44,27 @@ EtherDoc uses a **signature-based authentication** system:
 3. **Login**: Submit the signature to receive a JWT token
 4. **Access**: Use the JWT token for authenticated requests
 
+<br>
+
 ## 🚀 Base URL
 
 ```
 http://localhost:3000
 ```
 
+<br>
+
 ---
 
-## 📋 Endpoints
+<br>
 
-### 🏠 Health Check
+# 📋 Endpoints
 
-#### `GET /`
+<br>
+
+## 🏠 Health Check
+
+### `GET /`
 
 Simple health check endpoint.
 
@@ -34,11 +73,17 @@ Simple health check endpoint.
 "Hello World!"
 ```
 
+<br>
+
 ---
 
-### 🔑 Authentication
+<br>
 
-#### `GET /auth/nonce`
+## 🔑 Authentication
+
+<br>
+
+### `GET /auth/nonce`
 
 Get a unique nonce for message signing.
 
@@ -62,9 +107,9 @@ Content-Type: application/json
 **Error Responses:**
 - `500 Internal Server Error`: Server configuration error
 
----
+<br>
 
-#### `POST /auth/login`
+### `POST /auth/login`
 
 Authenticate with Ethereum signature.
 
@@ -97,11 +142,17 @@ Set-Cookie: etherdoc-auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 - `401 Unauthorized`: Invalid signature or expired nonce
 - `500 Internal Server Error`: Server configuration error
 
+<br>
+
 ---
 
-### 📄 Documents
+<br>
 
-#### `GET /documents`
+## 📄 Documents
+
+<br>
+
+### `GET /documents`
 
 Get list of files from specified network.
 
@@ -114,6 +165,7 @@ Authorization: Bearer <jwt_token>
 ```
 
 **Query Parameters:**
+
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `network` | string | ✅ | Network type: `public` or `private` |
@@ -155,9 +207,9 @@ GET /documents?network=public
 - Include the JWT token in the `Authorization` header as `Bearer <token>`
 - JWT tokens expire after 5 minutes (configurable via `JWT_EXPIRES_IN`)
 
----
+<br>
 
-#### `POST /documents/groups`
+### `POST /documents/groups`
 
 Create a new group in the specified network.
 
@@ -176,6 +228,8 @@ Authorization: Bearer <jwt_token>
   "groupName": "My New Group"
 }
 ```
+
+**Parameters:**
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -203,9 +257,9 @@ Authorization: Bearer <jwt_token>
 - Include the JWT token in the `Authorization` header as `Bearer <token>`
 - JWT tokens expire after 5 minutes (configurable via `JWT_EXPIRES_IN`)
 
----
+<br>
 
-#### `GET /documents/groups`
+### `GET /documents/groups`
 
 Get list of groups from specified network.
 
@@ -218,6 +272,7 @@ Authorization: Bearer <jwt_token>
 ```
 
 **Query Parameters:**
+
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `network` | string | ✅ | Network type: `public` or `private` |
@@ -254,18 +309,26 @@ GET /documents/groups?network=private
 - Include the JWT token in the `Authorization` header as `Bearer <token>`
 - JWT tokens expire after 5 minutes (configurable via `JWT_EXPIRES_IN`)
 
+<br>
+
 ---
 
-## 🛡️ Authentication Example
+<br>
 
-### Step 1: Get Nonce
+# 🛡️ Authentication Example
+
+<br>
+
+## Step 1: Get Nonce
 
 ```bash
 curl -X GET http://localhost:3000/auth/nonce \
   -H "Content-Type: application/json"
 ```
 
-### Step 2: Sign Message
+<br>
+
+## Step 2: Sign Message
 
 Use the `messageString` from the response to sign with your Ethereum wallet:
 
@@ -277,7 +340,9 @@ const wallet = new ethers.Wallet('your-private-key');
 const signature = await wallet.signMessage(messageString);
 ```
 
-### Step 3: Login
+<br>
+
+## Step 3: Login
 
 ```bash
 curl -X POST http://localhost:3000/auth/login \
@@ -287,7 +352,9 @@ curl -X POST http://localhost:3000/auth/login \
   }'
 ```
 
-### Step 4: Access Protected Endpoints
+<br>
+
+## Step 4: Access Protected Endpoints
 
 ```bash
 curl -X GET "http://localhost:3000/documents?network=public" \
@@ -295,9 +362,13 @@ curl -X GET "http://localhost:3000/documents?network=public" \
   -H "Content-Type: application/json"
 ```
 
+<br>
+
 ---
 
-## ⚠️ Error Handling
+<br>
+
+# ⚠️ Error Handling
 
 All endpoints return standardized error responses:
 
@@ -309,7 +380,9 @@ All endpoints return standardized error responses:
 }
 ```
 
-### Common HTTP Status Codes
+<br>
+
+## Common HTTP Status Codes
 
 | Code | Description |
 |------|-------------|
@@ -318,9 +391,13 @@ All endpoints return standardized error responses:
 | `401` | 🔒 Unauthorized - Authentication required |
 | `500` | 💥 Internal Server Error - Server issue |
 
+<br>
+
 ---
 
-## 🔧 Configuration
+<br>
+
+# 🔧 Configuration
 
 The following environment variables are required:
 
@@ -340,22 +417,34 @@ PINATA_JWT_TOKEN=your-pinata-jwt-token
 PORT=3000
 ```
 
+<br>
+
 ---
 
-## 📝 Validation Rules
+<br>
 
-### Network Parameter
+# 📝 Validation Rules
+
+<br>
+
+## Network Parameter
 - Must be either `"public"` or `"private"`
 - Case-sensitive
 - Required for document endpoints
 
-### Signature Format
+<br>
+
+## Signature Format
 - Must be a valid Ethereum signature (hex string starting with "0x")
 - Must be generated from the exact `messageString` provided by the nonce endpoint
 
+<br>
+
 ---
 
-## 🎯 Best Practices
+<br>
+
+# 🎯 Best Practices
 
 1. **Always get a fresh nonce** before each login attempt
 2. **Store JWT tokens securely** (httpOnly cookies recommended)
@@ -363,9 +452,13 @@ PORT=3000
 4. **Validate network parameters** before making requests
 5. **Implement proper error handling** for all API calls
 
+<br>
+
 ---
 
-## 🔗 Related Resources
+<br>
+
+# 🔗 Related Resources
 
 - [Ethereum Signature Verification](https://docs.ethers.io/v5/api/utils/signing-key/)
 - [JWT Token Handling](https://jwt.io/)
