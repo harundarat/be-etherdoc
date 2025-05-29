@@ -132,5 +132,39 @@ describe('AppController (e2e)', () => {
       expect(documentsResponse.body.data).toBeDefined();
       expect(Array.isArray(documentsResponse.body.data.files)).toBe(true);
     });
+
+    it('Should return 401 when trying to get groups without authentication', async () => {
+      const response = await agent
+        .get('/documents/groups?network=public')
+        .expect(401);
+
+      expect(response.body.message).toEqual('Unauthorized');
+    });
+
+    it('Should get list of public groups after successful login', async () => {
+      // 1. Get nonce
+      const nonceResponse = await agent.get('/auth/nonce').expect(200);
+      const { messageString } = nonceResponse.body;
+
+      // 2. Sign message
+      if (!process.env.EVM_WALLET_PRIVATE_KEY) {
+        throw new Error('EVM_WALLET_PRIVATE_KEY is not set for testing');
+      }
+      const wallet = new Wallet(process.env.EVM_WALLET_PRIVATE_KEY);
+      const signature = await wallet.signMessage(messageString);
+
+      // 3. Login (agent automatically store the cookie "etherdoc-auth")
+      await agent.post('/auth/login').send({ signature }).expect(201);
+
+      // 4. Access protected route (agent will send the stored cookie)
+      const documentsResponse = await agent
+        .get('/documents/groups?network=public')
+        .expect(200);
+
+      // 5. Assertions
+      expect(documentsResponse.body).toBeDefined();
+      expect(documentsResponse.body.data).toBeDefined();
+      expect(Array.isArray(documentsResponse.body.data.groups)).toBe(true);
+    });
   });
 });
