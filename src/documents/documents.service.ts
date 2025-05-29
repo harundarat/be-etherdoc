@@ -12,15 +12,57 @@ export class DocumentsService {
 
   constructor(private configService: ConfigService) {}
 
-  async getListFiles(network: string) {
-    const pinataApiUrl = this.configService.get<string>('PINATA_API_URL');
-    const pinataJwtToken = this.configService.get<string>('PINATA_JWT_TOKEN');
+  async createGroup(network: string, groupName: string) {
+    const pinataApiUrl =
+      this.configService.getOrThrow<string>('PINATA_API_URL');
+    const pinataJwtToken =
+      this.configService.getOrThrow<string>('PINATA_JWT_TOKEN');
 
-    if (!pinataApiUrl || !pinataJwtToken) {
+    try {
+      const options = {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${pinataJwtToken}` },
+        'Content-Type': 'application/json',
+        body: `{"name":"${groupName}"}`,
+      };
+
+      const rawResponse = await fetch(
+        `${pinataApiUrl}/groups/${network}`,
+        options,
+      );
+
+      if (!rawResponse.ok) {
+        this.logger.error(`Pinata API error: ${rawResponse.status}`);
+        throw new HttpException(
+          'Error create a new group to pinata',
+          rawResponse.status,
+        );
+      }
+
+      const response = rawResponse.json();
+
+      return response;
+    } catch (error) {
+      this.logger.error(
+        `Failed to get list of files for network ${network}: `,
+        error.stack,
+      );
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       throw new InternalServerErrorException(
-        'PINATA_API_URL or PINATA_JWT_TOKEN is not configured',
+        'Could not create a new group due to an unexpected error.',
       );
     }
+  }
+
+  async getListFiles(network: string) {
+    const pinataApiUrl =
+      this.configService.getOrThrow<string>('PINATA_API_URL');
+    const pinataJwtToken =
+      this.configService.getOrThrow<string>('PINATA_JWT_TOKEN');
 
     try {
       const options = {
