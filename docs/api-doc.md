@@ -157,6 +157,57 @@ GET /documents?network=public
 
 ---
 
+#### `GET /documents/groups`
+
+Get list of groups from specified network.
+
+🔒 **Authentication Required**: This endpoint requires a valid JWT token obtained from the login process.
+
+**Headers:**
+```
+Content-Type: application/json
+Authorization: Bearer <jwt_token>
+```
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `network` | string | ✅ | Network type: `public` or `private` |
+
+**Example Request:**
+```
+GET /documents/groups?network=private
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "groups": [
+      {
+        "id": "01919976-955f-7d06-bd59-72e80743fb95",
+        "name": "Test Private Group",
+        "is_public": false,
+        "created_at": "2024-08-28T14:49:31.246596Z"
+      }
+    ],
+    "next_page_token": "MDE5MTk5NzYtOTU1Zi03ZDA2LWJkNTktNzJlODA3NDNmYjk1"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid network parameter
+- `401 Unauthorized`: Missing or invalid JWT token (authentication required)
+- `500 Internal Server Error`: Pinata API error or server configuration issue
+
+**Authentication Notes:**
+- You must first authenticate using the `/auth/login` endpoint to obtain a JWT token
+- Include the JWT token in the `Authorization` header as `Bearer <token>`
+- JWT tokens expire after 5 minutes (configurable via `JWT_EXPIRES_IN`)
+
+---
+
 ## 🛡️ Authentication Example
 
 ### Step 1: Get Nonce
