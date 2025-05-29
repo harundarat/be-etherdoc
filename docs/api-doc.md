@@ -169,10 +169,12 @@ Authorization: Bearer <jwt_token>
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `network` | string | ✅ | Network type: `public` or `private` |
+| `groupId` | string | ❌ | Optional group ID to filter files by specific group |
 
 **Example Request:**
 ```
 GET /documents?network=public
+GET /documents?network=public&groupId=f960765b-e861-4ac7-a5e9-d109eb3bc378
 ```
 
 **Response:**
