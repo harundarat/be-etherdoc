@@ -129,6 +129,46 @@ export class DocumentsService {
     }
   }
 
+  async getDocument(network: string, id: string) {
+    const pinataApiUrl =
+      this.configService.getOrThrow<string>('PINATA_API_URL');
+    const pinataJwtToken =
+      this.configService.getOrThrow<string>('PINATA_JWT_TOKEN');
+
+    try {
+      const rawResponse = await fetch(
+        `${pinataApiUrl}/files/${network}/${id}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${pinataJwtToken}`,
+          },
+        },
+      );
+      if (!rawResponse.ok) {
+        this.logger.error(`Pinata API error: ${rawResponse.status}`);
+        throw new HttpException(
+          'Error fetching file from pinata',
+          rawResponse.status,
+        );
+      }
+
+      const response = rawResponse.json();
+      return response;
+    } catch (error) {
+      this.logger.error(
+        `Failed to get document for network ${network}: `,
+        error.stack,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Could not retrieve document due to an unexpected error.',
+      );
+    }
+  }
+
   async getListFiles(network: string, groupId?: string) {
     const pinataApiUrl =
       this.configService.getOrThrow<string>('PINATA_API_URL');

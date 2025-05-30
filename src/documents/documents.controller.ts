@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpStatus,
+  Param,
   ParseFilePipeBuilder,
   Post,
   Query,
@@ -49,6 +50,14 @@ export class DocumentsController {
       getListFilesDto.network,
       getListFilesDto.groupId,
     );
+  }
+
+  @Get('/:id')
+  async getDocument(
+    @Param('id') id: string,
+    @Query('network') network: 'public' | 'private',
+  ) {
+    return this.documentsService.getDocument(network, id);
   }
 
   @UseGuards(JwtAuthGuard)
