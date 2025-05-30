@@ -19,6 +19,7 @@ EtherDoc is a blockchain-based document management system that uses Ethereum wal
     - [`GET /auth/nonce`](#get-authnonce)
     - [`POST /auth/login`](#post-authlogin)
   - [📄 Documents](#-documents)
+    - [`POST /documents`](#post-documents)
     - [`GET /documents`](#get-documents)
     - [`POST /documents/groups`](#post-documentsgroups)
     - [`GET /documents/groups`](#get-documentsgroups)
@@ -149,6 +150,74 @@ Set-Cookie: etherdoc-auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 <br>
 
 ## 📄 Documents
+
+<br>
+
+### `POST /documents`
+
+Upload a document file to IPFS via Pinata.
+
+🔒 **Authentication Required**: This endpoint requires a valid JWT token obtained from the login process.
+
+**Headers:**
+```
+Content-Type: multipart/form-data
+Authorization: Bearer <jwt_token>
+```
+
+**Request Body (Form Data):**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `file` | File | ✅ | PDF file to upload (max 5MB) |
+| `network` | string | ✅ | Network type: `public` or `private` |
+| `name` | string | ❌ | Optional custom name for the file |
+| `group_id` | string | ❌ | Optional group ID to associate the file with |
+| `keyvalues` | object | ❌ | Optional key-value pairs for metadata |
+
+**File Validation:**
+- **File Type**: Only PDF files are accepted (`application/pdf`)
+- **File Size**: Maximum 5MB (5,242,880 bytes)
+
+**Example Request:**
+```bash
+curl -X POST http://localhost:3000/documents \
+  -H "Authorization: Bearer <jwt_token>" \
+  -F "file=@document.pdf" \
+  -F "network=public" \
+  -F "name=My Document" \
+  -F "group_id=f960765b-e861-4ac7-a5e9-d109eb3bc378" \
+  -F 'keyvalues={"category":"important","department":"finance"}'
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "01971577-4ac7-7554-9571-a5757e212f9e",
+    "name": "My Document",
+    "cid": "bafkreib5aab5slldbyqnhx7cgbs2x6tsdrohy3manpnlfcxmnmdmlzckhi",
+    "created_at": "2025-05-28T05:57:09.735132Z",
+    "size": 94360,
+    "number_of_files": 1,
+    "mime_type": "application/pdf",
+    "user_id": "0x1234567890123456789012345678901234567890",
+    "group_id": "f960765b-e861-4ac7-a5e9-d109eb3bc378",
+    "is_duplicate": false
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Missing file, invalid network parameter, or invalid request format
+- `401 Unauthorized`: Missing or invalid JWT token (authentication required)
+- `422 Unprocessable Entity`: File validation failed (invalid file type or size too large)
+- `500 Internal Server Error`: Pinata API error or server configuration issue
+
+**Authentication Notes:**
+- You must first authenticate using the `/auth/login` endpoint to obtain a JWT token
+- Include the JWT token in the `Authorization` header as `Bearer <token>`
+- JWT tokens expire after 5 minutes (configurable via `JWT_EXPIRES_IN`)
 
 <br>
 

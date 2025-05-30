@@ -1,16 +1,87 @@
 import {
+  BadRequestException,
   HttpException,
   Injectable,
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { UploadFileDto, UploadFileResponseDto } from './dto';
 
 @Injectable()
 export class DocumentsService {
   private readonly logger = new Logger(DocumentsService.name);
 
   constructor(private configService: ConfigService) {}
+
+  async uploadDocument(
+    file: Express.Multer.File,
+    uploadFileDto: UploadFileDto,
+  ): Promise<UploadFileResponseDto> {
+    // Check if file exists
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+
+    const pinataUploadUrl =
+      this.configService.getOrThrow<string>('PINATA_UPLOAD_URL');
+    const pinataJwtToken =
+      this.configService.getOrThrow<string>('PINATA_JWT_TOKEN');
+
+    try {
+      // Create form
+      const formData = new FormData();
+
+      // Add file as Blob
+      const blob = new Blob([file.buffer], { type: file.mimetype });
+      formData.append('file', blob, file.originalname);
+
+      // Add network
+      formData.append('network', uploadFileDto.network);
+
+      // Add optional fields
+      if (uploadFileDto.name) {
+        formData.append('name', uploadFileDto.name);
+      }
+      if (uploadFileDto.group_id) {
+        formData.append('group_id', uploadFileDto.group_id);
+      }
+      if (uploadFileDto.keyvalues) {
+        formData.append('keyvalues', JSON.stringify(uploadFileDto.keyvalues));
+      }
+
+      // Upload the document
+      const response = await fetch(pinataUploadUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${pinataJwtToken}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        this.logger.error(
+          `Pinata upload error: ${response.status} - ${errorText}`,
+        );
+        throw new HttpException(
+          'Error uploading file to Pinata',
+          response.status,
+        );
+      }
+
+      const data = response.json();
+      return data;
+    } catch (error) {
+      this.logger.error('Failed to upload file', error.stack);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Could not upload file due to an unexpected error.',
+      );
+    }
+  }
 
   async createGroup(network: string, groupName: string) {
     const pinataApiUrl =

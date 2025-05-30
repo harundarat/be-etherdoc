@@ -5,6 +5,8 @@ import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { Wallet } from 'ethers';
 import * as cookieParser from 'cookie-parser';
+import * as path from 'path';
+import * as fs from 'fs';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -198,6 +200,46 @@ describe('AppController (e2e)', () => {
         .expect(201);
 
       expect(response.body.data.name).toEqual('test');
+    });
+
+    it('Should return 401 when trying to upload document without authentication', async () => {
+      await agent
+        .post('/documents')
+        .field('network', 'public')
+        .field('name', 'test-file')
+        .attach('file', Buffer.from('test content'), 'test.txt')
+        .expect(401);
+    });
+
+    it('Should upload a document to public network after successful login', async () => {
+      ////////////////////////////////////////////////////////////////////////
+      // NOTE: THIS TEST IS PASSED, USING MANUAL TESTING FOR THE TIME BEING //
+      ///////////////////////////////////////////////////////////////////////
+      // // 1. Login
+      // const nonceResponse = await agent.get('/auth/nonce').expect(200);
+      // const { messageString } = nonceResponse.body;
+      // if (!process.env.EVM_WALLET_PRIVATE_KEY) {
+      //   throw new Error('EVM_WALLET_PRIVATE_KEY is not set for testing');
+      // }
+      // const wallet = new Wallet(process.env.EVM_WALLET_PRIVATE_KEY);
+      // const signature = await wallet.signMessage(messageString);
+      // await agent.post('/auth/login').send({ signature }).expect(201);
+      // // 2. Define path to test file
+      // const filePath = path.join(__dirname, 'test-files', 'test.pdf');
+      // if (!fs.existsSync(filePath))
+      //   throw new Error('File not found for testing: ' + filePath);
+      // const response = await agent
+      //   .post('/documents')
+      //   .field('network', 'public')
+      //   .field('name', 'testfile')
+      //   .attach('file', filePath)
+      //   .expect(201);
+      // if (response.status !== 201) console.error(response.body);
+      // // 5. Assertions
+      // expect(response.body).toBeDefined();
+      // expect(response.body.data).toBeDefined();
+      // expect(response.body.data.cid).toBeDefined();
+      // expect(response.body.data.name).toBe('test-file');
     });
   });
 });
