@@ -103,6 +103,15 @@ describe('AppController (e2e)', () => {
       agent = request.agent(app.getHttpServer());
     });
 
+    it('Should get available document in public network', async () => {
+      const exampleId = '0197206c-cc89-7e47-8950-d9f90816dcbf';
+      const response = await agent
+        .get(`/documents/${exampleId}?network=public`)
+        .expect(200);
+
+      expect(response.body.data).toBeDefined();
+    });
+
     it('Should return 401 when trying to get documents without authentication', async () => {
       const response = await agent.get('/documents?network=public').expect(401);
 

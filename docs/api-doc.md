@@ -21,6 +21,7 @@ EtherDoc is a blockchain-based document management system that uses Ethereum wal
   - [📄 Documents](#-documents)
     - [`POST /documents`](#post-documents)
     - [`GET /documents`](#get-documents)
+    - [`GET /documents/:id`](#get-documentsid)
     - [`POST /documents/groups`](#post-documentsgroups)
     - [`GET /documents/groups`](#get-documentsgroups)
 - [🛡️ Authentication Example](#️-authentication-example)
@@ -50,7 +51,7 @@ EtherDoc uses a **signature-based authentication** system:
 ## 🚀 Base URL
 
 ```
-http://localhost:3000
+https://be-etherdoc-production.up.railway.app/
 ```
 
 <br>
@@ -277,6 +278,60 @@ GET /documents?network=public&groupId=f960765b-e861-4ac7-a5e9-d109eb3bc378
 - You must first authenticate using the `/auth/login` endpoint to obtain a JWT token
 - Include the JWT token in the `Authorization` header as `Bearer <token>`
 - JWT tokens expire after 5 minutes (configurable via `JWT_EXPIRES_IN`)
+
+<br>
+
+### `GET /documents/:id`
+
+Get a specific document by its ID.
+
+**Headers:**
+```
+Content-Type: application/json
+```
+
+**URL Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | ✅ | The unique identifier of the document |
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `network` | string | ✅ | Network type: `public` or `private` |
+
+**Example Request:**
+```
+GET /documents/0197206c-cc89-7e47-8950-d9f90816dcbf?network=public
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "0197206c-cc89-7e47-8950-d9f90816dcbf",
+    "name": "Ijazah - Harun Al Rasyid",
+    "cid": "bafkreicm37lqq2rs6zrqubz5vnx26eadwbkj4gvvnzo65d4axlzecp5eem",
+    "size": 97305,
+    "number_of_files": 1,
+    "mime_type": "application/pdf",
+    "group_id": "68d51621-265d-4ab0-a0ee-f3ff95150e31",
+    "keyvalues": {
+      "instansi": "idep.com",
+      "nama_asli": "harun",
+      "role": "IT (Islam Terpadu)"
+    },
+    "created_at": "2025-05-30T09:01:31.334437Z"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid network parameter or invalid document ID
+- `404 Not Found`: Document not found
+- `500 Internal Server Error`: Pinata API error or server configuration issue
 
 <br>
 
