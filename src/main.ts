@@ -8,6 +8,8 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
+  app.enableCors();
+
   // Activate validation pipe globally
   app.useGlobalPipes(
     new ValidationPipe({
