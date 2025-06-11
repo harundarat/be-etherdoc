@@ -25,6 +25,20 @@ import { FileInterceptor } from '@nestjs/platform-express';
 export class DocumentsController {
   constructor(private readonly documentsService: DocumentsService) {}
 
+  @Post('/search')
+  @UseInterceptors(FileInterceptor('file'))
+  async getDocumentByFile(
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({ fileType: 'application/pdf' })
+        .addMaxSizeValidator({ maxSize: 5 * 1024 * 1024 })
+        .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY }),
+    )
+    file: Express.Multer.File,
+  ) {
+    return await this.documentsService.getDocumentByFile(file);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post()
   @UseInterceptors(FileInterceptor('file'))
@@ -53,11 +67,11 @@ export class DocumentsController {
   }
 
   @Get('/:id')
-  async getDocument(
+  async getDocumentById(
     @Param('id') id: string,
     @Query('network') network: 'public' | 'private',
   ) {
-    return this.documentsService.getDocument(network, id);
+    return this.documentsService.getDocumentById(network, id);
   }
 
   @UseGuards(JwtAuthGuard)
