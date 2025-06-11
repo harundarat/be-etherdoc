@@ -19,6 +19,7 @@ EtherDoc is a blockchain-based document management system that uses Ethereum wal
     - [`GET /auth/nonce`](#get-authnonce)
     - [`POST /auth/login`](#post-authlogin)
   - [📄 Documents](#-documents)
+    - [`POST /documents/search`](#post-documentssearch)
     - [`POST /documents`](#post-documents)
     - [`GET /documents`](#get-documents)
     - [`GET /documents/:id`](#get-documentsid)
@@ -71,6 +72,7 @@ https://be-etherdoc-production.up.railway.app/
 Simple health check endpoint.
 
 **Response:**
+
 ```json
 "Hello World!"
 ```
@@ -90,11 +92,13 @@ Simple health check endpoint.
 Get a unique nonce for message signing.
 
 **Headers:**
+
 ```
 Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "messageObject": {
@@ -107,6 +111,7 @@ Content-Type: application/json
 ```
 
 **Error Responses:**
+
 - `500 Internal Server Error`: Server configuration error
 
 <br>
@@ -116,11 +121,13 @@ Content-Type: application/json
 Authenticate with Ethereum signature.
 
 **Headers:**
+
 ```
 Content-Type: application/json
 ```
 
 **Request Body:**
+
 ```json
 {
   "signature": "0x1234567890abcdef..."
@@ -128,6 +135,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -135,11 +143,13 @@ Content-Type: application/json
 ```
 
 **Response Headers:**
+
 ```
 Set-Cookie: etherdoc-auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Invalid signature format
 - `401 Unauthorized`: Invalid signature or expired nonce
 - `500 Internal Server Error`: Server configuration error
@@ -154,6 +164,66 @@ Set-Cookie: etherdoc-auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 <br>
 
+### `POST /documents/search`
+
+Search for an existing document by uploading a file to validate its presence in the system.
+
+**Headers:**
+
+```
+Content-Type: multipart/form-data
+```
+
+**Request Body (Form Data):**
+
+| Parameter | Type | Required | Description                  |
+| --------- | ---- | -------- | ---------------------------- |
+| `file`    | File | ✅       | File to search for (max 5MB) |
+
+**File Validation:**
+
+- **File Size**: Maximum 5MB (5,242,880 bytes)
+- **File Type**: Any file type is accepted for search validation
+
+**Example Request:**
+
+```bash
+curl -X POST http://localhost:3000/documents/search \
+  -F "file=@document.pdf"
+```
+
+**Response:**
+
+```json
+{
+  "id": "01971576-e2fc-7679-8bcf-79b73ba5a263",
+  "name": "average cost per post.png",
+  "cid": "bafkreiex2lt76bfk7vndbhlxnvooxx3grtxepw7nrljzsmwa2hnhagghhi",
+  "size": 55185,
+  "number_of_files": 1,
+  "mime_type": "image/png",
+  "group_id": null,
+  "keyvalues": {},
+  "created_at": "2025-05-28T05:56:43.22715Z"
+}
+```
+
+**Error Responses:**
+
+- `400 Bad Request`: Missing file or invalid request format
+- `404 Not Found`: Document not found in the system
+- `422 Unprocessable Entity`: File validation failed (file size too large)
+- `500 Internal Server Error`: Pinata API error or server configuration issue
+
+**Notes:**
+
+- This endpoint does not require authentication
+- The endpoint calculates the file's CID (Content Identifier) and searches for it in the private network
+- Returns document metadata if the file exists in the system
+- Useful for document validation and verification purposes
+
+<br>
+
 ### `POST /documents`
 
 Upload a document file to IPFS via Pinata.
@@ -161,6 +231,7 @@ Upload a document file to IPFS via Pinata.
 🔒 **Authentication Required**: This endpoint requires a valid JWT token obtained from the login process.
 
 **Headers:**
+
 ```
 Content-Type: multipart/form-data
 Authorization: Bearer <jwt_token>
@@ -168,19 +239,21 @@ Authorization: Bearer <jwt_token>
 
 **Request Body (Form Data):**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `file` | File | ✅ | PDF file to upload (max 5MB) |
-| `network` | string | ✅ | Network type: `public` or `private` |
-| `name` | string | ❌ | Optional custom name for the file |
-| `group_id` | string | ❌ | Optional group ID to associate the file with |
-| `keyvalues` | object | ❌ | Optional key-value pairs for metadata |
+| Parameter   | Type   | Required | Description                                  |
+| ----------- | ------ | -------- | -------------------------------------------- |
+| `file`      | File   | ✅       | PDF file to upload (max 5MB)                 |
+| `network`   | string | ✅       | Network type: `public` or `private`          |
+| `name`      | string | ❌       | Optional custom name for the file            |
+| `group_id`  | string | ❌       | Optional group ID to associate the file with |
+| `keyvalues` | object | ❌       | Optional key-value pairs for metadata        |
 
 **File Validation:**
+
 - **File Type**: Only PDF files are accepted (`application/pdf`)
 - **File Size**: Maximum 5MB (5,242,880 bytes)
 
 **Example Request:**
+
 ```bash
 curl -X POST http://localhost:3000/documents \
   -H "Authorization: Bearer <jwt_token>" \
@@ -192,6 +265,7 @@ curl -X POST http://localhost:3000/documents \
 ```
 
 **Response:**
+
 ```json
 {
   "data": {
@@ -210,12 +284,14 @@ curl -X POST http://localhost:3000/documents \
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Missing file, invalid network parameter, or invalid request format
 - `401 Unauthorized`: Missing or invalid JWT token (authentication required)
 - `422 Unprocessable Entity`: File validation failed (invalid file type or size too large)
 - `500 Internal Server Error`: Pinata API error or server configuration issue
 
 **Authentication Notes:**
+
 - You must first authenticate using the `/auth/login` endpoint to obtain a JWT token
 - Include the JWT token in the `Authorization` header as `Bearer <token>`
 - JWT tokens expire after 5 minutes (configurable via `JWT_EXPIRES_IN`)
@@ -229,6 +305,7 @@ Get list of files from specified network.
 🔒 **Authentication Required**: This endpoint requires a valid JWT token obtained from the login process.
 
 **Headers:**
+
 ```
 Content-Type: application/json
 Authorization: Bearer <jwt_token>
@@ -236,18 +313,20 @@ Authorization: Bearer <jwt_token>
 
 **Query Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `network` | string | ✅ | Network type: `public` or `private` |
-| `groupId` | string | ❌ | Optional group ID to filter files by specific group |
+| Parameter | Type   | Required | Description                                         |
+| --------- | ------ | -------- | --------------------------------------------------- |
+| `network` | string | ✅       | Network type: `public` or `private`                 |
+| `groupId` | string | ❌       | Optional group ID to filter files by specific group |
 
 **Example Request:**
+
 ```
 GET /documents?network=public
 GET /documents?network=public&groupId=f960765b-e861-4ac7-a5e9-d109eb3bc378
 ```
 
 **Response:**
+
 ```json
 {
   "data": {
@@ -270,11 +349,13 @@ GET /documents?network=public&groupId=f960765b-e861-4ac7-a5e9-d109eb3bc378
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Invalid network parameter
 - `401 Unauthorized`: Missing or invalid JWT token (authentication required)
 - `500 Internal Server Error`: Pinata API error or server configuration issue
 
 **Authentication Notes:**
+
 - You must first authenticate using the `/auth/login` endpoint to obtain a JWT token
 - Include the JWT token in the `Authorization` header as `Bearer <token>`
 - JWT tokens expire after 5 minutes (configurable via `JWT_EXPIRES_IN`)
@@ -286,28 +367,31 @@ GET /documents?network=public&groupId=f960765b-e861-4ac7-a5e9-d109eb3bc378
 Get a specific document by its ID.
 
 **Headers:**
+
 ```
 Content-Type: application/json
 ```
 
 **URL Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `id` | string | ✅ | The unique identifier of the document |
+| Parameter | Type   | Required | Description                           |
+| --------- | ------ | -------- | ------------------------------------- |
+| `id`      | string | ✅       | The unique identifier of the document |
 
 **Query Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `network` | string | ✅ | Network type: `public` or `private` |
+| Parameter | Type   | Required | Description                         |
+| --------- | ------ | -------- | ----------------------------------- |
+| `network` | string | ✅       | Network type: `public` or `private` |
 
 **Example Request:**
+
 ```
 GET /documents/0197206c-cc89-7e47-8950-d9f90816dcbf?network=public
 ```
 
 **Response:**
+
 ```json
 {
   "data": {
@@ -329,6 +413,7 @@ GET /documents/0197206c-cc89-7e47-8950-d9f90816dcbf?network=public
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Invalid network parameter or invalid document ID
 - `404 Not Found`: Document not found
 - `500 Internal Server Error`: Pinata API error or server configuration issue
@@ -342,12 +427,14 @@ Create a new group in the specified network.
 🔒 **Authentication Required**: This endpoint requires a valid JWT token obtained from the login process.
 
 **Headers:**
+
 ```
 Content-Type: application/json
 Authorization: Bearer <jwt_token>
 ```
 
 **Request Body:**
+
 ```json
 {
   "network": "public",
@@ -357,12 +444,13 @@ Authorization: Bearer <jwt_token>
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `network` | string | ✅ | Network type: `public` or `private` |
-| `groupName` | string | ✅ | Name of the group to create |
+| Parameter   | Type   | Required | Description                         |
+| ----------- | ------ | -------- | ----------------------------------- |
+| `network`   | string | ✅       | Network type: `public` or `private` |
+| `groupName` | string | ✅       | Name of the group to create         |
 
 **Response:**
+
 ```json
 {
   "data": {
@@ -374,11 +462,13 @@ Authorization: Bearer <jwt_token>
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Invalid network parameter or missing groupName
 - `401 Unauthorized`: Missing or invalid JWT token (authentication required)
 - `500 Internal Server Error`: Pinata API error or server configuration issue
 
 **Authentication Notes:**
+
 - You must first authenticate using the `/auth/login` endpoint to obtain a JWT token
 - Include the JWT token in the `Authorization` header as `Bearer <token>`
 - JWT tokens expire after 5 minutes (configurable via `JWT_EXPIRES_IN`)
@@ -392,6 +482,7 @@ Get list of groups from specified network.
 🔒 **Authentication Required**: This endpoint requires a valid JWT token obtained from the login process.
 
 **Headers:**
+
 ```
 Content-Type: application/json
 Authorization: Bearer <jwt_token>
@@ -399,16 +490,18 @@ Authorization: Bearer <jwt_token>
 
 **Query Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `network` | string | ✅ | Network type: `public` or `private` |
+| Parameter | Type   | Required | Description                         |
+| --------- | ------ | -------- | ----------------------------------- |
+| `network` | string | ✅       | Network type: `public` or `private` |
 
 **Example Request:**
+
 ```
 GET /documents/groups?network=private
 ```
 
 **Response:**
+
 ```json
 {
   "data": {
@@ -426,11 +519,13 @@ GET /documents/groups?network=private
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Invalid network parameter
 - `401 Unauthorized`: Missing or invalid JWT token (authentication required)
 - `500 Internal Server Error`: Pinata API error or server configuration issue
 
 **Authentication Notes:**
+
 - You must first authenticate using the `/auth/login` endpoint to obtain a JWT token
 - Include the JWT token in the `Authorization` header as `Bearer <token>`
 - JWT tokens expire after 5 minutes (configurable via `JWT_EXPIRES_IN`)
@@ -510,12 +605,12 @@ All endpoints return standardized error responses:
 
 ## Common HTTP Status Codes
 
-| Code | Description |
-|------|-------------|
-| `200` | ✅ Success |
-| `400` | ❌ Bad Request - Invalid input |
+| Code  | Description                               |
+| ----- | ----------------------------------------- |
+| `200` | ✅ Success                                |
+| `400` | ❌ Bad Request - Invalid input            |
 | `401` | 🔒 Unauthorized - Authentication required |
-| `500` | 💥 Internal Server Error - Server issue |
+| `500` | 💥 Internal Server Error - Server issue   |
 
 <br>
 
@@ -554,6 +649,7 @@ PORT=3000
 <br>
 
 ## Network Parameter
+
 - Must be either `"public"` or `"private"`
 - Case-sensitive
 - Required for document endpoints
@@ -561,6 +657,7 @@ PORT=3000
 <br>
 
 ## Signature Format
+
 - Must be a valid Ethereum signature (hex string starting with "0x")
 - Must be generated from the exact `messageString` provided by the nonce endpoint
 

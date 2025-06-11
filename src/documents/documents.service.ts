@@ -7,12 +7,64 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UploadFileDto, UploadFileResponseDto } from './dto';
+import { of as predictCIDFromBuffer } from 'ipfs-only-hash';
 
 @Injectable()
 export class DocumentsService {
   private readonly logger = new Logger(DocumentsService.name);
 
   constructor(private configService: ConfigService) {}
+
+  async getDocumentByFile(file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+
+    const pinataApiUrl =
+      this.configService.getOrThrow<string>('PINATA_API_URL');
+    const pinataJwtToken =
+      this.configService.getOrThrow<string>('PINATA_JWT_TOKEN');
+
+    try {
+      const documentCID = await predictCIDFromBuffer(file.buffer, {
+        cidVersion: 1,
+        rawLeaves: true,
+      });
+
+      const response = await fetch(
+        `${pinataApiUrl}/files/private?cid=${documentCID}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${pinataJwtToken}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        this.logger.error(
+          `Pinata upload error: ${response.status} - ${errorText}`,
+        );
+        throw new HttpException(
+          'Error uploading file to Pinata',
+          response.status,
+        );
+      }
+
+      const data = await response.json();
+
+      return data.data.files[0];
+    } catch (error) {
+      this.logger.error('Failed to upload file', error.stack);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Could not upload file due to an unexpected error.',
+      );
+    }
+  }
 
   async uploadDocument(
     file: Express.Multer.File,
@@ -129,7 +181,7 @@ export class DocumentsService {
     }
   }
 
-  async getDocument(network: string, id: string) {
+  async getDocumentById(network: string, id: string) {
     const pinataApiUrl =
       this.configService.getOrThrow<string>('PINATA_API_URL');
     const pinataJwtToken =
