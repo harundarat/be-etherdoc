@@ -8,6 +8,10 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { UploadFileDto, UploadFileResponseDto } from './dto';
 import { of as predictCIDFromBuffer } from 'ipfs-only-hash';
+import { createWalletClient, http } from 'viem';
+import { holesky } from 'viem/chains';
+import { privateKeyToAccount } from 'viem/accounts';
+import { etherdocSenderAbi } from 'src/contracts/abis';
 
 @Injectable()
 export class DocumentsService {
@@ -79,6 +83,19 @@ export class DocumentsService {
       this.configService.getOrThrow<string>('PINATA_UPLOAD_URL');
     const pinataJwtToken =
       this.configService.getOrThrow<string>('PINATA_JWT_TOKEN');
+    const evmPrivateKey =
+      this.configService.getOrThrow<string>('EVM_PRIVATE_KEY');
+    const account = privateKeyToAccount(`0x${evmPrivateKey}`);
+    const rpcUrl = this.configService.getOrThrow<string>('RPC_URL');
+    const walletClient = createWalletClient({
+      account,
+      chain: holesky,
+      transport: http(rpcUrl),
+    });
+    const baseSepoliaChainSelector = 10344971235874465080n;
+    const sourceContractAddress = '0x50D1672685E594B27F298Ac5bFACa4F3488AAA9c';
+    const destinationContractAddress =
+      '0xf9532930b61c0ddfed3b758582cb21c1cd8c2fd1';
 
     try {
       // Create form
@@ -121,8 +138,22 @@ export class DocumentsService {
           response.status,
         );
       }
+      const data = await response.json();
 
-      const data = response.json();
+      // Save CID to blockhain
+      const txHash = await walletClient.writeContract({
+        address: sourceContractAddress,
+        abi: etherdocSenderAbi,
+        functionName: 'addDocument',
+        args: [
+          baseSepoliaChainSelector,
+          destinationContractAddress,
+          data.data!.cid,
+        ],
+      });
+
+      console.info(`txHash: ${txHash}`);
+
       return data;
     } catch (error) {
       this.logger.error('Failed to upload file', error.stack);
