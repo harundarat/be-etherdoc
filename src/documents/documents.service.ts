@@ -4,11 +4,12 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UploadFileDto, UploadFileResponseDto } from './dto';
 import { of as predictCIDFromBuffer } from 'ipfs-only-hash';
-import { createWalletClient, http } from 'viem';
+import { createPublicClient, createWalletClient, http } from 'viem';
 import { holesky } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import { etherdocSenderAbi } from 'src/contracts/abis';
@@ -28,6 +29,8 @@ export class DocumentsService {
       this.configService.getOrThrow<string>('PINATA_API_URL');
     const pinataJwtToken =
       this.configService.getOrThrow<string>('PINATA_JWT_TOKEN');
+    const rpcUrl = this.configService.getOrThrow<string>('RPC_URL');
+    const sourceContractAddress = '0x50D1672685E594B27F298Ac5bFACa4F3488AAA9c';
 
     try {
       const documentCID = await predictCIDFromBuffer(file.buffer, {
@@ -35,6 +38,28 @@ export class DocumentsService {
         rawLeaves: true,
       });
 
+      console.info(`documentCID: ${documentCID}`);
+
+      // Check CID on the blockchain
+      const publicClient = createPublicClient({
+        chain: holesky,
+        transport: http(rpcUrl),
+      });
+
+      const isCIDExist = await publicClient.readContract({
+        address: sourceContractAddress,
+        abi: etherdocSenderAbi,
+        functionName: 'documentExists',
+        args: [documentCID],
+      });
+
+      if (!isCIDExist) {
+        throw new NotFoundException(
+          `Document with CID: ${documentCID} is not found.`,
+        );
+      }
+
+      // Get the document from IPFS
       const response = await fetch(
         `${pinataApiUrl}/files/private?cid=${documentCID}`,
         {
