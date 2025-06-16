@@ -41,7 +41,8 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "typestub-ipfs-only-hash": "^4.0.0",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "viem": "^2.31.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

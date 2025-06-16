@@ -8,6 +8,10 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { UploadFileDto, UploadFileResponseDto } from './dto';
 import { of as predictCIDFromBuffer } from 'ipfs-only-hash';
+import { createWalletClient, http } from 'viem';
+import { holesky } from 'viem/chains';
+import { privateKeyToAccount } from 'viem/accounts';
+import { etherdocSenderAbi } from 'src/contracts/abis';
 
 @Injectable()
 export class DocumentsService {
@@ -79,19 +83,26 @@ export class DocumentsService {
       this.configService.getOrThrow<string>('PINATA_UPLOAD_URL');
     const pinataJwtToken =
       this.configService.getOrThrow<string>('PINATA_JWT_TOKEN');
+    const evmPrivateKey =
+      this.configService.getOrThrow<string>('EVM_PRIVATE_KEY');
+    const account = privateKeyToAccount(`0x${evmPrivateKey}`);
+    const rpcUrl = this.configService.getOrThrow<string>('RPC_URL');
+    const walletClient = createWalletClient({
+      account,
+      chain: holesky,
+      transport: http(rpcUrl),
+    });
+    const baseSepoliaChainSelector = 10344971235874465080n;
+    const sourceContractAddress = '0x50D1672685E594B27F298Ac5bFACa4F3488AAA9c';
+    const destinationContractAddress =
+      '0xf9532930b61c0ddfed3b758582cb21c1cd8c2fd1';
 
     try {
-      // Create form
+      // Create form for Pinata upload
       const formData = new FormData();
-
-      // Add file as Blob
       const blob = new Blob([file.buffer], { type: file.mimetype });
       formData.append('file', blob, file.originalname);
-
-      // Add network
       formData.append('network', uploadFileDto.network);
-
-      // Add optional fields
       if (uploadFileDto.name) {
         formData.append('name', uploadFileDto.name);
       }
@@ -102,28 +113,53 @@ export class DocumentsService {
         formData.append('keyvalues', JSON.stringify(uploadFileDto.keyvalues));
       }
 
-      // Upload the document
-      const response = await fetch(pinataUploadUrl, {
+      // Start Pinata upload
+      const pinataUploadPromise = fetch(pinataUploadUrl, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${pinataJwtToken}`,
         },
         body: formData,
+      }).then(async (response) => {
+        if (!response.ok) {
+          const errorText = await response.text();
+          this.logger.error(
+            `Pinata upload error: ${response.status} - ${errorText}`,
+          );
+          throw new HttpException(
+            'Error uploading file to Pinata',
+            response.status,
+          );
+        }
+        return response.json();
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        this.logger.error(
-          `Pinata upload error: ${response.status} - ${errorText}`,
-        );
-        throw new HttpException(
-          'Error uploading file to Pinata',
-          response.status,
-        );
-      }
+      // Predict CID and start blockchain transaction
+      const documentCIDPromise = predictCIDFromBuffer(file.buffer, {
+        cidVersion: 1,
+        rawLeaves: true,
+      });
 
-      const data = response.json();
-      return data;
+      const writeContractPromise = documentCIDPromise.then((documentCID) => {
+        return walletClient.writeContract({
+          address: sourceContractAddress,
+          abi: etherdocSenderAbi,
+          functionName: 'addDocument',
+          args: [
+            baseSepoliaChainSelector,
+            destinationContractAddress,
+            documentCID,
+          ],
+        });
+      });
+
+      // Wait for both operation to complete
+      const [pinataResponseData, txHash] = await Promise.all([
+        pinataUploadPromise,
+        writeContractPromise,
+      ]);
+
+      return pinataResponseData;
     } catch (error) {
       this.logger.error('Failed to upload file', error.stack);
       if (error instanceof HttpException) {
