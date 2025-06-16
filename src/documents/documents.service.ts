@@ -98,17 +98,11 @@ export class DocumentsService {
       '0xf9532930b61c0ddfed3b758582cb21c1cd8c2fd1';
 
     try {
-      // Create form
+      // Create form for Pinata upload
       const formData = new FormData();
-
-      // Add file as Blob
       const blob = new Blob([file.buffer], { type: file.mimetype });
       formData.append('file', blob, file.originalname);
-
-      // Add network
       formData.append('network', uploadFileDto.network);
-
-      // Add optional fields
       if (uploadFileDto.name) {
         formData.append('name', uploadFileDto.name);
       }
@@ -119,42 +113,53 @@ export class DocumentsService {
         formData.append('keyvalues', JSON.stringify(uploadFileDto.keyvalues));
       }
 
-      // Upload the document
-      const response = await fetch(pinataUploadUrl, {
+      // Start Pinata upload
+      const pinataUploadPromise = fetch(pinataUploadUrl, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${pinataJwtToken}`,
         },
         body: formData,
+      }).then(async (response) => {
+        if (!response.ok) {
+          const errorText = await response.text();
+          this.logger.error(
+            `Pinata upload error: ${response.status} - ${errorText}`,
+          );
+          throw new HttpException(
+            'Error uploading file to Pinata',
+            response.status,
+          );
+        }
+        return response.json();
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        this.logger.error(
-          `Pinata upload error: ${response.status} - ${errorText}`,
-        );
-        throw new HttpException(
-          'Error uploading file to Pinata',
-          response.status,
-        );
-      }
-      const data = await response.json();
-
-      // Save CID to blockhain
-      const txHash = await walletClient.writeContract({
-        address: sourceContractAddress,
-        abi: etherdocSenderAbi,
-        functionName: 'addDocument',
-        args: [
-          baseSepoliaChainSelector,
-          destinationContractAddress,
-          data.data!.cid,
-        ],
+      // Predict CID and start blockchain transaction
+      const documentCIDPromise = predictCIDFromBuffer(file.buffer, {
+        cidVersion: 1,
+        rawLeaves: true,
       });
 
-      console.info(`txHash: ${txHash}`);
+      const writeContractPromise = documentCIDPromise.then((documentCID) => {
+        return walletClient.writeContract({
+          address: sourceContractAddress,
+          abi: etherdocSenderAbi,
+          functionName: 'addDocument',
+          args: [
+            baseSepoliaChainSelector,
+            destinationContractAddress,
+            documentCID,
+          ],
+        });
+      });
 
-      return data;
+      // Wait for both operation to complete
+      const [pinataResponseData, txHash] = await Promise.all([
+        pinataUploadPromise,
+        writeContractPromise,
+      ]);
+
+      return pinataResponseData;
     } catch (error) {
       this.logger.error('Failed to upload file', error.stack);
       if (error instanceof HttpException) {
