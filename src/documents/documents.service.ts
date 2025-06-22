@@ -118,12 +118,6 @@ export class DocumentsService {
         'Could not upload file due to an unexpected error.',
       );
     }
-    const isCIDExistBaseSepolia = await publicClientBaseSepolia.readContract({
-      address: destinationContractAddress,
-      abi: etherdocReceiverAbi,
-      functionName: 'documentExists',
-      args: [documentCID],
-    });
   }
 
   async uploadDocument(
