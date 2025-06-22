@@ -66,12 +66,12 @@ export class DocumentsController {
     );
   }
 
-  @Get('/:id')
+  @Get('/:documentCID')
   async getDocumentById(
-    @Param('id') id: string,
+    @Param('documentCID') documentCID: string,
     @Query('network') network: 'public' | 'private',
   ) {
-    return this.documentsService.getDocumentById(network, id);
+    return this.documentsService.getDocumentByCid(network, documentCID);
   }
 
   @UseGuards(JwtAuthGuard)
