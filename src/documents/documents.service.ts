@@ -10,9 +10,10 @@ import { ConfigService } from '@nestjs/config';
 import { UploadFileDto, UploadFileResponseDto } from './dto';
 import { of as predictCIDFromBuffer } from 'ipfs-only-hash';
 import { createPublicClient, createWalletClient, http } from 'viem';
-import { holesky } from 'viem/chains';
+import { baseSepolia, holesky } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import { etherdocSenderAbi } from 'src/contracts/abis';
+import { etherdocReceiverAbi } from 'src/contracts/abis/EtherdocReceiver.abi';
 
 @Injectable()
 export class DocumentsService {
@@ -41,19 +42,32 @@ export class DocumentsService {
       console.info(`documentCID: ${documentCID}`);
 
       // Check CID on the blockchain
-      const publicClient = createPublicClient({
+      const publicClientHolesky = createPublicClient({
         chain: holesky,
         transport: http(rpcUrl),
       });
 
-      const isCIDExist = await publicClient.readContract({
+      const publicClientBaseSepolia = createPublicClient({
+        chain: baseSepolia,
+        transport: http(rpcUrl),
+      });
+
+      const isCIDExistHolesky = await publicClientHolesky.readContract({
         address: sourceContractAddress,
         abi: etherdocSenderAbi,
         functionName: 'documentExists',
         args: [documentCID],
       });
 
-      if (!isCIDExist) {
+      const isCIDExistBaseSepolia = await publicClientBaseSepolia.readContract({
+        address: sourceContractAddress,
+        abi: etherdocReceiverAbi,
+        functionName: 'documentExists',
+        args: [documentCID],
+      });
+
+      // Only check CID existence on the main network
+      if (!isCIDExistHolesky) {
         throw new NotFoundException(
           `Document with CID: ${documentCID} is not found.`,
         );
@@ -82,8 +96,13 @@ export class DocumentsService {
       }
 
       const data = await response.json();
+      const responseData = data.data.files[0];
 
-      return data.data.files[0];
+      return {
+        ...responseData,
+        isExistEthereum: isCIDExistHolesky,
+        isExistBase: isCIDExistBaseSepolia,
+      };
     } catch (error) {
       this.logger.error('Failed to upload file', error.stack);
       if (error instanceof HttpException) {
