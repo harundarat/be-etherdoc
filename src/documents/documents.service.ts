@@ -30,8 +30,14 @@ export class DocumentsService {
       this.configService.getOrThrow<string>('PINATA_API_URL');
     const pinataJwtToken =
       this.configService.getOrThrow<string>('PINATA_JWT_TOKEN');
-    const rpcUrl = this.configService.getOrThrow<string>('RPC_URL');
+    const holeskyRpcUrl =
+      this.configService.getOrThrow<string>('HOLESKY_RPC_URL');
+    const baseSepoliaRpcUrl = this.configService.getOrThrow<string>(
+      'BASE_SEPOLIA_RPC_URL',
+    );
     const sourceContractAddress = '0x50D1672685E594B27F298Ac5bFACa4F3488AAA9c';
+    const destinationContractAddress =
+      '0xf9532930b61c0ddfed3b758582cb21c1cd8c2fd1';
 
     try {
       const documentCID = await predictCIDFromBuffer(file.buffer, {
@@ -44,12 +50,12 @@ export class DocumentsService {
       // Check CID on the blockchain
       const publicClientHolesky = createPublicClient({
         chain: holesky,
-        transport: http(rpcUrl),
+        transport: http(holeskyRpcUrl),
       });
 
       const publicClientBaseSepolia = createPublicClient({
         chain: baseSepolia,
-        transport: http(rpcUrl),
+        transport: http(baseSepoliaRpcUrl),
       });
 
       const isCIDExistHolesky = await publicClientHolesky.readContract({
@@ -60,7 +66,7 @@ export class DocumentsService {
       });
 
       const isCIDExistBaseSepolia = await publicClientBaseSepolia.readContract({
-        address: sourceContractAddress,
+        address: destinationContractAddress,
         abi: etherdocReceiverAbi,
         functionName: 'documentExists',
         args: [documentCID],
@@ -112,6 +118,12 @@ export class DocumentsService {
         'Could not upload file due to an unexpected error.',
       );
     }
+    const isCIDExistBaseSepolia = await publicClientBaseSepolia.readContract({
+      address: destinationContractAddress,
+      abi: etherdocReceiverAbi,
+      functionName: 'documentExists',
+      args: [documentCID],
+    });
   }
 
   async uploadDocument(
@@ -261,15 +273,55 @@ export class DocumentsService {
     }
   }
 
-  async getDocumentById(network: string, id: string) {
+  async getDocumentByCid(network: string, documentCID: string) {
     const pinataApiUrl =
       this.configService.getOrThrow<string>('PINATA_API_URL');
     const pinataJwtToken =
       this.configService.getOrThrow<string>('PINATA_JWT_TOKEN');
+    const holeskyRpcUrl =
+      this.configService.getOrThrow<string>('HOLESKY_RPC_URL');
+    const baseSepoliaRpcUrl = this.configService.getOrThrow<string>(
+      'BASE_SEPOLIA_RPC_URL',
+    );
+    const sourceContractAddress = '0x50D1672685E594B27F298Ac5bFACa4F3488AAA9c';
+    const destinationContractAddress =
+      '0xf9532930b61c0ddfed3b758582cb21c1cd8c2fd1';
 
     try {
-      const rawResponse = await fetch(
-        `${pinataApiUrl}/files/${network}/${id}`,
+      const publicClientHolesky = createPublicClient({
+        chain: holesky,
+        transport: http(holeskyRpcUrl),
+      });
+
+      const publicClientBaseSepolia = createPublicClient({
+        chain: baseSepolia,
+        transport: http(baseSepoliaRpcUrl),
+      });
+
+      const isCIDExistHolesky = await publicClientHolesky.readContract({
+        address: sourceContractAddress,
+        abi: etherdocSenderAbi,
+        functionName: 'documentExists',
+        args: [documentCID],
+      });
+
+      const isCIDExistBaseSepolia = await publicClientBaseSepolia.readContract({
+        address: destinationContractAddress,
+        abi: etherdocReceiverAbi,
+        functionName: 'documentExists',
+        args: [documentCID],
+      });
+
+      // Only check CID existence on the main network
+      if (!isCIDExistHolesky) {
+        throw new NotFoundException(
+          `Document with CID: ${documentCID} is not found.`,
+        );
+      }
+
+      // Get the document from IPFS
+      const response = await fetch(
+        `${pinataApiUrl}/files/private?cid=${documentCID}`,
         {
           method: 'GET',
           headers: {
@@ -277,16 +329,26 @@ export class DocumentsService {
           },
         },
       );
-      if (!rawResponse.ok) {
-        this.logger.error(`Pinata API error: ${rawResponse.status}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        this.logger.error(
+          `Pinata upload error: ${response.status} - ${errorText}`,
+        );
         throw new HttpException(
-          'Error fetching file from pinata',
-          rawResponse.status,
+          'Error uploading file to Pinata',
+          response.status,
         );
       }
 
-      const response = rawResponse.json();
-      return response;
+      const data = await response.json();
+      const responseData = data.data.files[0];
+
+      return {
+        ...responseData,
+        isExistEthereum: isCIDExistHolesky,
+        isExistBase: isCIDExistBaseSepolia,
+      };
     } catch (error) {
       this.logger.error(
         `Failed to get document for network ${network}: `,

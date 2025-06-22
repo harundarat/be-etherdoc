@@ -22,7 +22,7 @@ EtherDoc is a blockchain-based document management system that uses Ethereum wal
     - [`POST /documents/search`](#post-documentssearch)
     - [`POST /documents`](#post-documents)
     - [`GET /documents`](#get-documents)
-    - [`GET /documents/:id`](#get-documentsid)
+    - [`GET /documents/:documentCID`](#get-documentsdocumentcid)
     - [`POST /documents/groups`](#post-documentsgroups)
     - [`GET /documents/groups`](#get-documentsgroups)
 - [🛡️ Authentication Example](#️-authentication-example)
@@ -381,9 +381,9 @@ GET /documents?network=public&groupId=f960765b-e861-4ac7-a5e9-d109eb3bc378
 
 <br>
 
-### `GET /documents/:id`
+### `GET /documents/:documentCID`
 
-Get a specific document by its ID.
+Get a specific document by its CID (Content Identifier).
 
 **Headers:**
 
@@ -393,9 +393,9 @@ Content-Type: application/json
 
 **URL Parameters:**
 
-| Parameter | Type   | Required | Description                           |
-| --------- | ------ | -------- | ------------------------------------- |
-| `id`      | string | ✅       | The unique identifier of the document |
+| Parameter     | Type   | Required | Description                                    |
+| ------------- | ------ | -------- | ---------------------------------------------- |
+| `documentCID` | string | ✅       | The Content Identifier (CID) of the document |
 
 **Query Parameters:**
 
@@ -406,35 +406,59 @@ Content-Type: application/json
 **Example Request:**
 
 ```
-GET /documents/0197206c-cc89-7e47-8950-d9f90816dcbf?network=public
+GET /documents/bafkreicm37lqq2rs6zrqubz5vnx26eadwbkj4gvvnzo65d4axlzecp5eem?network=public
 ```
 
 **Response:**
 
 ```json
 {
-  "data": {
-    "id": "0197206c-cc89-7e47-8950-d9f90816dcbf",
-    "name": "Ijazah - Harun Al Rasyid",
-    "cid": "bafkreicm37lqq2rs6zrqubz5vnx26eadwbkj4gvvnzo65d4axlzecp5eem",
-    "size": 97305,
-    "number_of_files": 1,
-    "mime_type": "application/pdf",
-    "group_id": "68d51621-265d-4ab0-a0ee-f3ff95150e31",
-    "keyvalues": {
-      "instansi": "idep.com",
-      "nama_asli": "harun",
-      "role": "IT (Islam Terpadu)"
-    },
-    "created_at": "2025-05-30T09:01:31.334437Z"
-  }
+  "id": "0197206c-cc89-7e47-8950-d9f90816dcbf",
+  "name": "Ijazah - Harun Al Rasyid",
+  "cid": "bafkreicm37lqq2rs6zrqubz5vnx26eadwbkj4gvvnzo65d4axlzecp5eem",
+  "size": 97305,
+  "number_of_files": 1,
+  "mime_type": "application/pdf",
+  "group_id": "68d51621-265d-4ab0-a0ee-f3ff95150e31",
+  "keyvalues": {
+    "instansi": "idep.com",
+    "nama_asli": "harun",
+    "role": "IT (Islam Terpadu)"
+  },
+  "created_at": "2025-05-30T09:01:31.334437Z",
+  "isExistEthereum": true,
+  "isExistBase": true
 }
 ```
 
+**Response Fields:**
+
+| Field             | Type    | Description                                                    |
+| ----------------- | ------- | -------------------------------------------------------------- |
+| `id`              | string  | Unique identifier of the document                              |
+| `name`            | string  | Name of the document                                           |
+| `cid`             | string  | Content Identifier (CID) on IPFS                              |
+| `size`            | number  | File size in bytes                                             |
+| `number_of_files` | number  | Number of files (always 1 for single file uploads)           |
+| `mime_type`       | string  | MIME type of the file                                          |
+| `group_id`        | string  | Group ID if the document belongs to a group, null otherwise   |
+| `keyvalues`       | object  | Key-value pairs for metadata                                   |
+| `created_at`      | string  | ISO timestamp of when the document was created                |
+| `isExistEthereum` | boolean | Whether the document exists on the Ethereum (Holesky) network |
+| `isExistBase`     | boolean | Whether the document exists on the Base Sepolia network       |
+
+**Notes:**
+
+- This endpoint does not require authentication
+- The endpoint verifies the document's existence on both Ethereum (Holesky) and Base Sepolia networks using the provided CID
+- The document must exist on the Ethereum network (`isExistEthereum: true`) to be considered valid
+- Returns document metadata from IPFS if the document is found and verified on blockchain
+- Useful for retrieving document details and verifying blockchain presence
+
 **Error Responses:**
 
-- `400 Bad Request`: Invalid network parameter or invalid document ID
-- `404 Not Found`: Document not found
+- `400 Bad Request`: Invalid network parameter or invalid document CID
+- `404 Not Found`: Document not found (CID does not exist on blockchain)
 - `500 Internal Server Error`: Pinata API error or server configuration issue
 
 <br>
