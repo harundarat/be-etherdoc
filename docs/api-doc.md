@@ -183,7 +183,7 @@ Content-Type: multipart/form-data
 **File Validation:**
 
 - **File Size**: Maximum 5MB (5,242,880 bytes)
-- **File Type**: Any file type is accepted for search validation
+- **File Type**: Only PDF files are accepted (`application/pdf`)
 
 **Example Request:**
 
@@ -197,14 +197,16 @@ curl -X POST http://localhost:3000/documents/search \
 ```json
 {
   "id": "01971576-e2fc-7679-8bcf-79b73ba5a263",
-  "name": "average cost per post.png",
+  "name": "document.pdf",
   "cid": "bafkreiex2lt76bfk7vndbhlxnvooxx3grtxepw7nrljzsmwa2hnhagghhi",
   "size": 55185,
   "number_of_files": 1,
-  "mime_type": "image/png",
+  "mime_type": "application/pdf",
   "group_id": null,
   "keyvalues": {},
-  "created_at": "2025-05-28T05:56:43.22715Z"
+  "created_at": "2025-05-28T05:56:43.22715Z",
+  "isExistEthereum": true,
+  "isExistBase": false
 }
 ```
 
@@ -215,12 +217,29 @@ curl -X POST http://localhost:3000/documents/search \
 - `422 Unprocessable Entity`: File validation failed (file size too large)
 - `500 Internal Server Error`: Pinata API error or server configuration issue
 
+**Response Fields:**
+
+| Field             | Type    | Description                                                    |
+| ----------------- | ------- | -------------------------------------------------------------- |
+| `id`              | string  | Unique identifier of the document                              |
+| `name`            | string  | Name of the document                                           |
+| `cid`             | string  | Content Identifier (CID) on IPFS                              |
+| `size`            | number  | File size in bytes                                             |
+| `number_of_files` | number  | Number of files (always 1 for single file uploads)           |
+| `mime_type`       | string  | MIME type of the file                                          |
+| `group_id`        | string  | Group ID if the document belongs to a group, null otherwise   |
+| `keyvalues`       | object  | Key-value pairs for metadata                                   |
+| `created_at`      | string  | ISO timestamp of when the document was created                |
+| `isExistEthereum` | boolean | Whether the document exists on the Ethereum (Holesky) network |
+| `isExistBase`     | boolean | Whether the document exists on the Base Sepolia network       |
+
 **Notes:**
 
 - This endpoint does not require authentication
-- The endpoint calculates the file's CID (Content Identifier) and searches for it in the private network
+- The endpoint calculates the file's CID (Content Identifier) and verifies its existence on both Ethereum (Holesky) and Base Sepolia networks
 - Returns document metadata if the file exists in the system
-- Useful for document validation and verification purposes
+- The document must exist on the Ethereum network (`isExistEthereum: true`) to be considered valid
+- Useful for document validation and blockchain verification purposes
 
 <br>
 
