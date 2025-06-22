@@ -45,70 +45,7 @@ export class DocumentsService {
         rawLeaves: true,
       });
 
-      console.info(`documentCID: ${documentCID}`);
-
-      // Check CID on the blockchain
-      const publicClientHolesky = createPublicClient({
-        chain: holesky,
-        transport: http(holeskyRpcUrl),
-      });
-
-      const publicClientBaseSepolia = createPublicClient({
-        chain: baseSepolia,
-        transport: http(baseSepoliaRpcUrl),
-      });
-
-      const isCIDExistHolesky = await publicClientHolesky.readContract({
-        address: sourceContractAddress,
-        abi: etherdocSenderAbi,
-        functionName: 'documentExists',
-        args: [documentCID],
-      });
-
-      const isCIDExistBaseSepolia = await publicClientBaseSepolia.readContract({
-        address: destinationContractAddress,
-        abi: etherdocReceiverAbi,
-        functionName: 'documentExists',
-        args: [documentCID],
-      });
-
-      // Only check CID existence on the main network
-      if (!isCIDExistHolesky) {
-        throw new NotFoundException(
-          `Document with CID: ${documentCID} is not found.`,
-        );
-      }
-
-      // Get the document from IPFS
-      const response = await fetch(
-        `${pinataApiUrl}/files/private?cid=${documentCID}`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${pinataJwtToken}`,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        this.logger.error(
-          `Pinata upload error: ${response.status} - ${errorText}`,
-        );
-        throw new HttpException(
-          'Error uploading file to Pinata',
-          response.status,
-        );
-      }
-
-      const data = await response.json();
-      const responseData = data.data.files[0];
-
-      return {
-        ...responseData,
-        isExistEthereum: isCIDExistHolesky,
-        isExistBase: isCIDExistBaseSepolia,
-      };
+      return this.getDocumentByCid('private', documentCID);
     } catch (error) {
       this.logger.error('Failed to upload file', error.stack);
       if (error instanceof HttpException) {
@@ -292,19 +229,20 @@ export class DocumentsService {
         transport: http(baseSepoliaRpcUrl),
       });
 
-      const isCIDExistHolesky = await publicClientHolesky.readContract({
-        address: sourceContractAddress,
-        abi: etherdocSenderAbi,
-        functionName: 'documentExists',
-        args: [documentCID],
-      });
-
-      const isCIDExistBaseSepolia = await publicClientBaseSepolia.readContract({
-        address: destinationContractAddress,
-        abi: etherdocReceiverAbi,
-        functionName: 'documentExists',
-        args: [documentCID],
-      });
+      const [isCIDExistHolesky, isCIDExistBaseSepolia] = await Promise.all([
+        publicClientHolesky.readContract({
+          address: sourceContractAddress,
+          abi: etherdocSenderAbi,
+          functionName: 'documentExists',
+          args: [documentCID],
+        }),
+        publicClientBaseSepolia.readContract({
+          address: destinationContractAddress,
+          abi: etherdocReceiverAbi,
+          functionName: 'documentExists',
+          args: [documentCID],
+        }),
+      ]);
 
       // Only check CID existence on the main network
       if (!isCIDExistHolesky) {
