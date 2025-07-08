@@ -72,7 +72,7 @@ export class DocumentsService {
     const evmPrivateKey =
       this.configService.getOrThrow<string>('EVM_PRIVATE_KEY');
     const account = privateKeyToAccount(`0x${evmPrivateKey}`);
-    const rpcUrl = this.configService.getOrThrow<string>('RPC_URL');
+    const rpcUrl = this.configService.getOrThrow<string>('HOLESKY_RPC_URL');
     const walletClient = createWalletClient({
       account,
       chain: holesky,
