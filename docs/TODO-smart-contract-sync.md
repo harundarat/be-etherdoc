@@ -32,12 +32,12 @@ urutan karena task berikutnya bergantung pada artefak dan keputusan task sebelum
 ## Prinsip dan Batasan
 
 - [x] Perlakukan `sc-etherdoc` sebagai source of truth tunggal.
-- [ ] Jangan mengubah smart contract untuk mempertahankan kompatibilitas dengan backend stale.
+- [x] Jangan mengubah smart contract untuk mempertahankan kompatibilitas dengan backend stale.
 - [ ] Jangan memakai ABI, chain selector, atau contract address hardcoded dari backend lama.
-- [ ] Jangan membaca, mencetak, memindahkan, atau menyimpan private key pengguna.
-- [ ] Jangan otomatis memakai private key dari `be-etherdoc/.env` untuk deployment.
-- [ ] Jangan broadcast transaksi testnet sebelum approval gate pada Task 3 terpenuhi.
-- [ ] Bedakan source transaction confirmation dengan destination CCIP confirmation.
+- [x] Jangan membaca, mencetak, memindahkan, atau menyimpan private key pengguna.
+- [x] Jangan otomatis memakai private key dari `be-etherdoc/.env` untuk deployment.
+- [x] Jangan broadcast transaksi testnet sebelum approval gate pada Task 3 terpenuhi.
+- [x] Bedakan source transaction confirmation dengan destination CCIP confirmation.
 - [ ] Perlakukan database backend sebagai projection/cache yang dapat direkonsiliasi dari chain.
 - [ ] API lama boleh diganti secara breaking; compatibility adapter dan `/v2` tidak diperlukan.
 - [ ] Mainnet dan destination tambahan berada di luar scope rilis ini.
@@ -147,18 +147,19 @@ Status dispatch per destination:
 
 ### TODO
 
-- [ ] Jalankan toolchain Foundry sesuai `.foundry-version`.
+- [x] Jalankan toolchain Foundry sesuai `.foundry-version`.
 - [ ] Jalankan:
-  - `forge fmt --check`;
-  - `forge lint --deny warnings src script test`;
-  - `forge test -vv`;
-  - `bash script/check-coverage.sh`;
-  - `bash script/check-contract-sizes.sh`;
-  - `bash script/check-gas-snapshot.sh`;
-  - `bash script/ci-deployment-dry-run.sh`;
-  - `bash script/test-deployment-workflow.sh`.
+  - [x] `forge fmt --check`;
+  - [x] `forge lint --deny warnings src script test`;
+  - [x] `forge test -vv`;
+  - [x] `bash script/check-coverage.sh`;
+  - [x] `bash script/check-contract-sizes.sh`;
+  - [x] `bash script/check-gas-snapshot.sh`;
+  - [x] `bash script/ci-deployment-dry-run.sh`;
+  - [ ] `bash script/test-deployment-workflow.sh` (logic lulus dengan
+    `ALLOW_DIRTY_DEPLOYMENT=1`, tetapi exact gate menolak `soljson-latest.js` yang untracked).
 - [ ] Pastikan worktree bersih dan exact source sudah committed.
-- [ ] Jangan menghapus `soljson-latest.js`; minta arahan pemilik bila file tersebut menghalangi
+- [x] Jangan menghapus `soljson-latest.js`; minta arahan pemilik bila file tersebut menghalangi
   clean-worktree deployment.
 - [ ] Buat atau import encrypted Foundry account untuk admin wallet.
 - [ ] Catat public address admin wallet tanpa mengekspor private key.
@@ -166,7 +167,7 @@ Status dispatch per destination:
 - [ ] Tentukan public address user test wallet.
 - [ ] Periksa native token balance ketiga wallet.
 - [ ] Periksa ketersediaan LINK untuk mendanai sender.
-- [ ] Validasi router, LINK token, chain ID, selector, gas limit, dan governance mode dari network
+- [x] Validasi router, LINK token, chain ID, selector, gas limit, dan governance mode dari network
   config.
 
 ### Kriteria Keberhasilan
