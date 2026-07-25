@@ -14,7 +14,11 @@ import { BlockchainService } from '../blockchain/blockchain.service';
 import { DatabaseService } from '../database/database.service';
 import { etherdocContractArtifacts } from '../contracts/generated';
 import { PinataStorageService } from '../storage/pinata-storage.service';
-import { canonicalizeMetadata, computeDocumentId } from './canonical-document';
+import {
+  canonicalizeMetadata,
+  computeDocumentId,
+  sha256Digest,
+} from './canonical-document';
 import {
   jsonTypedData,
   registerTypedData,
@@ -41,7 +45,9 @@ type IntentStatus =
   | 'FAILED_TERMINAL';
 
 interface IntentRow {
+  canonical_metadata: Record<string, unknown>;
   chain_nonce: string;
+  content_digest: Hex | null;
   created_at: Date;
   deadline: Date;
   document_id: Hex | null;
@@ -50,6 +56,7 @@ interface IntentRow {
   id: string;
   idempotency_key: string;
   issuer: Address;
+  metadata_commitment: Hex | null;
   old_document_id: Hex | null;
   operation: IntentOperation;
   status: IntentStatus;
@@ -101,27 +108,40 @@ export class DocumentIntentsService {
     request: RegisterIntentDto,
   ): Promise<IntentView> {
     const issuer = this.assertSubject(subject, request.issuer);
-    const existing = await this.findIdempotent(
-      request.idempotencyKey,
-      issuer,
-      'REGISTER',
-    );
-    if (existing) {
-      return this.view(existing);
-    }
-    const nonce = await this.authorizedIssuerNonce(issuer);
     const metadata = canonicalizeMetadata({
       byteLength: file.buffer.length,
       documentType: request.documentType,
       mimeType: file.mimetype,
       storageNetwork: request.storageNetwork,
     });
+    const localContentDigest = sha256Digest(file.buffer);
+    const documentId = computeDocumentId(issuer, localContentDigest);
+    const existing = await this.findIdempotent(
+      request.idempotencyKey,
+      issuer,
+      'REGISTER',
+      {
+        canonicalMetadata: metadata.preimage,
+        contentDigest: localContentDigest,
+        documentId,
+        metadataCommitment: metadata.commitment,
+        oldDocumentId: null,
+      },
+    );
+    if (existing) {
+      return this.view(existing);
+    }
+    const nonce = await this.authorizedIssuerNonce(issuer);
     const pinned = await this.storage.pinAndVerify(
       file,
       request.storageNetwork,
       metadata,
     );
-    const documentId = computeDocumentId(issuer, pinned.contentDigest);
+    if (pinned.contentDigest !== localContentDigest) {
+      throw new UnprocessableEntityException(
+        'Pinned content digest does not match the local request digest',
+      );
+    }
     const deadline = this.deadline();
     const authorization: RegisterAuthorization = {
       cidCodec: pinned.cidCodec,
@@ -209,15 +229,22 @@ export class DocumentIntentsService {
     request: RevokeIntentDto,
   ): Promise<IntentView> {
     const issuer = this.assertSubject(subject, request.issuer);
+    const documentId = request.documentId.toLowerCase() as Hex;
     const existing = await this.findIdempotent(
       request.idempotencyKey,
       issuer,
       'REVOKE',
+      {
+        canonicalMetadata: {},
+        contentDigest: null,
+        documentId,
+        metadataCommitment: null,
+        oldDocumentId: null,
+      },
     );
     if (existing) {
       return this.view(existing);
     }
-    const documentId = request.documentId as Hex;
     const [nonce, document] = await Promise.all([
       this.authorizedIssuerNonce(issuer),
       this.readActiveDocument(documentId, issuer),
@@ -268,31 +295,44 @@ export class DocumentIntentsService {
     request: SupersedeIntentDto,
   ): Promise<IntentView> {
     const issuer = this.assertSubject(subject, request.issuer);
-    const existing = await this.findIdempotent(
-      request.idempotencyKey,
-      issuer,
-      'SUPERSEDE',
-    );
-    if (existing) {
-      return this.view(existing);
-    }
-    const oldDocumentId = request.oldDocumentId as Hex;
-    const [nonce, oldDocument] = await Promise.all([
-      this.authorizedIssuerNonce(issuer),
-      this.readActiveDocument(oldDocumentId, issuer),
-    ]);
+    const oldDocumentId = request.oldDocumentId.toLowerCase() as Hex;
     const metadata = canonicalizeMetadata({
       byteLength: file.buffer.length,
       documentType: request.documentType,
       mimeType: file.mimetype,
       storageNetwork: request.storageNetwork,
     });
+    const localContentDigest = sha256Digest(file.buffer);
+    const newDocumentId = computeDocumentId(issuer, localContentDigest);
+    const existing = await this.findIdempotent(
+      request.idempotencyKey,
+      issuer,
+      'SUPERSEDE',
+      {
+        canonicalMetadata: metadata.preimage,
+        contentDigest: localContentDigest,
+        documentId: newDocumentId,
+        metadataCommitment: metadata.commitment,
+        oldDocumentId,
+      },
+    );
+    if (existing) {
+      return this.view(existing);
+    }
+    const [nonce, oldDocument] = await Promise.all([
+      this.authorizedIssuerNonce(issuer),
+      this.readActiveDocument(oldDocumentId, issuer),
+    ]);
     const pinned = await this.storage.pinAndVerify(
       file,
       request.storageNetwork,
       metadata,
     );
-    const newDocumentId = computeDocumentId(issuer, pinned.contentDigest);
+    if (pinned.contentDigest !== localContentDigest) {
+      throw new UnprocessableEntityException(
+        'Pinned content digest does not match the local request digest',
+      );
+    }
     const deadline = this.deadline();
     const authorization: SupersedeAuthorization = {
       currentVersion: oldDocument.version,
@@ -543,6 +583,13 @@ export class DocumentIntentsService {
     idempotencyKey: string,
     issuer: Address,
     operation: IntentOperation,
+    expected: {
+      canonicalMetadata: Record<string, unknown>;
+      contentDigest: Hex | null;
+      documentId: Hex;
+      metadataCommitment: Hex | null;
+      oldDocumentId: Hex | null;
+    },
   ): Promise<IntentRow | null> {
     const result = await this.database.query<IntentRow>(
       `SELECT * FROM document_intent WHERE idempotency_key = $1`,
@@ -552,10 +599,20 @@ export class DocumentIntentsService {
     if (
       existing &&
       (getAddress(existing.issuer) !== issuer ||
-        existing.operation !== operation)
+        existing.operation !== operation ||
+        existing.document_id?.toLowerCase() !==
+          expected.documentId.toLowerCase() ||
+        existing.old_document_id?.toLowerCase() !==
+          expected.oldDocumentId?.toLowerCase() ||
+        existing.content_digest?.toLowerCase() !==
+          expected.contentDigest?.toLowerCase() ||
+        existing.metadata_commitment?.toLowerCase() !==
+          expected.metadataCommitment?.toLowerCase() ||
+        JSON.stringify(existing.canonical_metadata) !==
+          JSON.stringify(expected.canonicalMetadata))
     ) {
       throw new ConflictException(
-        'Idempotency key belongs to a different intent',
+        'Idempotency key belongs to different canonical intent input',
       );
     }
     return existing ?? null;

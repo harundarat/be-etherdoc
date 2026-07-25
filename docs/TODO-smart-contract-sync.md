@@ -448,7 +448,7 @@ Kemudian:
 - [x] Submit `registerDocumentBySig`, `revokeDocumentBySig`, atau `supersedeDocumentBySig`.
 - [x] Tunggu configured source confirmation depth.
 - [x] Validasi receipt status dan canonical event.
-- [ ] Perlakukan duplicate sebagai idempotent hanya jika seluruh canonical record cocok.
+- [x] Perlakukan duplicate sebagai idempotent hanya jika seluruh canonical record cocok.
 - [x] Setelah source confirmed, panggil `quoteFee(documentId, selector)`.
 - [x] Terapkan policy `maximumFee` dengan bounded quote buffer.
 - [x] Dispatch melalui backend operator wallet.

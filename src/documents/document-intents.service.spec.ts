@@ -179,4 +179,57 @@ describe('DocumentIntentsService', () => {
       }),
     ).rejects.toThrow('JWT subject must equal intent issuer');
   });
+
+  it('returns an idempotent intent only when canonical input matches', async () => {
+    const existing = {
+      canonical_metadata: {},
+      chain_nonce: '4',
+      content_digest: null,
+      created_at: new Date(),
+      deadline: new Date(Date.now() + 60_000),
+      document_id: contentDigest,
+      failure_code: null,
+      failure_detail: null,
+      id: '0d1b64f2-3281-4cc4-8341-7ccb28dd7d41',
+      idempotency_key: 'revoke-idempotency',
+      issuer,
+      metadata_commitment: null,
+      old_document_id: null,
+      operation: 'REVOKE',
+      status: 'PREPARED',
+      typed_data: {},
+      typed_data_digest: cidDigest,
+      updated_at: new Date(),
+    };
+    const sourceReader = { readContract: jest.fn() };
+    const service = new DocumentIntentsService(
+      { sourceReader } as unknown as BlockchainService,
+      new ConfigService({ runtime: runtime() }),
+      {
+        query: jest.fn().mockResolvedValue({ rows: [existing] }),
+      } as unknown as DatabaseService,
+      {} as PinataStorageService,
+    );
+
+    await expect(
+      service.prepareRevoke(issuer, {
+        documentId: contentDigest,
+        idempotencyKey: 'revoke-idempotency',
+        issuer,
+      }),
+    ).resolves.toMatchObject({
+      documentId: contentDigest,
+      id: existing.id,
+    });
+    expect(sourceReader.readContract).not.toHaveBeenCalled();
+
+    await expect(
+      service.prepareRevoke(issuer, {
+        documentId: `0x${'44'.repeat(32)}`,
+        idempotencyKey: 'revoke-idempotency',
+        issuer,
+      }),
+    ).rejects.toThrow('different canonical intent input');
+    expect(sourceReader.readContract).not.toHaveBeenCalled();
+  });
 });
