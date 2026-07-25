@@ -1,5 +1,6 @@
 import {
   Body,
+  BadRequestException,
   Controller,
   Get,
   HttpCode,
@@ -24,6 +25,7 @@ import {
   GetListGroupsDto,
   RegisterIntentDto,
   RevokeIntentDto,
+  SearchDocumentDto,
   SubmitIntentSignatureDto,
   SupersedeIntentDto,
 } from './dto';
@@ -37,6 +39,15 @@ const filePipe = () =>
     .addFileTypeValidator({ fileType: 'application/pdf' })
     .addMaxSizeValidator({ maxSize: 5 * 1024 * 1024 })
     .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY });
+
+const optionalFilePipe = () =>
+  new ParseFilePipeBuilder()
+    .addFileTypeValidator({ fileType: 'application/pdf' })
+    .addMaxSizeValidator({ maxSize: 5 * 1024 * 1024 })
+    .build({
+      errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+      fileIsRequired: false,
+    });
 
 @Controller('documents')
 export class DocumentsController {
@@ -124,5 +135,24 @@ export class DocumentsController {
   @Get()
   getListFiles(@Query() query: GetListFilesDto) {
     return this.documentsService.getListFiles(query.network, query.groupId);
+  }
+
+  @Post('search')
+  @UseInterceptors(FileInterceptor('file'))
+  search(
+    @UploadedFile(optionalFilePipe()) file: Express.Multer.File | undefined,
+    @Body() body: SearchDocumentDto,
+  ) {
+    if (!file && !body.documentId) {
+      throw new BadRequestException(
+        'Provide an explicit documentId or a PDF file with issuer',
+      );
+    }
+    return this.documentsService.search(body, file);
+  }
+
+  @Get(':documentId')
+  getDocument(@Param('documentId') documentId: string) {
+    return this.documentsService.getDocument(documentId);
   }
 }

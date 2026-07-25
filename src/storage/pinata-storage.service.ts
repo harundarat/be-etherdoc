@@ -27,6 +27,12 @@ export interface VerifiedPinnedArtifact extends ParsedCanonicalCid {
   storageFilename: string;
 }
 
+export interface StorageAvailability {
+  available: boolean;
+  checkedAt: string;
+  status: 'AVAILABLE' | 'NOT_FOUND' | 'UNAVAILABLE';
+}
+
 @Injectable()
 export class PinataStorageService {
   private readonly runtime: RuntimeConfig;
@@ -125,6 +131,31 @@ export class PinataStorageService {
       providerId: upload.data?.id ?? null,
       retrievedBytes: retrievedBytes.byteLength,
       storageFilename,
+    };
+  }
+
+  async checkAvailability(cid: string): Promise<StorageAvailability> {
+    const checkedAt = new Date().toISOString();
+    let response: Response;
+    try {
+      response = await fetch(
+        `${this.runtime.pinata.gatewayUrl}/ipfs/${encodeURIComponent(cid)}`,
+        {
+          headers: { Authorization: `Bearer ${this.runtime.pinata.jwt}` },
+          method: 'HEAD',
+          signal: AbortSignal.timeout(this.runtime.blockchain.requestTimeoutMs),
+        },
+      );
+    } catch {
+      return { available: false, checkedAt, status: 'UNAVAILABLE' };
+    }
+    if (response.ok) {
+      return { available: true, checkedAt, status: 'AVAILABLE' };
+    }
+    return {
+      available: false,
+      checkedAt,
+      status: response.status === 404 ? 'NOT_FOUND' : 'UNAVAILABLE',
     };
   }
 }

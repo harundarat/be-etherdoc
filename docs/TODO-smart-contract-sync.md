@@ -44,10 +44,10 @@ urutan karena task berikutnya bergantung pada artefak dan keputusan task sebelum
 
 ## Target Network
 
-| Peran | Network | Chain ID | CCIP selector |
-| --- | --- | ---: | ---: |
-| Canonical source | Mantle Sepolia | `5003` | `8236463271206331221` |
-| Destination | Ink Sepolia | `763373` | `9763904284804119144` |
+| Peran            | Network        | Chain ID |         CCIP selector |
+| ---------------- | -------------- | -------: | --------------------: |
+| Canonical source | Mantle Sepolia |   `5003` | `8236463271206331221` |
+| Destination      | Ink Sepolia    | `763373` | `9763904284804119144` |
 
 Nilai router, LINK token, gas limit, dan explorer harus dibaca dari
 `sc-etherdoc/config/networks/testnet.json`, bukan disalin ke business logic backend.
@@ -56,11 +56,11 @@ Nilai router, LINK token, gas limit, dan explorer harus dibaca dari
 
 Gunakan tiga identitas wallet:
 
-| Identitas | Tanggung jawab | Penyimpanan secret |
-| --- | --- | --- |
-| Admin wallet | Deployer, `GOVERNANCE`, dan `PAUSER` | Encrypted Foundry keystore atau hardware wallet |
-| Backend wallet | `OPERATOR` dan relayer transaksi `*BySig` | Runtime secret/secret manager backend |
-| User wallet | `INITIAL_ISSUER` testnet dan issuer dokumen | Hanya dikuasai pengguna |
+| Identitas      | Tanggung jawab                              | Penyimpanan secret                              |
+| -------------- | ------------------------------------------- | ----------------------------------------------- |
+| Admin wallet   | Deployer, `GOVERNANCE`, dan `PAUSER`        | Encrypted Foundry keystore atau hardware wallet |
+| Backend wallet | `OPERATOR` dan relayer transaksi `*BySig`   | Runtime secret/secret manager backend           |
+| User wallet    | `INITIAL_ISSUER` testnet dan issuer dokumen | Hanya dikuasai pengguna                         |
 
 Aturan operasional:
 
@@ -157,10 +157,10 @@ Status dispatch per destination:
   - [x] `bash script/check-gas-snapshot.sh`;
   - [x] `bash script/ci-deployment-dry-run.sh`;
   - [ ] `bash script/test-deployment-workflow.sh` (logic lulus dengan
-    `ALLOW_DIRTY_DEPLOYMENT=1`, tetapi exact gate menolak `soljson-latest.js` yang untracked).
+        `ALLOW_DIRTY_DEPLOYMENT=1`, tetapi exact gate menolak `soljson-latest.js` yang untracked).
 - [ ] Pastikan worktree bersih dan exact source sudah committed.
 - [x] Jangan menghapus `soljson-latest.js`; minta arahan pemilik bila file tersebut menghalangi
-  clean-worktree deployment.
+      clean-worktree deployment.
 - [ ] Buat atau import encrypted Foundry account untuk admin wallet.
 - [ ] Catat public address admin wallet tanpa mengekspor private key.
 - [ ] Tentukan public address backend operator/relayer.
@@ -168,7 +168,7 @@ Status dispatch per destination:
 - [ ] Periksa native token balance ketiga wallet.
 - [ ] Periksa ketersediaan LINK untuk mendanai sender.
 - [x] Validasi router, LINK token, chain ID, selector, gas limit, dan governance mode dari network
-  config.
+      config.
 
 ### Kriteria Keberhasilan
 
@@ -230,7 +230,7 @@ Kemudian:
   - compiler/EVM settings;
   - Git commit.
 - [ ] Jalankan testnet E2E untuk register, dispatch, receive, verify, revoke, supersede, dan dispatch
-  lifecycle version berikutnya.
+      lifecycle version berikutnya.
 
 ### Kriteria Keberhasilan
 
@@ -361,16 +361,16 @@ Kemudian:
 - [x] Simpan transaction intent sebelum broadcast.
 - [x] Claim outbox job menggunakan transaction dan `FOR UPDATE SKIP LOCKED`.
 - [x] Terapkan bounded exponential backoff untuk retry yang aman.
-- [ ] Jangan blind-retry transaksi yang mungkin sudah broadcast.
-- [ ] Buat projection yang dapat dibangun ulang dari chain.
+- [x] Jangan blind-retry transaksi yang mungkin sudah broadcast.
+- [x] Buat projection yang dapat dibangun ulang dari chain.
 
 ### Kriteria Keberhasilan
 
-- [ ] Restart pada setiap state tidak kehilangan intent.
-- [ ] Dua worker tidak memproses job yang sama.
-- [ ] Idempotency key yang sama tidak menghasilkan transaksi baru.
-- [ ] Concurrent request tidak memakai issuer nonce yang sama.
-- [ ] Projection stale dapat diperbaiki oleh reconciliation.
+- [x] Restart pada setiap state tidak kehilangan intent.
+- [x] Dua worker tidak memproses job yang sama.
+- [x] Idempotency key yang sama tidak menghasilkan transaksi baru.
+- [x] Concurrent request tidak memakai issuer nonce yang sama.
+- [x] Projection stale dapat diperbaiki oleh reconciliation.
 
 ---
 
@@ -379,7 +379,7 @@ Kemudian:
 ### TODO
 
 - [x] Ganti authentication nonce global dengan nonce per-wallet yang atomic, expiring, dan
-  sekali pakai.
+      sekali pakai.
 - [x] Implementasikan SIWE/EIP-4361 yang mengikat:
   - address;
   - domain;
@@ -407,7 +407,7 @@ Kemudian:
 
 - [x] Backend tidak pernah menerima user private key.
 - [x] Signature wrong-chain, wrong-contract, wrong-version, expired, replayed, atau milik issuer lain
-  ditolak.
+      ditolak.
 - [x] EOA dan ERC-1271 valid dapat melewati flow.
 - [x] Register/revoke/supersede menghasilkan digest yang sama dengan getter kontrak.
 - [x] API tidak menganggap penerimaan signature atau tx hash sebagai final success.
@@ -423,8 +423,8 @@ Kemudian:
 - [x] Implementasikan `POST /documents/intents/supersede`.
 - [x] Implementasikan `POST /documents/intents/:intentId/signature`.
 - [x] Implementasikan `GET /documents/intents/:intentId`.
-- [ ] Implementasikan `GET /documents/:documentId`.
-- [ ] Ubah `POST /documents/search` agar menerima file plus issuer atau explicit document ID.
+- [x] Implementasikan `GET /documents/:documentId`.
+- [x] Ubah `POST /documents/search` agar menerima file plus issuer atau explicit document ID.
 - [x] Hapus upload flow lama yang langsung memanggil `addDocument`.
 - [x] Jangan gunakan CID sebagai satu-satunya document identity.
 - [x] Pertahankan Pinata list/group hanya sebagai storage metadata API.
@@ -432,10 +432,10 @@ Kemudian:
 
 ### Kriteria Keberhasilan
 
-- [ ] API menggunakan `documentId`, issuer, digest, version, dan lifecycle kontrak terbaru.
+- [x] API menggunakan `documentId`, issuer, digest, version, dan lifecycle kontrak terbaru.
 - [x] Tidak ada response `isExistEthereum` atau `isExistBase`.
-- [ ] Response membedakan integrity, active status, storage availability, source confirmation, dan
-  destination replication.
+- [x] Response membedakan integrity, active status, storage availability, source confirmation, dan
+      destination replication.
 - [x] Route statis tidak tertangkap dynamic document route.
 
 ---
@@ -463,7 +463,7 @@ Kemudian:
 - [x] Dispatch hanya berjalan untuk canonical record/version yang ada.
 - [x] Concurrent request tidak membuat register atau dispatch ganda.
 - [x] Fee race, insufficient LINK, pause, RPC failure, dan unauthorized role menghasilkan status
-  yang benar.
+      yang benar.
 
 ---
 
@@ -501,7 +501,7 @@ Kemudian:
 
 ### TODO
 
-- [ ] Kembalikan canonical `DocumentRecord`:
+- [x] Kembalikan canonical `DocumentRecord`:
   - document ID;
   - content digest;
   - CID;
@@ -513,20 +513,20 @@ Kemudian:
   - document version;
   - lifecycle status;
   - supersession links.
-- [ ] Sertakan source tx hash, block number/hash, dan confirmation status.
-- [ ] Sertakan dispatch status per destination.
-- [ ] Sertakan CCIP message ID dan destination evidence.
-- [ ] Hitung ulang file digest pada search/verification.
-- [ ] Gunakan `verifyDocument()` sebagai integrity check.
-- [ ] Jangan menganggap CID availability sebagai authenticity.
-- [ ] Selalu menangkan canonical source state ketika database atau destination berbeda.
+- [x] Sertakan source tx hash, block number/hash, dan confirmation status.
+- [x] Sertakan dispatch status per destination.
+- [x] Sertakan CCIP message ID dan destination evidence.
+- [x] Hitung ulang file digest pada search/verification.
+- [x] Gunakan `verifyDocument()` sebagai integrity check.
+- [x] Jangan menganggap CID availability sebagai authenticity.
+- [x] Selalu menangkan canonical source state ketika database atau destination berbeda.
 
 ### Kriteria Keberhasilan
 
-- [ ] Revoked dan superseded document tetap dapat ditemukan tetapi tidak dilaporkan active.
-- [ ] Destination pending/failure tidak mengubah source truth.
-- [ ] File dengan CID tersedia tetapi digest/issuer salah tidak lolos verifikasi.
-- [ ] Setiap status penting memiliki tx/block/message evidence.
+- [x] Revoked dan superseded document tetap dapat ditemukan tetapi tidak dilaporkan active.
+- [x] Destination pending/failure tidak mengubah source truth.
+- [x] File dengan CID tersedia tetapi digest/issuer salah tidak lolos verifikasi.
+- [x] Setiap status penting memiliki tx/block/message evidence.
 
 ---
 
@@ -553,8 +553,8 @@ Kemudian:
 - [ ] Tambahkan deterministic local E2E tanpa Pinata/RPC publik.
 - [ ] Tambahkan testnet smoke test terhadap deployment manifest aktif.
 - [ ] Uji register, revoke, supersede, duplicate request, stale nonce, invalid signature, paused
-  contract, insufficient fee, dropped transaction, receiver delay, replay event, RPC outage, dan
-  reorg.
+      contract, insufficient fee, dropped transaction, receiver delay, replay event, RPC outage, dan
+      reorg.
 - [ ] Tambahkan CI gate untuk contract artifact drift.
 - [ ] Gunakan lint check yang tidak otomatis menulis file pada CI.
 - [ ] Ganti README bawaan NestJS.
@@ -576,9 +576,9 @@ Kemudian:
 - [ ] Contract dan backend quality gate lulus.
 - [ ] Tidak ada secret di Git atau log.
 - [ ] Tidak ada referensi aktif ke Holešky, Base Sepolia, address lama, `addDocument`, atau
-  `documentExists(string)`.
+      `documentExists(string)`.
 - [ ] Register sampai destination confirmation dapat ditelusuri dengan intent ID, document ID,
-  source tx hash, dan CCIP message ID.
+      source tx hash, dan CCIP message ID.
 - [ ] Runbook dapat dijalankan tanpa membaca source code internal.
 
 ---

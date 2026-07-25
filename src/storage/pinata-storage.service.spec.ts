@@ -109,4 +109,24 @@ describe('PinataStorageService', () => {
       service().pinAndVerify(upload, 'private', metadata(upload.buffer.length)),
     ).rejects.toBeInstanceOf(UnprocessableEntityException);
   });
+
+  it('reports availability without treating it as authenticity', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, { status: 404 }));
+
+    await expect(
+      service().checkAvailability('available-cid'),
+    ).resolves.toMatchObject({
+      available: true,
+      status: 'AVAILABLE',
+    });
+    await expect(
+      service().checkAvailability('missing-cid'),
+    ).resolves.toMatchObject({
+      available: false,
+      status: 'NOT_FOUND',
+    });
+  });
 });
