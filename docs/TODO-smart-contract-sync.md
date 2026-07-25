@@ -312,25 +312,25 @@ Kemudian:
 
 ### TODO
 
-- [ ] Hitung SHA-256 dari byte file persis seperti yang diunggah.
-- [ ] Gunakan CIDv1 lowercase unpadded base32.
-- [ ] Batasi codec pada `raw` atau `dag-pb` dengan multihash SHA2-256.
-- [ ] Parse CID menjadi `cidCodec` dan `cidDigest`.
-- [ ] Untuk raw CID, pastikan `cidDigest == contentDigest`.
-- [ ] Gunakan CID aktual hasil upload Pinata.
-- [ ] Ambil kembali byte melalui storage dan verifikasi digest-nya.
-- [ ] Bentuk metadata commitment dari JSON kanonis berversi.
-- [ ] Sort object keys secara deterministik.
-- [ ] Batasi metadata pada field yang disetujui dan non-PII.
+- [x] Hitung SHA-256 dari byte file persis seperti yang diunggah.
+- [x] Gunakan CIDv1 lowercase unpadded base32.
+- [x] Batasi codec pada `raw` atau `dag-pb` dengan multihash SHA2-256.
+- [x] Parse CID menjadi `cidCodec` dan `cidDigest`.
+- [x] Untuk raw CID, pastikan `cidDigest == contentDigest`.
+- [x] Gunakan CID aktual hasil upload Pinata.
+- [x] Ambil kembali byte melalui storage dan verifikasi digest-nya.
+- [x] Bentuk metadata commitment dari JSON kanonis berversi.
+- [x] Sort object keys secara deterministik.
+- [x] Batasi metadata pada field yang disetujui dan non-PII.
 - [ ] Simpan metadata preimage off-chain.
 - [ ] Tolak mismatch sebelum membuat EIP-712 intent.
 
 ### Kriteria Keberhasilan
 
-- [ ] Test vector backend menghasilkan digest/CID/commitment yang deterministik.
+- [x] Test vector backend menghasilkan digest/CID/commitment yang deterministik.
 - [ ] Output diterima canonical digest getter smart contract.
-- [ ] Perubahan satu byte file menghasilkan content digest berbeda.
-- [ ] Perubahan metadata menghasilkan metadata commitment berbeda.
+- [x] Perubahan satu byte file menghasilkan content digest berbeda.
+- [x] Perubahan metadata menghasilkan metadata commitment berbeda.
 - [ ] Backend tidak membuat signable intent jika Pinata dan perhitungan lokal berbeda.
 
 ---

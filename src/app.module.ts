@@ -7,6 +7,7 @@ import { ConfigModule } from '@nestjs/config';
 import { loadRuntimeConfiguration } from './config/runtime-config';
 import { BlockchainModule } from './blockchain/blockchain.module';
 import { DatabaseModule } from './database/database.module';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { DatabaseModule } from './database/database.module';
     }),
     BlockchainModule,
     DatabaseModule,
+    StorageModule,
     DocumentsModule,
     AuthModule,
   ],
