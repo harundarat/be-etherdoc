@@ -8,9 +8,11 @@ import { ConfigService } from '@nestjs/config';
 import { hostname } from 'node:os';
 import type { RuntimeConfig } from '../config/runtime-config';
 import { DatabaseService, type OutboxJob } from '../database/database.service';
+import { DestinationWorker } from './destination.worker';
 import { DispatchWorker } from './dispatch.worker';
+import { ReconciliationWorker } from './reconciliation.worker';
 import { SourceTransactionWorker } from './source-transaction.worker';
-import { RetryableJobError, TerminalJobError } from './worker-errors';
+import { TerminalJobError } from './worker-errors';
 
 @Injectable()
 export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
@@ -23,7 +25,9 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
   constructor(
     configService: ConfigService,
     private readonly database: DatabaseService,
+    private readonly destinationWorker: DestinationWorker,
     private readonly dispatchWorker: DispatchWorker,
+    private readonly reconciliationWorker: ReconciliationWorker,
     private readonly sourceWorker: SourceTransactionWorker,
   ) {
     this.runtime = configService.getOrThrow<RuntimeConfig>('runtime');
@@ -73,13 +77,10 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
         await this.sourceWorker.confirm(this.payloadId(job, 'intentId'));
       } else if (job.jobType === 'DISPATCH_DESTINATION') {
         await this.dispatchWorker.dispatch(this.payloadId(job, 'dispatchId'));
-      } else if (
-        job.jobType === 'TRACK_DESTINATION' ||
-        job.jobType === 'RECONCILE'
-      ) {
-        throw new RetryableJobError(
-          `${job.jobType} worker is awaiting reconciliation implementation`,
-        );
+      } else if (job.jobType === 'TRACK_DESTINATION') {
+        await this.destinationWorker.track(this.payloadId(job, 'dispatchId'));
+      } else if (job.jobType === 'RECONCILE') {
+        await this.reconciliationWorker.reconcile(job.payload);
       } else {
         throw new TerminalJobError(`Unsupported outbox job ${job.jobType}`);
       }

@@ -451,6 +451,16 @@ export class DispatchWorker {
         `,
         [dispatchId, code, detail],
       );
+      await client.query(
+        `
+          INSERT INTO outbox_job(
+            deduplication_key, job_type, dispatch_id, payload
+          )
+          VALUES($1, 'RECONCILE', $2, $3)
+          ON CONFLICT (deduplication_key) DO NOTHING
+        `,
+        [`dispatch:${dispatchId}:reconcile`, dispatchId, { dispatchId }],
+      );
       if (manageTransaction) {
         await client.query('COMMIT');
       }

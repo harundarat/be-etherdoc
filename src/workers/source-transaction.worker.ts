@@ -665,9 +665,9 @@ export class SourceTransactionWorker {
       `
         INSERT INTO dispatch(
           document_id, document_version, destination_selector, receiver,
-          status, gas_limit
+          status, gas_limit, content_digest, document_status, issuer
         )
-        VALUES($1,$2,$3,$4,'PENDING',$5)
+        VALUES($1,$2,$3,$4,'PENDING',$5,$6,$7,$8)
         ON CONFLICT (document_id, document_version, destination_selector)
         DO UPDATE SET updated_at = dispatch.updated_at
         RETURNING id
@@ -678,6 +678,9 @@ export class SourceTransactionWorker {
         destination.chainSelector.toString(),
         destination.contractAddress,
         etherdocContractArtifacts.networks.inkSepolia.gasLimit,
+        document.contentDigest,
+        ['UNKNOWN', 'ACTIVE', 'REVOKED', 'SUPERSEDED'][document.status],
+        document.issuer,
       ],
     );
     const dispatchId = result.rows[0].id;

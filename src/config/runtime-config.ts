@@ -7,6 +7,7 @@ export interface ChainRuntimeConfig {
   chainSelector: bigint;
   confirmations: number;
   contractAddress: Address;
+  deploymentBlock: bigint;
   explorerUrl: string;
   linkToken: Address;
   name: string;
@@ -125,6 +126,17 @@ function deploymentAddress(
   return address(registryAddress ?? override!, environmentName);
 }
 
+function deploymentBlock(
+  environment: Environment,
+  environmentName: string,
+  registryBlock: number | null,
+): bigint {
+  if (registryBlock !== null) {
+    return BigInt(registryBlock);
+  }
+  return unsignedBigInt(environment, environmentName, '');
+}
+
 function privateKey(environment: Environment): Hex {
   const value = required(environment, 'BACKEND_PRIVATE_KEY');
   if (!/^0x[0-9a-fA-F]{64}$/.test(value)) {
@@ -194,6 +206,11 @@ export function buildRuntimeConfig(
           'ETHERDOC_RECEIVER_ADDRESS',
           etherdocContractArtifacts.deployments.receiver.address,
         ),
+        deploymentBlock: deploymentBlock(
+          environment,
+          'ETHERDOC_RECEIVER_DEPLOYMENT_BLOCK',
+          etherdocContractArtifacts.deployments.receiver.deploymentBlock,
+        ),
         explorerUrl: destinationNetwork.explorer,
         linkToken: address(destinationNetwork.linkToken, 'Ink LINK token'),
         name: 'Ink Sepolia',
@@ -211,6 +228,11 @@ export function buildRuntimeConfig(
           environment,
           'ETHERDOC_SENDER_ADDRESS',
           etherdocContractArtifacts.deployments.sender.address,
+        ),
+        deploymentBlock: deploymentBlock(
+          environment,
+          'ETHERDOC_SENDER_DEPLOYMENT_BLOCK',
+          etherdocContractArtifacts.deployments.sender.deploymentBlock,
         ),
         explorerUrl: sourceNetwork.explorer,
         linkToken: address(sourceNetwork.linkToken, 'Mantle LINK token'),
