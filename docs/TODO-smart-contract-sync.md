@@ -249,7 +249,7 @@ Kemudian:
 
 ### TODO
 
-- [ ] Buat export deterministik dari `sc-etherdoc` untuk:
+- [x] Buat export deterministik dari `sc-etherdoc` untuk:
   - sender ABI;
   - receiver ABI;
   - deployment registry;
@@ -257,9 +257,9 @@ Kemudian:
   - payload schema version;
   - EIP-712 domain version;
   - contract commit SHA.
-- [ ] Import artefak generated ke backend.
-- [ ] Simpan checksum atau provenance metadata.
-- [ ] Tambahkan CI drift check antara artifact kontrak dan backend.
+- [x] Import artefak generated ke backend.
+- [x] Simpan checksum atau provenance metadata.
+- [x] Tambahkan CI drift check antara artifact kontrak dan backend.
 - [ ] Hapus ABI TypeScript lama setelah call site berhasil dipindahkan.
 - [ ] Larang address/selector hardcoded dalam service backend.
 
@@ -267,7 +267,7 @@ Kemudian:
 
 - [ ] Backend build menggunakan ABI dari commit kontrak yang tercatat pada manifest.
 - [ ] Backend membaca contract address dari deployment registry atau validated environment override.
-- [ ] CI gagal jika ABI, schema, network, atau deployment registry stale.
+- [x] CI gagal jika ABI, schema, network, atau deployment registry stale.
 - [ ] Pencarian source backend tidak menemukan fungsi/address/network lama pada active code.
 
 ---

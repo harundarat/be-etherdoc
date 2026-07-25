@@ -1,0 +1,66 @@
+name: Backend CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out backend
+        uses: actions/checkout@v4
+        with:
+          path: be-etherdoc
+
+      - name: Check out contract baseline
+        uses: actions/checkout@v4
+        with:
+          repository: harundarat/sc-etherdoc
+          ref: 175b902733794f9466ef73dc97f69a074b4b80c8
+          submodules: recursive
+          path: sc-etherdoc
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.7.1
+
+      - name: Compile contract artifacts
+        working-directory: sc-etherdoc
+        run: forge build
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: be-etherdoc/pnpm-lock.yaml
+
+      - name: Install backend dependencies
+        working-directory: be-etherdoc
+        run: pnpm install --frozen-lockfile
+
+      - name: Reject contract artifact drift
+        working-directory: be-etherdoc
+        env:
+          ETHERDOC_CONTRACTS_DIR: ../sc-etherdoc
+        run: pnpm contracts:check
+
+      - name: Test
+        working-directory: be-etherdoc
+        run: pnpm test --runInBand
+
+      - name: Build
+        working-directory: be-etherdoc
+        run: pnpm build
