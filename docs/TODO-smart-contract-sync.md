@@ -543,20 +543,20 @@ Kemudian:
   - state transition;
   - retry classification;
   - error mapping.
-- [ ] Tambahkan PostgreSQL integration test untuk:
+- [x] Tambahkan PostgreSQL integration test untuk:
   - migrations;
   - row locking;
   - uniqueness;
   - idempotency;
   - restart;
   - reconciliation.
-- [ ] Tambahkan deterministic local E2E tanpa Pinata/RPC publik.
+- [x] Tambahkan deterministic local E2E tanpa Pinata/RPC publik.
 - [ ] Tambahkan testnet smoke test terhadap deployment manifest aktif.
 - [ ] Uji register, revoke, supersede, duplicate request, stale nonce, invalid signature, paused
       contract, insufficient fee, dropped transaction, receiver delay, replay event, RPC outage, dan
       reorg.
-- [ ] Tambahkan CI gate untuk contract artifact drift.
-- [ ] Gunakan lint check yang tidak otomatis menulis file pada CI.
+- [x] Tambahkan CI gate untuk contract artifact drift.
+- [x] Gunakan lint check yang tidak otomatis menulis file pada CI.
 - [ ] Ganti README bawaan NestJS.
 - [ ] Sinkronkan API documentation.
 - [ ] Dokumentasikan:

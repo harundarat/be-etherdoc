@@ -27,10 +27,12 @@ export function boundedBackoffMilliseconds(attempt: number): number {
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
+  private readonly lockTimeoutMs: number;
   private readonly pool: Pool;
 
   constructor(configService: ConfigService) {
     const runtime = configService.getOrThrow<RuntimeConfig>('runtime');
+    this.lockTimeoutMs = runtime.worker.lockTimeoutMs;
     this.pool = new Pool({
       connectionString: runtime.databaseUrl,
       max: 20,
@@ -47,6 +49,22 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         'Database schema is missing; run `pnpm db:migrate`',
       );
     }
+    await this.pool.query(
+      `
+        UPDATE outbox_job
+        SET
+          state = 'READY',
+          available_at = now(),
+          locked_at = NULL,
+          locked_by = NULL,
+          last_error = COALESCE(last_error, 'Worker lease expired during restart'),
+          updated_at = now()
+        WHERE
+          state = 'RUNNING'
+          AND locked_at < now() - ($1::text || ' milliseconds')::interval
+      `,
+      [this.lockTimeoutMs],
+    );
   }
 
   async onModuleDestroy(): Promise<void> {

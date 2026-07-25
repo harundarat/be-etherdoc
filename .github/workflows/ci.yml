@@ -12,6 +12,22 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: etherdoc_test
+          POSTGRES_PASSWORD: etherdoc_test
+          POSTGRES_USER: etherdoc
+        options: >-
+          --health-cmd "pg_isready -U etherdoc -d etherdoc_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+    env:
+      DATABASE_URL: postgresql://etherdoc:etherdoc_test@127.0.0.1:5432/etherdoc_test
     steps:
       - name: Check out backend
         uses: actions/checkout@v4
@@ -57,9 +73,27 @@ jobs:
           ETHERDOC_CONTRACTS_DIR: ../sc-etherdoc
         run: pnpm contracts:check
 
+      - name: Lint without writing
+        working-directory: be-etherdoc
+        run: pnpm lint:check
+
       - name: Test
         working-directory: be-etherdoc
         run: pnpm test --runInBand
+
+      - name: Run migrations twice
+        working-directory: be-etherdoc
+        run: |
+          pnpm db:migrate
+          pnpm db:migrate
+
+      - name: Test PostgreSQL integration
+        working-directory: be-etherdoc
+        run: pnpm test:integration
+
+      - name: Test deterministic HTTP API
+        working-directory: be-etherdoc
+        run: pnpm test:e2e
 
       - name: Build
         working-directory: be-etherdoc

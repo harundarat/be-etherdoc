@@ -70,6 +70,7 @@ function runtime(): RuntimeConfig {
       batchSize: 10,
       indexBlockRange: 2_000,
       indexIntervalMs: 15_000,
+      lockTimeoutMs: 600_000,
       pollIntervalMs: 1_000,
     },
   };
