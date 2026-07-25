@@ -276,7 +276,7 @@ Kemudian:
 
 ### TODO
 
-- [ ] Buat typed configuration untuk:
+- [x] Buat typed configuration untuk:
   - PostgreSQL;
   - Pinata;
   - Mantle Sepolia RPC;
@@ -287,23 +287,23 @@ Kemudian:
   - backend signer;
   - SIWE domain/URI;
   - JWT.
-- [ ] Validasi semua konfigurasi saat bootstrap.
-- [ ] Buat client terpisah untuk:
+- [x] Validasi semua konfigurasi saat bootstrap.
+- [x] Buat client terpisah untuk:
   - source reads;
   - destination reads;
   - relayer submission;
   - operator dispatch.
-- [ ] Verifikasi chain ID dari setiap RPC.
-- [ ] Verifikasi runtime bytecode pada address manifest.
-- [ ] Verifikasi backend signer mempunyai operator role.
-- [ ] Bedakan not-found, revert, RPC unavailable, timeout, dan chain mismatch.
+- [x] Verifikasi chain ID dari setiap RPC.
+- [x] Verifikasi runtime bytecode pada address manifest.
+- [x] Verifikasi backend signer mempunyai operator role.
+- [x] Bedakan not-found, revert, RPC unavailable, timeout, dan chain mismatch.
 
 ### Kriteria Keberhasilan
 
-- [ ] Aplikasi gagal saat startup jika konfigurasi penting invalid.
-- [ ] Backend signer address sama dengan operator on-chain.
-- [ ] Readiness mendeteksi RPC chain atau bytecode yang salah.
-- [ ] RPC error tidak pernah diubah menjadi `false` atau document-not-found.
+- [x] Aplikasi gagal saat startup jika konfigurasi penting invalid.
+- [x] Backend signer address sama dengan operator on-chain.
+- [x] Readiness mendeteksi RPC chain atau bytecode yang salah.
+- [x] RPC error tidak pernah diubah menjadi `false` atau document-not-found.
 - [ ] Tidak ada address, selector, atau RPC stale di `DocumentsService`.
 
 ---
@@ -339,7 +339,7 @@ Kemudian:
 
 ### TODO
 
-- [ ] Tambahkan migration untuk:
+- [x] Tambahkan migration untuk:
   - authentication nonce;
   - document intent;
   - pinned artifact;
@@ -350,17 +350,17 @@ Kemudian:
   - processed chain event;
   - chain cursor;
   - outbox job.
-- [ ] Gunakan UUID sebagai internal intent ID.
-- [ ] Gunakan `documentId` sebagai protocol identity.
-- [ ] Terapkan unique constraint untuk:
+- [x] Gunakan UUID sebagai internal intent ID.
+- [x] Gunakan `documentId` sebagai protocol identity.
+- [x] Terapkan unique constraint untuk:
   - idempotency key;
   - issuer + nonce;
   - transaction hash;
   - CCIP message ID;
   - document ID + version + destination selector.
 - [ ] Simpan transaction intent sebelum broadcast.
-- [ ] Claim outbox job menggunakan transaction dan `FOR UPDATE SKIP LOCKED`.
-- [ ] Terapkan bounded exponential backoff untuk retry yang aman.
+- [x] Claim outbox job menggunakan transaction dan `FOR UPDATE SKIP LOCKED`.
+- [x] Terapkan bounded exponential backoff untuk retry yang aman.
 - [ ] Jangan blind-retry transaksi yang mungkin sudah broadcast.
 - [ ] Buat projection yang dapat dibangun ulang dari chain.
 

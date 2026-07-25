@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Request } from 'express';
+import type { RuntimeConfig } from '../config/runtime-config';
 
 // Extract jwt from cookie
 const cookieExtractor = (req: Request): string | null => {
@@ -16,6 +17,8 @@ const cookieExtractor = (req: Request): string | null => {
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private configService: ConfigService) {
+    const runtime =
+      configService.getOrThrow<RuntimeConfig>('runtime');
     super({
       // Prioritize extraction from cookie, then from Authorization Bearer header
       jwtFromRequest: ExtractJwt.fromExtractors([
@@ -23,7 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         ExtractJwt.fromAuthHeaderAsBearerToken(),
       ]),
       ignoreExpiration: false,
-      secretOrKey: configService.getOrThrow<string>('JWT_SECRET'),
+      secretOrKey: runtime.jwt.secret,
     });
   }
 

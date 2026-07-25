@@ -4,10 +4,18 @@ import { AppService } from './app.service';
 import { DocumentsModule } from './documents/documents.module';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
+import { loadRuntimeConfiguration } from './config/runtime-config';
+import { BlockchainModule } from './blockchain/blockchain.module';
+import { DatabaseModule } from './database/database.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [loadRuntimeConfiguration],
+    }),
+    BlockchainModule,
+    DatabaseModule,
     DocumentsModule,
     AuthModule,
   ],

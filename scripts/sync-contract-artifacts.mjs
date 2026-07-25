@@ -131,6 +131,7 @@ function getDeployment(networkName, role, network, contractCommit) {
       manifest: null,
       network: networkName,
       role,
+      runtimeCodeHash: null,
       status: 'UNDEPLOYED',
     };
   }
@@ -188,6 +189,7 @@ function getDeployment(networkName, role, network, contractCommit) {
     },
     network: networkName,
     role,
+    runtimeCodeHash: manifest.runtimeCodeHash,
     status: 'DEPLOYED',
   };
 }

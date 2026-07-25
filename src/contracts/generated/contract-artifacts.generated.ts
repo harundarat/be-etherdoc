@@ -3212,6 +3212,7 @@ export const etherdocContractArtifacts = {
       "manifest": null,
       "network": "inkSepolia",
       "role": "receiver",
+      "runtimeCodeHash": null,
       "status": "UNDEPLOYED"
     },
     "sender": {
@@ -3222,6 +3223,7 @@ export const etherdocContractArtifacts = {
       "manifest": null,
       "network": "mantleSepolia",
       "role": "sender",
+      "runtimeCodeHash": null,
       "status": "UNDEPLOYED"
     }
   },
@@ -3272,7 +3274,7 @@ export const etherdocContractArtifacts = {
     "payloadSchemaVersion": 3
   },
   "provenance": {
-    "contentChecksum": "sha256:fbda1327e7a652af6b8ed114d5ac22a483b1a8fb6fe321784c3714510e4c648f",
+    "contentChecksum": "sha256:d7306f40ca74801a51e50b102c2b298d37742334a2be0ff77c4616aa8ecf0563",
     "inputs": {
       "networkConfig": "sha256:3a373b515dad0fa5f76b3a31eca2424bf70260f5c07f82f783e72c0810e588c6",
       "receiverArtifact": "sha256:2f251d2dc96493c7282119a2e8ff3a2d946bab811209cec4421cb835678bd226",

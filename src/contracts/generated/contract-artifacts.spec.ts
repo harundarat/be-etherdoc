@@ -44,12 +44,14 @@ describe('generated contract artifacts', () => {
       address: null,
       network: 'mantleSepolia',
       role: 'sender',
+      runtimeCodeHash: null,
       status: 'UNDEPLOYED',
     });
     expect(etherdocContractArtifacts.deployments.receiver).toMatchObject({
       address: null,
       network: 'inkSepolia',
       role: 'receiver',
+      runtimeCodeHash: null,
       status: 'UNDEPLOYED',
     });
   });

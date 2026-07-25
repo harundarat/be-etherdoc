@@ -6,6 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './jwt.strategy';
+import type { RuntimeConfig } from '../config/runtime-config';
 
 @Module({
   imports: [
@@ -14,12 +15,16 @@ import { JwtStrategy } from './jwt.strategy';
     JwtModule.registerAsync({
       global: true,
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'),
-        signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRES_IN', '5m'),
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const runtime =
+          configService.getOrThrow<RuntimeConfig>('runtime');
+        return {
+          secret: runtime.jwt.secret,
+          signOptions: {
+            expiresIn: runtime.jwt.expiresIn,
+          },
+        };
+      },
       inject: [ConfigService],
     }),
   ],
