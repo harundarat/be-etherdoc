@@ -33,14 +33,14 @@ urutan karena task berikutnya bergantung pada artefak dan keputusan task sebelum
 
 - [x] Perlakukan `sc-etherdoc` sebagai source of truth tunggal.
 - [x] Jangan mengubah smart contract untuk mempertahankan kompatibilitas dengan backend stale.
-- [ ] Jangan memakai ABI, chain selector, atau contract address hardcoded dari backend lama.
+- [x] Jangan memakai ABI, chain selector, atau contract address hardcoded dari backend lama.
 - [x] Jangan membaca, mencetak, memindahkan, atau menyimpan private key pengguna.
 - [x] Jangan otomatis memakai private key dari `be-etherdoc/.env` untuk deployment.
 - [x] Jangan broadcast transaksi testnet sebelum approval gate pada Task 3 terpenuhi.
 - [x] Bedakan source transaction confirmation dengan destination CCIP confirmation.
-- [ ] Perlakukan database backend sebagai projection/cache yang dapat direkonsiliasi dari chain.
-- [ ] API lama boleh diganti secara breaking; compatibility adapter dan `/v2` tidak diperlukan.
-- [ ] Mainnet dan destination tambahan berada di luar scope rilis ini.
+- [x] Perlakukan database backend sebagai projection/cache yang dapat direkonsiliasi dari chain.
+- [x] API lama boleh diganti secara breaking; compatibility adapter dan `/v2` tidak diperlukan.
+- [x] Mainnet dan destination tambahan berada di luar scope rilis ini.
 
 ## Target Network
 
@@ -534,7 +534,7 @@ Kemudian:
 
 ### TODO
 
-- [ ] Tambahkan unit test untuk:
+- [x] Tambahkan unit test untuk:
   - digest/CID;
   - canonical metadata;
   - SIWE;
@@ -552,7 +552,7 @@ Kemudian:
   - reconciliation.
 - [x] Tambahkan deterministic local E2E tanpa Pinata/RPC publik.
 - [ ] Tambahkan testnet smoke test terhadap deployment manifest aktif.
-- [ ] Uji register, revoke, supersede, duplicate request, stale nonce, invalid signature, paused
+- [x] Uji register, revoke, supersede, duplicate request, stale nonce, invalid signature, paused
       contract, insufficient fee, dropped transaction, receiver delay, replay event, RPC outage, dan
       reorg.
 - [x] Tambahkan CI gate untuk contract artifact drift.
@@ -589,13 +589,13 @@ Kemudian:
 - [ ] Admin wallet hanya memegang deployer/governance/pauser sesuai approval.
 - [ ] Backend wallet memegang operator/relayer sesuai approval.
 - [ ] User wallet tercatat sebagai issuer dan private key tetap di pengguna.
-- [ ] ABI backend berasal dari exact contract commit.
-- [ ] Digest, CID, metadata commitment, dan document ID konsisten.
+- [x] ABI backend berasal dari exact contract commit.
+- [x] Digest, CID, metadata commitment, dan document ID konsisten.
 - [ ] Register, revoke, dan supersede berfungsi end-to-end.
-- [ ] Source confirmation dan destination confirmation dilaporkan terpisah.
-- [ ] Restart, retry, duplicate request, dan multi-worker tidak menghasilkan transaksi ganda.
-- [ ] Database dapat direkonsiliasi ulang dari on-chain evidence.
-- [ ] RPC, Pinata, atau CCIP failure tidak disamarkan sebagai not-found atau success.
+- [x] Source confirmation dan destination confirmation dilaporkan terpisah.
+- [x] Restart, retry, duplicate request, dan multi-worker tidak menghasilkan transaksi ganda.
+- [x] Database dapat direkonsiliasi ulang dari on-chain evidence.
+- [x] RPC, Pinata, atau CCIP failure tidak disamarkan sebagai not-found atau success.
 - [ ] Semua test dan quality gate kedua repository lulus.
 
 ## Batas Berhenti untuk Long-Running Codex Task

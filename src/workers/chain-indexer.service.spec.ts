@@ -1,4 +1,7 @@
-import { normalizedIndexedLog } from './chain-indexer.service';
+import {
+  cursorRequiresRebuild,
+  normalizedIndexedLog,
+} from './chain-indexer.service';
 
 describe('normalizedIndexedLog', () => {
   it('keeps lossless finalized log evidence', () => {
@@ -30,5 +33,17 @@ describe('normalizedIndexedLog', () => {
         transactionHash: `0x${'22'.repeat(32)}`,
       }),
     ).toBeNull();
+  });
+});
+
+describe('cursorRequiresRebuild', () => {
+  const storedHash = `0x${'11'.repeat(32)}` as const;
+
+  it('keeps a cursor only while its finalized block hash remains canonical', () => {
+    expect(cursorRequiresRebuild(42n, storedHash, 50n, storedHash)).toBe(false);
+    expect(
+      cursorRequiresRebuild(42n, storedHash, 50n, `0x${'22'.repeat(32)}`),
+    ).toBe(true);
+    expect(cursorRequiresRebuild(42n, storedHash, 41n, storedHash)).toBe(true);
   });
 });

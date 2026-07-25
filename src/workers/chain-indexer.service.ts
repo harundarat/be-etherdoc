@@ -101,6 +101,18 @@ export function normalizedIndexedLog(
   };
 }
 
+export function cursorRequiresRebuild(
+  lastFinalizedBlock: bigint,
+  lastFinalizedHash: Hex,
+  currentFinalizedBlock: bigint,
+  observedHash: Hex,
+): boolean {
+  return (
+    lastFinalizedBlock > currentFinalizedBlock ||
+    observedHash !== lastFinalizedHash
+  );
+}
+
 function hexArgument(log: IndexedLog, name: string): Hex {
   const value = log.args[name];
   if (typeof value !== 'string' || !/^0x[0-9a-fA-F]{64}$/.test(value)) {
@@ -590,7 +602,12 @@ export class ChainIndexerService implements OnModuleInit, OnModuleDestroy {
         ? this.blockchain.sourceReader
         : this.blockchain.destinationReader
     ).getBlock({ blockNumber: lastBlock });
-    const reorganized = block.hash !== cursor.last_finalized_hash;
+    const reorganized = cursorRequiresRebuild(
+      lastBlock,
+      cursor.last_finalized_hash,
+      finalizedBlock,
+      block.hash,
+    );
     if (reorganized) {
       this.logger.warn(
         `${side} cursor hash changed; rebuilding from deployment`,
@@ -601,6 +618,65 @@ export class ChainIndexerService implements OnModuleInit, OnModuleDestroy {
 
   private async resetSource(chain: ChainRuntimeConfig): Promise<void> {
     await this.database.transaction(async (client) => {
+      const transactions = await client.query<{
+        id: string;
+        intent_id: string;
+      }>(
+        `
+          UPDATE source_transaction
+          SET
+            state = 'UNKNOWN',
+            block_number = NULL,
+            block_hash = NULL,
+            receipt_status = NULL,
+            confirmation_count = 0,
+            canonical_event = NULL,
+            failure_code = 'SOURCE_REORG_RECONCILIATION',
+            failure_detail = 'Canonical source cursor changed',
+            updated_at = now()
+          WHERE state = 'CONFIRMED' AND block_number IS NOT NULL
+          RETURNING id, intent_id
+        `,
+      );
+      for (const transaction of transactions.rows) {
+        await client.query(
+          `
+            UPDATE document_intent
+            SET
+              status = 'FAILED_RETRYABLE',
+              source_confirmed_at = NULL,
+              failure_code = 'SOURCE_REORG_RECONCILIATION',
+              failure_detail = 'Canonical source cursor changed',
+              updated_at = now()
+            WHERE id = $1 AND status = 'SOURCE_CONFIRMED'
+          `,
+          [transaction.intent_id],
+        );
+        await client.query(
+          `
+            INSERT INTO outbox_job(
+              deduplication_key, job_type, intent_id, payload
+            )
+            VALUES($1,'RECONCILE',$2,$3)
+            ON CONFLICT (deduplication_key) DO UPDATE SET
+              state = 'READY',
+              available_at = now(),
+              locked_at = NULL,
+              locked_by = NULL,
+              last_error = NULL,
+              updated_at = now()
+            WHERE outbox_job.state IN ('COMPLETED', 'FAILED')
+          `,
+          [
+            `intent:${transaction.intent_id}:reconcile-source:${transaction.id}`,
+            transaction.intent_id,
+            {
+              intentId: transaction.intent_id,
+              transactionId: transaction.id,
+            },
+          ],
+        );
+      }
       await client.query(
         `
           UPDATE processed_chain_event

@@ -232,4 +232,101 @@ describe('DocumentIntentsService', () => {
     ).rejects.toThrow('different canonical intent input');
     expect(sourceReader.readContract).not.toHaveBeenCalled();
   });
+
+  it('rejects a stale chain nonce before verifying the signature', async () => {
+    const deadline = new Date(Date.now() + 60_000);
+    const sourceReader = {
+      readContract: jest.fn().mockResolvedValue(5n),
+      verifyTypedData: jest.fn(),
+    };
+    const service = new DocumentIntentsService(
+      { sourceReader } as unknown as BlockchainService,
+      new ConfigService({ runtime: runtime() }),
+      {
+        query: jest.fn().mockResolvedValue({
+          rows: [
+            {
+              canonical_metadata: {},
+              chain_nonce: '4',
+              content_digest: null,
+              created_at: new Date(),
+              deadline,
+              document_id: contentDigest,
+              failure_code: null,
+              failure_detail: null,
+              id: '0d1b64f2-3281-4cc4-8341-7ccb28dd7d41',
+              idempotency_key: 'stale-nonce',
+              issuer,
+              metadata_commitment: null,
+              old_document_id: null,
+              operation: 'REVOKE',
+              status: 'PREPARED',
+              typed_data: {},
+              typed_data_digest: cidDigest,
+              updated_at: new Date(),
+            },
+          ],
+        }),
+      } as unknown as DatabaseService,
+      {} as PinataStorageService,
+    );
+
+    await expect(
+      service.submitSignature(issuer, 'intent-id', `0x${'11'.repeat(65)}`),
+    ).rejects.toThrow('Issuer nonce is stale');
+    expect(sourceReader.verifyTypedData).not.toHaveBeenCalled();
+  });
+
+  it('rejects an invalid EIP-712 signature without enqueueing', async () => {
+    const deadline = new Date(Date.now() + 60_000);
+    const sourceReader = {
+      readContract: jest.fn().mockResolvedValue(4n),
+      verifyTypedData: jest.fn().mockResolvedValue(false),
+    };
+    const database = {
+      query: jest.fn().mockResolvedValue({
+        rows: [
+          {
+            canonical_metadata: {},
+            chain_nonce: '4',
+            content_digest: null,
+            created_at: new Date(),
+            deadline,
+            document_id: contentDigest,
+            failure_code: null,
+            failure_detail: null,
+            id: '0d1b64f2-3281-4cc4-8341-7ccb28dd7d41',
+            idempotency_key: 'invalid-signature',
+            issuer,
+            metadata_commitment: null,
+            old_document_id: null,
+            operation: 'REVOKE',
+            status: 'PREPARED',
+            typed_data: {
+              message: {
+                currentVersion: '1',
+                deadline: String(Math.floor(deadline.getTime() / 1_000)),
+                documentId: contentDigest,
+                nonce: '4',
+              },
+            },
+            typed_data_digest: cidDigest,
+            updated_at: new Date(),
+          },
+        ],
+      }),
+      transaction: jest.fn(),
+    };
+    const service = new DocumentIntentsService(
+      { sourceReader } as unknown as BlockchainService,
+      new ConfigService({ runtime: runtime() }),
+      database as unknown as DatabaseService,
+      {} as PinataStorageService,
+    );
+
+    await expect(
+      service.submitSignature(issuer, 'intent-id', `0x${'11'.repeat(65)}`),
+    ).rejects.toThrow('Invalid intent signature');
+    expect(database.transaction).not.toHaveBeenCalled();
+  });
 });

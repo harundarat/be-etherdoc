@@ -39,6 +39,13 @@ interface DispatchRecord {
   status: number;
 }
 
+export function missingNonceEvidenceDisposition(
+  latestNonce: bigint,
+  reservedNonce: bigint,
+): 'MANUAL_RECOVERY' | 'WAIT' {
+  return latestNonce <= reservedNonce ? 'WAIT' : 'MANUAL_RECOVERY';
+}
+
 @Injectable()
 export class ReconciliationWorker {
   private readonly runtime: RuntimeConfig;
@@ -333,7 +340,10 @@ export class ReconciliationWorker {
       address: this.runtime.blockchain.signerAddress,
       blockTag: 'latest',
     });
-    if (BigInt(latestNonce) <= reservedNonce) {
+    if (
+      missingNonceEvidenceDisposition(BigInt(latestNonce), reservedNonce) ===
+      'WAIT'
+    ) {
       throw new RetryableJobError(
         `No finalized source evidence exists yet for reserved nonce ${reservedNonce}`,
       );
@@ -388,7 +398,10 @@ export class ReconciliationWorker {
       address: this.runtime.blockchain.signerAddress,
       blockTag: 'latest',
     });
-    if (BigInt(latestNonce) <= reservedNonce) {
+    if (
+      missingNonceEvidenceDisposition(BigInt(latestNonce), reservedNonce) ===
+      'WAIT'
+    ) {
       throw new RetryableJobError(
         `No finalized MessageSent exists yet for reserved nonce ${reservedNonce}`,
       );
