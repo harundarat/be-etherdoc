@@ -378,9 +378,9 @@ Kemudian:
 
 ### TODO
 
-- [ ] Ganti authentication nonce global dengan nonce per-wallet yang atomic, expiring, dan
+- [x] Ganti authentication nonce global dengan nonce per-wallet yang atomic, expiring, dan
   sekali pakai.
-- [ ] Implementasikan SIWE/EIP-4361 yang mengikat:
+- [x] Implementasikan SIWE/EIP-4361 yang mengikat:
   - address;
   - domain;
   - URI;
@@ -388,7 +388,7 @@ Kemudian:
   - issued-at;
   - expiration;
   - nonce.
-- [ ] Isi JWT subject dengan wallet address.
+- [x] Isi JWT subject dengan wallet address.
 - [ ] Verifikasi JWT subject sama dengan issuer intent.
 - [ ] Periksa `isIssuerAuthorized()` sebelum menghasilkan intent.
 - [ ] Ambil `issuerNonce()` dari source contract.
@@ -405,7 +405,7 @@ Kemudian:
 
 ### Kriteria Keberhasilan
 
-- [ ] Backend tidak pernah menerima user private key.
+- [x] Backend tidak pernah menerima user private key.
 - [ ] Signature wrong-chain, wrong-contract, wrong-version, expired, replayed, atau milik issuer lain
   ditolak.
 - [ ] EOA dan ERC-1271 valid dapat melewati flow.

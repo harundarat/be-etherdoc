@@ -1,114 +1,197 @@
-import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
-  Inject,
   Injectable,
   InternalServerErrorException,
-  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { v4 as uuidv4 } from 'uuid';
-import { verifyMessage } from 'ethers';
-import { LoginResponseDto, NonceResponseDto } from './dto';
+import { getAddress, type Address, type Hex } from 'viem';
+import {
+  createSiweMessage,
+  generateSiweNonce,
+  parseSiweMessage,
+  verifySiweMessage,
+} from 'viem/siwe';
+import type { RuntimeConfig } from '../config/runtime-config';
+import { DatabaseService } from '../database/database.service';
+import { BlockchainService } from '../blockchain/blockchain.service';
+import type { LoginResponseDto } from './dto';
+
+export interface NonceChallenge {
+  address: Address;
+  expiresAt: string;
+  message: string;
+  nonce: string;
+}
+
+interface NonceRow {
+  expires_at: Date;
+  id: string;
+  siwe_message: string;
+  wallet_address: string;
+}
 
 @Injectable()
 export class AuthService {
-  private readonly logger = new Logger(AuthService.name);
+  private readonly runtime: RuntimeConfig;
+
   constructor(
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
-    private configService: ConfigService,
-    private jwtService: JwtService,
-  ) {}
-  async getNonce(): Promise<NonceResponseDto> {
-    try {
-      const uuid = uuidv4();
+    private readonly blockchain: BlockchainService,
+    private readonly configService: ConfigService,
+    private readonly database: DatabaseService,
+    private readonly jwtService: JwtService,
+  ) {
+    this.runtime = configService.getOrThrow<RuntimeConfig>('runtime');
+  }
 
-      await this.cacheManager.set('nonce', uuid, 100000);
+  async createNonceChallenge(wallet: string): Promise<NonceChallenge> {
+    const address = this.parseAddress(wallet);
+    const nonce = generateSiweNonce();
+    const issuedAt = new Date();
+    const expiresAt = new Date(
+      issuedAt.getTime() + this.runtime.siwe.nonceTtlSeconds * 1_000,
+    );
+    const message = createSiweMessage({
+      address,
+      chainId: this.runtime.blockchain.source.chainId,
+      domain: this.runtime.siwe.domain,
+      expirationTime: expiresAt,
+      issuedAt,
+      nonce,
+      statement: 'Authenticate to Etherdoc without sharing your private key.',
+      uri: this.runtime.siwe.uri,
+      version: '1',
+    });
 
-      const address = this.configService.get<string>('ADDRESS_ADMIN');
-      if (!address) {
-        this.logger.error('ADDRESS_ADMIN is not configured');
-        throw new InternalServerErrorException('Server configuration error');
+    await this.database.query(
+      `
+        INSERT INTO authentication_nonce(
+          wallet_address,
+          nonce,
+          siwe_message,
+          issued_at,
+          expires_at
+        )
+        VALUES ($1, $2, $3, $4, $5)
+      `,
+      [address, nonce, message, issuedAt, expiresAt],
+    );
+
+    return {
+      address,
+      expiresAt: expiresAt.toISOString(),
+      message,
+      nonce,
+    };
+  }
+
+  async verify(message: string, signature: string): Promise<LoginResponseDto> {
+    const parsed = parseSiweMessage(message);
+    if (!parsed.address || !parsed.nonce) {
+      throw new UnauthorizedException('Malformed SIWE message');
+    }
+    const address = this.parseAddress(parsed.address);
+    this.assertMessageBinding(parsed);
+
+    await this.database.transaction(async (client) => {
+      const result = await client.query<NonceRow>(
+        `
+          SELECT id, wallet_address, siwe_message, expires_at
+          FROM authentication_nonce
+          WHERE
+            nonce = $1
+            AND lower(wallet_address) = lower($2)
+            AND consumed_at IS NULL
+          FOR UPDATE
+        `,
+        [parsed.nonce, address],
+      );
+      const challenge = result.rows[0];
+      if (!challenge) {
+        throw new UnauthorizedException('SIWE nonce is missing or already used');
       }
-
-      const messageObject = {
-        address: address,
-        message: 'auth-login',
-        nonce: uuid,
-      };
-
-      const messageString = JSON.stringify(messageObject);
-
-      return { messageObject, messageString };
-    } catch (error) {
-      this.logger.error('Failed to generate nonce:', error.stack);
       if (
-        !(error instanceof UnauthorizedException) &&
-        !(error instanceof InternalServerErrorException)
+        challenge.expires_at.getTime() <= Date.now() ||
+        challenge.siwe_message !== message
       ) {
-        throw new InternalServerErrorException(
-          'Could not generate authentication nonce',
-        );
+        throw new UnauthorizedException('SIWE challenge expired or changed');
       }
-      throw error;
+
+      let valid: boolean;
+      try {
+        valid = await verifySiweMessage(this.blockchain.sourceReader, {
+          address,
+          domain: this.runtime.siwe.domain,
+          message,
+          nonce: parsed.nonce,
+          signature: signature as Hex,
+          time: new Date(),
+        });
+      } catch {
+        valid = false;
+      }
+      if (!valid) {
+        throw new UnauthorizedException('Invalid SIWE signature');
+      }
+
+      const consumed = await client.query(
+        `
+          UPDATE authentication_nonce
+          SET consumed_at = now()
+          WHERE id = $1 AND consumed_at IS NULL
+        `,
+        [challenge.id],
+      );
+      if (consumed.rowCount !== 1) {
+        throw new UnauthorizedException('SIWE nonce replay detected');
+      }
+    });
+
+    try {
+      const accessToken = await this.jwtService.signAsync({
+        chainId: this.runtime.blockchain.source.chainId,
+        sub: address,
+      });
+      return {
+        accessToken,
+        address,
+        expiresInSeconds: this.runtime.siwe.sessionTtlSeconds,
+      };
+    } catch {
+      throw new InternalServerErrorException('Unable to create session');
     }
   }
 
-  async signIn(signature: string): Promise<LoginResponseDto> {
-    const addressAdmin = this.configService.get<string>('ADDRESS_ADMIN');
-    if (!addressAdmin) {
-      this.logger.error('ADDRESS_ADMIN is not configured for sign in.');
-      throw new InternalServerErrorException(
-        'Server configuration error during sign-in',
+  private assertMessageBinding(
+    parsed: ReturnType<typeof parseSiweMessage>,
+  ): void {
+    if (
+      parsed.domain !== this.runtime.siwe.domain ||
+      parsed.uri !== this.runtime.siwe.uri ||
+      parsed.chainId !== this.runtime.blockchain.source.chainId ||
+      parsed.version !== '1' ||
+      !parsed.issuedAt ||
+      !parsed.expirationTime
+    ) {
+      throw new UnauthorizedException(
+        'SIWE message domain, URI, chain, or time binding is invalid',
       );
     }
+    const lifetime =
+      parsed.expirationTime.getTime() - parsed.issuedAt.getTime();
+    if (
+      lifetime <= 0 ||
+      lifetime > this.runtime.siwe.nonceTtlSeconds * 1_000
+    ) {
+      throw new UnauthorizedException('SIWE message lifetime is invalid');
+    }
+  }
 
+  private parseAddress(value: string): Address {
     try {
-      const nonce = await this.cacheManager.get<string>('nonce');
-      if (!nonce) {
-        throw new UnauthorizedException(
-          'Nonce not found or expired. Please request a new nonce.',
-        );
-      }
-
-      // reconstruct message
-      const messageObject = {
-        address: addressAdmin,
-        message: 'auth-login',
-        nonce: nonce,
-      };
-
-      const messageString = JSON.stringify(messageObject);
-
-      const recoveredAddress = verifyMessage(messageString, signature);
-
-      if (recoveredAddress.toLowerCase() != addressAdmin.toLowerCase()) {
-        throw new UnauthorizedException('Invalid signature');
-      }
-
-      // delete nonce to avoid replay attack
-      await this.cacheManager.del('nonce');
-
-      const payload = { sub: addressAdmin, admin: true };
-
-      const accessToken = await this.jwtService.signAsync(payload);
-      return { accessToken: accessToken };
-    } catch (error) {
-      this.logger.error(
-        `Sign-in failed for address: ${addressAdmin}: `,
-        error.stack,
-      );
-      if (
-        error instanceof UnauthorizedException ||
-        error instanceof InternalServerErrorException
-      ) {
-        throw error;
-      }
-
-      throw new InternalServerErrorException(
-        'An error occured during the sign-in process.',
-      );
+      return getAddress(value);
+    } catch {
+      throw new UnauthorizedException('Invalid wallet address');
     }
   }
 }

@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
-import { CacheModule } from '@nestjs/cache-manager';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
@@ -11,7 +10,6 @@ import type { RuntimeConfig } from '../config/runtime-config';
 @Module({
   imports: [
     PassportModule,
-    CacheModule.register(),
     JwtModule.registerAsync({
       global: true,
       imports: [ConfigModule],
