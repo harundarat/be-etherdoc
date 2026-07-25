@@ -228,6 +228,9 @@ export class DestinationWorker {
   private async finalizedBlock(): Promise<bigint> {
     const head = await this.blockchain.destinationReader.getBlockNumber();
     const depth = BigInt(this.runtime.blockchain.destination.confirmations);
+    if (depth === 0n) {
+      return head;
+    }
     return head >= depth ? head - depth + 1n : 0n;
   }
 

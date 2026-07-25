@@ -416,6 +416,9 @@ export class ReconciliationWorker {
   private async finalizedSourceBlock(): Promise<bigint> {
     const head = await this.blockchain.sourceReader.getBlockNumber();
     const depth = BigInt(this.runtime.blockchain.source.confirmations);
+    if (depth === 0n) {
+      return head;
+    }
     return head >= depth ? head - depth + 1n : 0n;
   }
 }

@@ -471,29 +471,29 @@ Kemudian:
 
 ### TODO
 
-- [ ] Index sender event mulai dari sender deployment block.
-- [ ] Index receiver event mulai dari receiver deployment block.
-- [ ] Simpan cursor per chain.
-- [ ] Terapkan confirmation depth dan reorg rollback.
-- [ ] Cocokkan destination evidence dengan:
+- [x] Index sender event mulai dari sender deployment block.
+- [x] Index receiver event mulai dari receiver deployment block.
+- [x] Simpan cursor per chain.
+- [x] Terapkan confirmation depth dan reorg rollback.
+- [x] Cocokkan destination evidence dengan:
   - message ID;
   - document ID;
   - document version;
   - source/destination selector.
-- [ ] Verifikasi melalui `getProcessedMessage()`, `getReceipt()`, dan `verifyDocument()`.
-- [ ] Bedakan `MessageReceived` dan `MessageIgnored`.
-- [ ] Tandai message pending terlalu lama sebagai `RECOVERY_REQUIRED`.
-- [ ] Jangan dispatch ulang message yang sudah diterima router.
+- [x] Verifikasi melalui `getProcessedMessage()`, `getReceipt()`, dan `verifyDocument()`.
+- [x] Bedakan `MessageReceived` dan `MessageIgnored`.
+- [x] Tandai message pending terlalu lama sebagai `RECOVERY_REQUIRED`.
+- [x] Jangan dispatch ulang message yang sudah diterima router.
 - [ ] Hubungkan recovery state dengan CCIP recovery runbook.
 - [ ] Buat reconciliation command yang idempotent.
 
 ### Kriteria Keberhasilan
 
-- [ ] `SOURCE_ACCEPTED` dan `DESTINATION_CONFIRMED` tidak pernah tertukar.
-- [ ] Replay event tidak membuat row atau transition duplikat.
-- [ ] Reorg dapat dideteksi dan projection dapat diperbaiki.
-- [ ] Missing event dan restart di tengah proses dapat direkonsiliasi.
-- [ ] Failed receive tidak dilaporkan sebagai berhasil.
+- [x] `SOURCE_ACCEPTED` dan `DESTINATION_CONFIRMED` tidak pernah tertukar.
+- [x] Replay event tidak membuat row atau transition duplikat.
+- [x] Reorg dapat dideteksi dan projection dapat diperbaiki.
+- [x] Missing event dan restart di tengah proses dapat direkonsiliasi.
+- [x] Failed receive tidak dilaporkan sebagai berhasil.
 
 ---
 

@@ -52,6 +52,8 @@ export interface RuntimeConfig {
   };
   worker: {
     batchSize: number;
+    indexBlockRange: number;
+    indexIntervalMs: number;
     pollIntervalMs: number;
   };
 }
@@ -288,6 +290,8 @@ export function buildRuntimeConfig(
     },
     worker: {
       batchSize: integer(environment, 'OUTBOX_BATCH_SIZE', 10),
+      indexBlockRange: integer(environment, 'CHAIN_INDEX_BLOCK_RANGE', 2_000),
+      indexIntervalMs: integer(environment, 'CHAIN_INDEX_INTERVAL_MS', 15_000),
       pollIntervalMs: integer(environment, 'OUTBOX_POLL_INTERVAL_MS', 1_000),
     },
   };

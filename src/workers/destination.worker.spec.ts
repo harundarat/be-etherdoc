@@ -66,7 +66,12 @@ function runtime(): RuntimeConfig {
       sessionTtlSeconds: 900,
       uri: 'https://app.example',
     },
-    worker: { batchSize: 10, pollIntervalMs: 1_000 },
+    worker: {
+      batchSize: 10,
+      indexBlockRange: 2_000,
+      indexIntervalMs: 15_000,
+      pollIntervalMs: 1_000,
+    },
   };
 }
 
