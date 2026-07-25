@@ -1,731 +1,230 @@
-# 📚 EtherDoc API Documentation
+# Etherdoc API
 
-## 🌟 Overview
+The source contract on Mantle Sepolia is canonical. PostgreSQL is a rebuildable projection, Ink
+Sepolia is a CCIP replica, and Pinata availability is reported independently from authenticity.
 
-EtherDoc is a blockchain-based document management system that uses Ethereum wallet signatures for authentication. The API provides endpoints for user authentication and document management through IPFS via Pinata.
+All addresses use EIP-55-compatible EVM address syntax. `documentId`, digests, commitments, message
+IDs, and transaction hashes are 32-byte `0x`-prefixed hex values.
 
-<br>
+## Authentication
 
-## 📑 Table of Contents
+### `POST /auth/nonce`
 
-- [🌟 Overview](#-overview)
-- [📑 Table of Contents](#-table-of-contents)
-- [🔐 Authentication Flow](#-authentication-flow)
-- [🚀 Base URL](#-base-url)
-- [📋 Endpoints](#-endpoints)
-  - [🏠 Health Check](#-health-check)
-    - [`GET /`](#get-)
-  - [🔑 Authentication](#-authentication)
-    - [`GET /auth/nonce`](#get-authnonce)
-    - [`POST /auth/login`](#post-authlogin)
-  - [📄 Documents](#-documents)
-    - [`POST /documents/search`](#post-documentssearch)
-    - [`POST /documents`](#post-documents)
-    - [`GET /documents`](#get-documents)
-    - [`GET /documents/:documentCID`](#get-documentsdocumentcid)
-    - [`POST /documents/groups`](#post-documentsgroups)
-    - [`GET /documents/groups`](#get-documentsgroups)
-- [🛡️ Authentication Example](#️-authentication-example)
-- [⚠️ Error Handling](#️-error-handling)
-- [🔧 Configuration](#-configuration)
-- [📝 Validation Rules](#-validation-rules)
-- [🎯 Best Practices](#-best-practices)
-- [🔗 Related Resources](#-related-resources)
-
-<br>
-
----
-
-<br>
-
-## 🔐 Authentication Flow
-
-EtherDoc uses a **signature-based authentication** system:
-
-1. **Get Nonce**: First, request a unique nonce from the server
-2. **Sign Message**: Sign the message containing the nonce with your Ethereum wallet
-3. **Login**: Submit the signature to receive a JWT token
-4. **Access**: Use the JWT token for authenticated requests
-
-<br>
-
-## 🚀 Base URL
-
-```
-https://be-etherdoc-production.up.railway.app/
-```
-
-<br>
-
----
-
-<br>
-
-# 📋 Endpoints
-
-<br>
-
-## 🏠 Health Check
-
-### `GET /`
-
-Simple health check endpoint.
-
-**Response:**
-
-```json
-"Hello World!"
-```
-
-<br>
-
----
-
-<br>
-
-## 🔑 Authentication
-
-<br>
-
-### `GET /auth/nonce`
-
-Get a unique nonce for message signing.
-
-**Headers:**
-
-```
-Content-Type: application/json
-```
-
-**Response:**
+Creates a one-use, expiring SIWE challenge for one wallet.
 
 ```json
 {
-  "messageObject": {
-    "address": "0x1234567890123456789012345678901234567890",
-    "message": "auth-login",
-    "nonce": "550e8400-e29b-41d4-a716-446655440000"
+  "address": "0x1234567890123456789012345678901234567890"
+}
+```
+
+The response contains the exact `message` to sign and its expiration. It is bound to the configured
+domain, URI, Mantle Sepolia chain ID, wallet, nonce, issued-at, and expiration.
+
+### `POST /auth/verify`
+
+```json
+{
+  "message": "<exact SIWE message returned by /auth/nonce>",
+  "signature": "0x..."
+}
+```
+
+Successful verification atomically consumes the nonce and returns:
+
+```json
+{
+  "accessToken": "<JWT>",
+  "address": "0x1234567890123456789012345678901234567890",
+  "expiresInSeconds": 900
+}
+```
+
+The response also sets the HTTP-only `etherdoc-auth` cookie. Protected endpoints accept that cookie
+or `Authorization: Bearer <JWT>`. The JWT subject must equal the intent issuer.
+
+## Signed intent flow
+
+An accepted signature is not final success. Prepare endpoints return exact EIP-712 typed data;
+clients must sign it without modifying field types, ordering, chain ID, verifying contract, nonce,
+version, or deadline.
+
+### `POST /documents/intents/register`
+
+Authentication required. `multipart/form-data`, PDF only, maximum 5 MiB.
+
+| Field            | Required | Meaning                                        |
+| ---------------- | -------- | ---------------------------------------------- |
+| `file`           | yes      | Exact bytes whose SHA-256 digest is registered |
+| `issuer`         | yes      | Must equal JWT subject                         |
+| `idempotencyKey` | yes      | 8–128 characters                               |
+| `storageNetwork` | yes      | `public` or `private`                          |
+| `documentType`   | no       | Non-PII canonical metadata label               |
+
+The backend uploads, retrieves, and hashes the exact bytes, validates the actual CID, builds the
+metadata commitment, compares its EIP-712 digest with the contract getter, and returns a `PREPARED`
+intent.
+
+### `POST /documents/intents/revoke`
+
+Authentication required.
+
+```json
+{
+  "issuer": "0x1234567890123456789012345678901234567890",
+  "idempotencyKey": "revoke-document-2026-01",
+  "documentId": "0x..."
+}
+```
+
+The source record must exist, be `ACTIVE`, and belong to the JWT subject. The current source version
+is embedded in the typed data.
+
+### `POST /documents/intents/supersede`
+
+Authentication required. Uses the register multipart fields plus:
+
+```text
+oldDocumentId=0x...
+```
+
+The old record becomes `SUPERSEDED`; a new document identity is derived from the replacement bytes
+and issuer.
+
+### Intent response
+
+Prepare and status endpoints return:
+
+```json
+{
+  "id": "uuid",
+  "idempotencyKey": "client-key",
+  "operation": "REGISTER",
+  "status": "PREPARED",
+  "issuer": "0x...",
+  "documentId": "0x...",
+  "oldDocumentId": null,
+  "chainNonce": "4",
+  "deadline": "2026-07-25T12:00:00.000Z",
+  "typedData": {},
+  "typedDataDigest": "0x...",
+  "failure": null,
+  "createdAt": "2026-07-25T11:50:00.000Z",
+  "updatedAt": "2026-07-25T11:50:00.000Z"
+}
+```
+
+Intent states are `PREPARED`, `SIGNED`, `SOURCE_PENDING`, `SOURCE_CONFIRMED`,
+`FAILED_RETRYABLE`, and `FAILED_TERMINAL`.
+
+### `POST /documents/intents/:intentId/signature`
+
+Authentication required.
+
+```json
+{
+  "signature": "0x..."
+}
+```
+
+Returns `202 Accepted` only after EOA/ERC-1271 verification and durable outbox enqueue. The worker
+simulates and submits the matching `*BySig` call. Poll the intent; do not interpret `202` as chain
+confirmation.
+
+### `GET /documents/intents/:intentId`
+
+Authentication required. Only the issuer can read the intent.
+
+## Canonical verification
+
+### `GET /documents/:documentId`
+
+Public canonical read. Returns the current source record even when it is revoked or superseded.
+
+```json
+{
+  "canonicalSource": true,
+  "document": {
+    "documentId": "0x...",
+    "contentDigest": "0x...",
+    "cid": "b...",
+    "cidCodec": 85,
+    "cidDigest": "0x...",
+    "metadataCommitment": "0x...",
+    "issuer": "0x...",
+    "sourceChainId": "5003",
+    "registeredAt": "2026-07-25T10:00:00.000Z",
+    "updatedAt": "2026-07-25T10:05:00.000Z",
+    "schemaVersion": 1,
+    "version": "2",
+    "status": "REVOKED",
+    "supersedes": null,
+    "supersededBy": null
   },
-  "messageString": "{\"address\":\"0x1234567890123456789012345678901234567890\",\"message\":\"auth-login\",\"nonce\":\"550e8400-e29b-41d4-a716-446655440000\"}"
+  "integrity": {
+    "matches": true,
+    "active": false,
+    "contentMatches": true,
+    "issuerMatches": true
+  },
+  "source": {
+    "confirmationStatus": "CONFIRMED",
+    "transactionHash": "0x...",
+    "blockNumber": "123",
+    "blockHash": "0x..."
+  },
+  "storage": {
+    "status": "AVAILABLE",
+    "available": true,
+    "authenticity": "NOT_INFERRED_FROM_AVAILABILITY"
+  },
+  "destinations": []
 }
 ```
 
-**Error Responses:**
+Each destination entry includes indexed status, effective evidence status, source dispatch
+transaction/block, CCIP message ID, fee/gas data, destination transaction/block, processed-message
+state, receipt state, and receiver provenance/integrity checks.
 
-- `500 Internal Server Error`: Server configuration error
-
-<br>
-
-### `POST /auth/login`
-
-Authenticate with Ethereum signature.
-
-**Headers:**
-
-```
-Content-Type: application/json
-```
-
-**Request Body:**
-
-```json
-{
-  "signature": "0x1234567890abcdef..."
-}
-```
-
-**Response:**
-
-```json
-{
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
-**Response Headers:**
-
-```
-Set-Cookie: etherdoc-auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
-
-**Error Responses:**
-
-- `400 Bad Request`: Invalid signature format
-- `401 Unauthorized`: Invalid signature or expired nonce
-- `500 Internal Server Error`: Server configuration error
-
-<br>
-
----
-
-<br>
-
-## 📄 Documents
-
-<br>
+`SOURCE_ACCEPTED` means the source Router accepted the message. It does not mean the receiver
+confirmed it. Destination states are `PENDING`, `SOURCE_ACCEPTED`, `DESTINATION_CONFIRMED`,
+`DESTINATION_IGNORED`, and `RECOVERY_REQUIRED`. Read-time `EVIDENCE_MISMATCH` or
+`EVIDENCE_UNAVAILABLE` prevents stale indexed success from being presented as verified replication.
 
 ### `POST /documents/search`
 
-Search for an existing document by uploading a file to validate its presence in the system.
-
-**Headers:**
-
-```
-Content-Type: multipart/form-data
-```
-
-**Request Body (Form Data):**
-
-| Parameter | Type | Required | Description                  |
-| --------- | ---- | -------- | ---------------------------- |
-| `file`    | File | ✅       | File to search for (max 5MB) |
-
-**File Validation:**
-
-- **File Size**: Maximum 5MB (5,242,880 bytes)
-- **File Type**: Only PDF files are accepted (`application/pdf`)
-
-**Example Request:**
-
-```bash
-curl -X POST http://localhost:3000/documents/search \
-  -F "file=@document.pdf"
-```
-
-**Response:**
+Public verification using either:
 
 ```json
 {
-  "id": "01971576-e2fc-7679-8bcf-79b73ba5a263",
-  "name": "document.pdf",
-  "cid": "bafkreiex2lt76bfk7vndbhlxnvooxx3grtxepw7nrljzsmwa2hnhagghhi",
-  "size": 55185,
-  "number_of_files": 1,
-  "mime_type": "application/pdf",
-  "group_id": null,
-  "keyvalues": {},
-  "created_at": "2025-05-28T05:56:43.22715Z",
-  "isExistEthereum": true,
-  "isExistBase": false
+  "documentId": "0x..."
 }
 ```
 
-**Error Responses:**
-
-- `400 Bad Request`: Missing file or invalid request format
-- `404 Not Found`: Document not found in the system
-- `422 Unprocessable Entity`: File validation failed (file size too large)
-- `500 Internal Server Error`: Pinata API error or server configuration issue
-
-**Response Fields:**
-
-| Field             | Type    | Description                                                    |
-| ----------------- | ------- | -------------------------------------------------------------- |
-| `id`              | string  | Unique identifier of the document                              |
-| `name`            | string  | Name of the document                                           |
-| `cid`             | string  | Content Identifier (CID) on IPFS                              |
-| `size`            | number  | File size in bytes                                             |
-| `number_of_files` | number  | Number of files (always 1 for single file uploads)           |
-| `mime_type`       | string  | MIME type of the file                                          |
-| `group_id`        | string  | Group ID if the document belongs to a group, null otherwise   |
-| `keyvalues`       | object  | Key-value pairs for metadata                                   |
-| `created_at`      | string  | ISO timestamp of when the document was created                |
-| `isExistEthereum` | boolean | Whether the document exists on the Ethereum (Holesky) network |
-| `isExistBase`     | boolean | Whether the document exists on the Base Sepolia network       |
-
-**Notes:**
-
-- This endpoint does not require authentication
-- The endpoint calculates the file's CID (Content Identifier) and verifies its existence on both Ethereum (Holesky) and Base Sepolia networks
-- Returns document metadata if the file exists in the system
-- The document must exist on the Ethereum network (`isExistEthereum: true`) to be considered valid
-- Useful for document validation and blockchain verification purposes
-
-<br>
-
-### `POST /documents`
-
-Upload a document file to IPFS via Pinata.
-
-🔒 **Authentication Required**: This endpoint requires a valid JWT token obtained from the login process.
-
-**Headers:**
-
-```
-Content-Type: multipart/form-data
-Authorization: Bearer <jwt_token>
-```
-
-**Request Body (Form Data):**
-
-| Parameter   | Type   | Required | Description                                  |
-| ----------- | ------ | -------- | -------------------------------------------- |
-| `file`      | File   | ✅       | PDF file to upload (max 5MB)                 |
-| `network`   | string | ✅       | Network type: `public` or `private`          |
-| `name`      | string | ❌       | Optional custom name for the file            |
-| `group_id`  | string | ❌       | Optional group ID to associate the file with |
-| `keyvalues` | object | ❌       | Optional key-value pairs for metadata        |
-
-**File Validation:**
-
-- **File Type**: Only PDF files are accepted (`application/pdf`)
-- **File Size**: Maximum 5MB (5,242,880 bytes)
-
-**Example Request:**
-
-```bash
-curl -X POST http://localhost:3000/documents \
-  -H "Authorization: Bearer <jwt_token>" \
-  -F "file=@document.pdf" \
-  -F "network=public" \
-  -F "name=My Document" \
-  -F "group_id=f960765b-e861-4ac7-a5e9-d109eb3bc378" \
-  -F 'keyvalues={"category":"important","department":"finance"}'
-```
-
-**Response:**
-
-```json
-{
-  "data": {
-    "id": "01971577-4ac7-7554-9571-a5757e212f9e",
-    "name": "My Document",
-    "cid": "bafkreib5aab5slldbyqnhx7cgbs2x6tsdrohy3manpnlfcxmnmdmlzckhi",
-    "created_at": "2025-05-28T05:57:09.735132Z",
-    "size": 94360,
-    "number_of_files": 1,
-    "mime_type": "application/pdf",
-    "user_id": "0x1234567890123456789012345678901234567890",
-    "group_id": "f960765b-e861-4ac7-a5e9-d109eb3bc378",
-    "is_duplicate": false
-  }
-}
-```
-
-**Error Responses:**
-
-- `400 Bad Request`: Missing file, invalid network parameter, or invalid request format
-- `401 Unauthorized`: Missing or invalid JWT token (authentication required)
-- `422 Unprocessable Entity`: File validation failed (invalid file type or size too large)
-- `500 Internal Server Error`: Pinata API error or server configuration issue
-
-**Authentication Notes:**
-
-- You must first authenticate using the `/auth/login` endpoint to obtain a JWT token
-- Include the JWT token in the `Authorization` header as `Bearer <token>`
-- JWT tokens expire after 5 minutes (configurable via `JWT_EXPIRES_IN`)
-
-<br>
-
-### `GET /documents`
-
-Get list of files from specified network.
-
-🔒 **Authentication Required**: This endpoint requires a valid JWT token obtained from the login process.
-
-**Headers:**
-
-```
-Content-Type: application/json
-Authorization: Bearer <jwt_token>
-```
-
-**Query Parameters:**
-
-| Parameter | Type   | Required | Description                                         |
-| --------- | ------ | -------- | --------------------------------------------------- |
-| `network` | string | ✅       | Network type: `public` or `private`                 |
-| `groupId` | string | ❌       | Optional group ID to filter files by specific group |
-
-**Example Request:**
-
-```
-GET /documents?network=public
-GET /documents?network=public&groupId=f960765b-e861-4ac7-a5e9-d109eb3bc378
-```
-
-**Response:**
-
-```json
-{
-  "data": {
-    "files": [
-      {
-        "id": "01971577-4ac7-7554-9571-a5757e212f9e",
-        "name": "challenge.png",
-        "cid": "bafkreib5aab5slldbyqnhx7cgbs2x6tsdrohy3manpnlfcxmnmdmlzckhi",
-        "size": 94360,
-        "number_of_files": 1,
-        "mime_type": "image/png",
-        "group_id": null,
-        "keyvalues": {},
-        "created_at": "2025-05-28T05:57:09.735132Z"
-      }
-    ],
-    "next_page_token": "MDE5NzE1NzYtZTJmYy03Njc5LThiY2YtNzliNzNiYTVhMjYz"
-  }
-}
-```
-
-**Error Responses:**
-
-- `400 Bad Request`: Invalid network parameter
-- `401 Unauthorized`: Missing or invalid JWT token (authentication required)
-- `500 Internal Server Error`: Pinata API error or server configuration issue
-
-**Authentication Notes:**
-
-- You must first authenticate using the `/auth/login` endpoint to obtain a JWT token
-- Include the JWT token in the `Authorization` header as `Bearer <token>`
-- JWT tokens expire after 5 minutes (configurable via `JWT_EXPIRES_IN`)
-
-<br>
-
-### `GET /documents/:documentCID`
-
-Get a specific document by its CID (Content Identifier).
-
-**Headers:**
-
-```
-Content-Type: application/json
-```
-
-**URL Parameters:**
-
-| Parameter     | Type   | Required | Description                                    |
-| ------------- | ------ | -------- | ---------------------------------------------- |
-| `documentCID` | string | ✅       | The Content Identifier (CID) of the document |
-
-**Query Parameters:**
-
-| Parameter | Type   | Required | Description                         |
-| --------- | ------ | -------- | ----------------------------------- |
-| `network` | string | ✅       | Network type: `public` or `private` |
-
-**Example Request:**
-
-```
-GET /documents/bafkreicm37lqq2rs6zrqubz5vnx26eadwbkj4gvvnzo65d4axlzecp5eem?network=public
-```
-
-**Response:**
-
-```json
-{
-  "id": "0197206c-cc89-7e47-8950-d9f90816dcbf",
-  "name": "Ijazah - Harun Al Rasyid",
-  "cid": "bafkreicm37lqq2rs6zrqubz5vnx26eadwbkj4gvvnzo65d4axlzecp5eem",
-  "size": 97305,
-  "number_of_files": 1,
-  "mime_type": "application/pdf",
-  "group_id": "68d51621-265d-4ab0-a0ee-f3ff95150e31",
-  "keyvalues": {
-    "instansi": "idep.com",
-    "nama_asli": "harun",
-    "role": "IT (Islam Terpadu)"
-  },
-  "created_at": "2025-05-30T09:01:31.334437Z",
-  "isExistEthereum": true,
-  "isExistBase": true
-}
-```
-
-**Response Fields:**
-
-| Field             | Type    | Description                                                    |
-| ----------------- | ------- | -------------------------------------------------------------- |
-| `id`              | string  | Unique identifier of the document                              |
-| `name`            | string  | Name of the document                                           |
-| `cid`             | string  | Content Identifier (CID) on IPFS                              |
-| `size`            | number  | File size in bytes                                             |
-| `number_of_files` | number  | Number of files (always 1 for single file uploads)           |
-| `mime_type`       | string  | MIME type of the file                                          |
-| `group_id`        | string  | Group ID if the document belongs to a group, null otherwise   |
-| `keyvalues`       | object  | Key-value pairs for metadata                                   |
-| `created_at`      | string  | ISO timestamp of when the document was created                |
-| `isExistEthereum` | boolean | Whether the document exists on the Ethereum (Holesky) network |
-| `isExistBase`     | boolean | Whether the document exists on the Base Sepolia network       |
-
-**Notes:**
-
-- This endpoint does not require authentication
-- The endpoint verifies the document's existence on both Ethereum (Holesky) and Base Sepolia networks using the provided CID
-- The document must exist on the Ethereum network (`isExistEthereum: true`) to be considered valid
-- Returns document metadata from IPFS if the document is found and verified on blockchain
-- Useful for retrieving document details and verifying blockchain presence
-
-**Error Responses:**
-
-- `400 Bad Request`: Invalid network parameter or invalid document CID
-- `404 Not Found`: Document not found (CID does not exist on blockchain)
-- `500 Internal Server Error`: Pinata API error or server configuration issue
-
-<br>
-
-### `POST /documents/groups`
-
-Create a new group in the specified network.
-
-🔒 **Authentication Required**: This endpoint requires a valid JWT token obtained from the login process.
-
-**Headers:**
-
-```
-Content-Type: application/json
-Authorization: Bearer <jwt_token>
-```
-
-**Request Body:**
-
-```json
-{
-  "network": "public",
-  "groupName": "My New Group"
-}
-```
-
-**Parameters:**
-
-| Parameter   | Type   | Required | Description                         |
-| ----------- | ------ | -------- | ----------------------------------- |
-| `network`   | string | ✅       | Network type: `public` or `private` |
-| `groupName` | string | ✅       | Name of the group to create         |
-
-**Response:**
-
-```json
-{
-  "data": {
-    "id": "f960765b-e861-4ac7-a5e9-d109eb3bc378",
-    "name": "test",
-    "created_at": "2025-05-29T12:07:34.319357Z"
-  }
-}
-```
-
-**Error Responses:**
-
-- `400 Bad Request`: Invalid network parameter or missing groupName
-- `401 Unauthorized`: Missing or invalid JWT token (authentication required)
-- `500 Internal Server Error`: Pinata API error or server configuration issue
-
-**Authentication Notes:**
-
-- You must first authenticate using the `/auth/login` endpoint to obtain a JWT token
-- Include the JWT token in the `Authorization` header as `Bearer <token>`
-- JWT tokens expire after 5 minutes (configurable via `JWT_EXPIRES_IN`)
-
-<br>
-
-### `GET /documents/groups`
-
-Get list of groups from specified network.
-
-🔒 **Authentication Required**: This endpoint requires a valid JWT token obtained from the login process.
-
-**Headers:**
-
-```
-Content-Type: application/json
-Authorization: Bearer <jwt_token>
-```
-
-**Query Parameters:**
-
-| Parameter | Type   | Required | Description                         |
-| --------- | ------ | -------- | ----------------------------------- |
-| `network` | string | ✅       | Network type: `public` or `private` |
-
-**Example Request:**
-
-```
-GET /documents/groups?network=private
-```
-
-**Response:**
-
-```json
-{
-  "data": {
-    "groups": [
-      {
-        "id": "01919976-955f-7d06-bd59-72e80743fb95",
-        "name": "Test Private Group",
-        "is_public": false,
-        "created_at": "2024-08-28T14:49:31.246596Z"
-      }
-    ],
-    "next_page_token": "MDE5MTk5NzYtOTU1Zi03ZDA2LWJkNTktNzJlODA3NDNmYjk1"
-  }
-}
-```
-
-**Error Responses:**
-
-- `400 Bad Request`: Invalid network parameter
-- `401 Unauthorized`: Missing or invalid JWT token (authentication required)
-- `500 Internal Server Error`: Pinata API error or server configuration issue
-
-**Authentication Notes:**
-
-- You must first authenticate using the `/auth/login` endpoint to obtain a JWT token
-- Include the JWT token in the `Authorization` header as `Bearer <token>`
-- JWT tokens expire after 5 minutes (configurable via `JWT_EXPIRES_IN`)
-
-<br>
-
----
-
-<br>
-
-# 🛡️ Authentication Example
-
-<br>
-
-## Step 1: Get Nonce
-
-```bash
-curl -X GET http://localhost:3000/auth/nonce \
-  -H "Content-Type: application/json"
-```
-
-<br>
-
-## Step 2: Sign Message
-
-Use the `messageString` from the response to sign with your Ethereum wallet:
-
-```javascript
-// Using ethers.js
-import { ethers } from 'ethers';
-
-const wallet = new ethers.Wallet('your-private-key');
-const signature = await wallet.signMessage(messageString);
-```
-
-<br>
-
-## Step 3: Login
-
-```bash
-curl -X POST http://localhost:3000/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "signature": "0x1234567890abcdef..."
-  }'
-```
-
-<br>
-
-## Step 4: Access Protected Endpoints
-
-```bash
-curl -X GET "http://localhost:3000/documents?network=public" \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
-  -H "Content-Type: application/json"
-```
-
-<br>
-
----
-
-<br>
-
-# ⚠️ Error Handling
-
-All endpoints return standardized error responses:
-
-```json
-{
-  "statusCode": 400,
-  "message": "Validation failed",
-  "error": "Bad Request"
-}
-```
-
-<br>
-
-## Common HTTP Status Codes
-
-| Code  | Description                               |
-| ----- | ----------------------------------------- |
-| `200` | ✅ Success                                |
-| `400` | ❌ Bad Request - Invalid input            |
-| `401` | 🔒 Unauthorized - Authentication required |
-| `500` | 💥 Internal Server Error - Server issue   |
-
-<br>
-
----
-
-<br>
-
-# 🔧 Configuration
-
-The following environment variables are required:
-
-```env
-# JWT Configuration
-JWT_SECRET=your-jwt-secret
-JWT_EXPIRES_IN=5m
-
-# Admin Address
-ADDRESS_ADMIN=0x1234567890123456789012345678901234567890
-
-# Pinata Configuration
-PINATA_API_URL=https://api.pinata.cloud
-PINATA_JWT_TOKEN=your-pinata-jwt-token
-
-# Server Configuration
-PORT=3000
-```
-
-<br>
-
----
-
-<br>
-
-# 📝 Validation Rules
-
-<br>
-
-## Network Parameter
-
-- Must be either `"public"` or `"private"`
-- Case-sensitive
-- Required for document endpoints
-
-<br>
-
-## Signature Format
-
-- Must be a valid Ethereum signature (hex string starting with "0x")
-- Must be generated from the exact `messageString` provided by the nonce endpoint
-
-<br>
-
----
-
-<br>
-
-# 🎯 Best Practices
-
-1. **Always get a fresh nonce** before each login attempt
-2. **Store JWT tokens securely** (httpOnly cookies recommended)
-3. **Handle token expiration** gracefully (default: 5 minutes)
-4. **Validate network parameters** before making requests
-5. **Implement proper error handling** for all API calls
-
-<br>
-
----
-
-<br>
-
-# 🔗 Related Resources
-
-- [Ethereum Signature Verification](https://docs.ethers.io/v5/api/utils/signing-key/)
-- [JWT Token Handling](https://jwt.io/)
-- [Pinata IPFS API](https://docs.pinata.cloud/)
+or `multipart/form-data` with a PDF `file` and `issuer`. With a file, the backend recomputes SHA-256
+over the exact bytes and derives `documentId`. If an explicit ID is also supplied it must match the
+derived ID. The response is the same canonical read model; a CID’s availability alone never passes
+verification.
+
+## Pinata metadata endpoints
+
+These protected endpoints manage storage metadata only and do not change protocol lifecycle:
+
+- `GET /documents?network=public|private&groupId=<optional>`
+- `GET /documents/groups?network=public|private`
+- `POST /documents/groups` with `{ "network": "public", "groupName": "..." }`
+
+## Error semantics
+
+|  HTTP | Example meaning                                                      |
+| ----: | -------------------------------------------------------------------- |
+| `400` | malformed document ID, missing search identity, invalid SIWE binding |
+| `401` | missing/invalid session or SIWE signature                            |
+| `403` | JWT subject differs from issuer or issuer not authorized             |
+| `404` | document/intent not found                                            |
+| `409` | stale nonce/version, inactive record, conflicting idempotency input  |
+| `422` | invalid PDF/signature/CID/digest/commitment                          |
+| `503` | source RPC, destination RPC, storage, or readiness unavailable       |
+
+RPC failures are never converted to “document not found.” Storage failure is never converted to
+“inauthentic.” Destination failure never changes canonical source lifecycle.

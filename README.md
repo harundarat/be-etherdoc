@@ -1,98 +1,116 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Etherdoc Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS backend for Etherdoc’s signed document lifecycle. The canonical source is
+`EtherdocSender` on Mantle Sepolia; `EtherdocReceiver` on Ink Sepolia is a replicated view delivered
+through Chainlink CCIP.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+The backend never treats PostgreSQL, Pinata, or the destination contract as stronger evidence than
+the source contract. Document identity is:
 
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
-
-```bash
-$ pnpm install
+```text
+contentDigest = sha256(exact file bytes)
+documentId = keccak256(abi.encode(issuer, contentDigest))
 ```
 
-## Compile and run the project
+Contract ABI, network configuration, protocol constants, and deployment registry are generated
+from `sc-etherdoc` commit `175b902733794f9466ef73dc97f69a074b4b80c8`.
+
+## Current deployment status
+
+The baseline contracts are not yet deployed to testnet, so the backend requires validated sender
+and receiver address/block overrides. Deployment is blocked until the wallet, funding, clean
+worktree, and explicit broadcast approval requirements in
+[testnet-deployment-preflight.md](docs/testnet-deployment-preflight.md) are satisfied.
+
+## Requirements
+
+- Node.js 22
+- pnpm 10
+- PostgreSQL 16
+- access to Mantle Sepolia and Ink Sepolia RPC endpoints
+- Pinata credentials
+- a backend signer authorized as sender `OPERATOR` and used to submit permissionless `*BySig` calls
+
+Do not put user, admin, or production signer private keys in Git. `BACKEND_PRIVATE_KEY` is only for
+controlled local/testnet runtime; production should inject a managed signer secret.
+
+## Setup
 
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+pnpm install --frozen-lockfile
+cp .env.example .env
+pnpm db:migrate
+pnpm start:dev
 ```
 
-## Run tests
+Fill every required value in `.env`. Until deployment manifests exist, set:
+
+```text
+ETHERDOC_SENDER_ADDRESS
+ETHERDOC_SENDER_DEPLOYMENT_BLOCK
+ETHERDOC_RECEIVER_ADDRESS
+ETHERDOC_RECEIVER_DEPLOYMENT_BLOCK
+```
+
+Startup validates configuration, RPC chain IDs, deployed bytecode, Router/LINK bindings, trusted
+remote configuration, and backend signer roles. A mismatch stops the application.
+
+## Commands
 
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+pnpm contracts:check       # reject drift from the exact contract baseline
+pnpm db:migrate            # checksum-protected, advisory-locked migrations
+pnpm lint:check            # read-only lint gate
+pnpm test --runInBand      # unit tests
+pnpm test:e2e              # deterministic in-memory HTTP tests
+pnpm test:integration      # requires DATABASE_URL pointing at a test database
+pnpm build
+pnpm reconcile             # read-only reconciliation candidate count
+pnpm reconcile --enqueue   # idempotently enqueue recovery work
 ```
 
-## Deployment
+`pnpm reconcile` is dry-run by default. Review the candidate counts and the recovery runbook before
+using `--enqueue`.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## Architecture
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+```text
+User wallet ── SIWE ──> API ── PostgreSQL intent/outbox
+     │                    │
+     └─ EIP-712 signature ┴─> backend relayer ──> EtherdocSender (canonical)
+                                                    │
+                                              MessageSent / CCIP
+                                                    │
+                                                    v
+                                             EtherdocReceiver
 
-```bash
-$ pnpm install -g mau
-$ mau deploy
+Pinata stores exact bytes and metadata preimages; it does not determine authenticity.
+Finalized event indexers rebuild PostgreSQL projections and detect reorgs by cursor block hash.
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Source transaction confirmation and destination CCIP confirmation are separate states. Unknown
+broadcast outcomes are reconciled by signer nonce plus canonical events and are never blindly
+resent.
 
-## Resources
+## API and operations
 
-Check out a few resources that may come in handy when working with NestJS:
+- [API reference](docs/api-doc.md)
+- [Operations and recovery runbook](docs/operations-runbook.md)
+- [Smart-contract compatibility baseline](docs/smart-contract-compatibility.md)
+- [Synchronization checklist](docs/TODO-smart-contract-sync.md)
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+The primary API flow is:
 
-## Support
+1. `POST /auth/nonce`
+2. sign the returned SIWE message
+3. `POST /auth/verify`
+4. prepare a register/revoke/supersede intent
+5. sign the exact returned EIP-712 typed data
+6. `POST /documents/intents/:intentId/signature`
+7. poll the intent and canonical document read endpoints
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+The server accepts an `etherdoc-auth` HTTP-only cookie or bearer JWT for protected endpoints.
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Private project (`UNLICENSED`).

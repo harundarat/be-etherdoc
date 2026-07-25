@@ -484,8 +484,8 @@ Kemudian:
 - [x] Bedakan `MessageReceived` dan `MessageIgnored`.
 - [x] Tandai message pending terlalu lama sebagai `RECOVERY_REQUIRED`.
 - [x] Jangan dispatch ulang message yang sudah diterima router.
-- [ ] Hubungkan recovery state dengan CCIP recovery runbook.
-- [ ] Buat reconciliation command yang idempotent.
+- [x] Hubungkan recovery state dengan CCIP recovery runbook.
+- [x] Buat reconciliation command yang idempotent.
 
 ### Kriteria Keberhasilan
 
@@ -557,9 +557,9 @@ Kemudian:
       reorg.
 - [x] Tambahkan CI gate untuk contract artifact drift.
 - [x] Gunakan lint check yang tidak otomatis menulis file pada CI.
-- [ ] Ganti README bawaan NestJS.
-- [ ] Sinkronkan API documentation.
-- [ ] Dokumentasikan:
+- [x] Ganti README bawaan NestJS.
+- [x] Sinkronkan API documentation.
+- [x] Dokumentasikan:
   - wallet roles tanpa secret;
   - deployment registry;
   - environment variables;
@@ -568,18 +568,18 @@ Kemudian:
   - CCIP recovery;
   - reconciliation;
   - rollback.
-- [ ] Hapus konfigurasi, ABI, DTO, endpoint, dan dokumentasi lama.
+- [x] Hapus konfigurasi, ABI, DTO, endpoint, dan dokumentasi lama.
 - [ ] Jalankan final reconciliation dan smoke test sebelum cutover.
 
 ### Kriteria Keberhasilan
 
 - [ ] Contract dan backend quality gate lulus.
 - [ ] Tidak ada secret di Git atau log.
-- [ ] Tidak ada referensi aktif ke Holešky, Base Sepolia, address lama, `addDocument`, atau
+- [x] Tidak ada referensi aktif ke Holešky, Base Sepolia, address lama, `addDocument`, atau
       `documentExists(string)`.
-- [ ] Register sampai destination confirmation dapat ditelusuri dengan intent ID, document ID,
+- [x] Register sampai destination confirmation dapat ditelusuri dengan intent ID, document ID,
       source tx hash, dan CCIP message ID.
-- [ ] Runbook dapat dijalankan tanpa membaca source code internal.
+- [x] Runbook dapat dijalankan tanpa membaca source code internal.
 
 ---
 
