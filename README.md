@@ -96,6 +96,7 @@ resent.
 
 - [API reference](docs/api-doc.md)
 - [Operations and recovery runbook](docs/operations-runbook.md)
+- [Local readiness audit and remaining blockers](docs/local-readiness-audit.md)
 - [Smart-contract compatibility baseline](docs/smart-contract-compatibility.md)
 - [Synchronization checklist](docs/TODO-smart-contract-sync.md)
 

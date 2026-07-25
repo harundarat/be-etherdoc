@@ -574,7 +574,7 @@ Kemudian:
 ### Kriteria Keberhasilan
 
 - [ ] Contract dan backend quality gate lulus.
-- [ ] Tidak ada secret di Git atau log.
+- [x] Tidak ada secret di Git atau log.
 - [x] Tidak ada referensi aktif ke Holešky, Base Sepolia, address lama, `addDocument`, atau
       `documentExists(string)`.
 - [x] Register sampai destination confirmation dapat ditelusuri dengan intent ID, document ID,

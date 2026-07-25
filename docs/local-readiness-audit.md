@@ -1,0 +1,66 @@
+# Local Readiness Audit
+
+Audit date: 25 July 2026.
+
+## Revisions
+
+- Backend implementation head before this audit record:
+  `9eb2707838dcccd9775b0509ee111ae765614540`
+- Contract baseline: `175b902733794f9466ef73dc97f69a074b4b80c8`
+- Generated backend contract artifact provenance matches the contract baseline.
+
+The backend worktree was clean when this audit began. The contract worktree still contains the
+user-owned untracked `soljson-latest.js`; it was not read, changed, moved, or deleted.
+
+## Backend gates
+
+| Gate                                                   | Result                           |
+| ------------------------------------------------------ | -------------------------------- |
+| `pnpm contracts:check`                                 | pass                             |
+| `pnpm lint:check`                                      | pass, no write                   |
+| `pnpm test --runInBand`                                | pass: 15 suites, 67 tests        |
+| `pnpm test:e2e`                                        | pass: 4 deterministic HTTP tests |
+| `pnpm test:integration`                                | pass: 5 PostgreSQL 16 tests      |
+| migrations applied twice to clean PostgreSQL 16        | pass, 4 migrations               |
+| `pnpm build`                                           | pass                             |
+| `pnpm reconcile`                                       | pass in dry-run mode             |
+| repeated `pnpm reconcile --enqueue` on an empty schema | pass, no duplicate work          |
+
+The PostgreSQL integration suite covers migration inventory, idempotency/nonce uniqueness,
+concurrent `SKIP LOCKED` claims, expired worker-lease recovery, chain-event replay, and
+reconciliation-job deduplication.
+
+## Contract gates
+
+The Foundry results and live read-only network preflight are recorded in
+[testnet-deployment-preflight.md](testnet-deployment-preflight.md). Build, lint, tests, coverage,
+contract size, gas snapshot, dry run, and local deployment workflow logic pass. The exact deployment
+workflow remains blocked by the contract worktree clean-source guard.
+
+## Legacy and secret scan
+
+Active source, README, API documentation, runbook, example environment, scripts, CI, and tests were
+searched for the removed network/API names and responses. The only active-source match is a
+negative ABI regression assertion proving the removed function is absent.
+
+No tracked runtime `.env` exists. Secret-shaped tracked values are deterministic unit-test fixtures
+and digest vectors; no runtime key, mnemonic, JWT, Pinata token, or encrypted keystore was added.
+No private key was copied from the old backend environment, contract workspace, or wallet tooling.
+
+## Remaining release blockers
+
+Local backend work can proceed no further toward a live smoke test until all of these are supplied
+or resolved:
+
+1. decide how the contract repository should handle `soljson-latest.js` so the exact clean-worktree
+   gate passes;
+2. create/import an encrypted named Foundry admin account;
+3. provide and approve distinct public addresses for admin/governance/pauser, backend operator, and
+   user issuer;
+4. fund native gas on the required chains and identify/fund the LINK source;
+5. populate RPC/API settings and public role addresses in the contract environment;
+6. review the complete constructor/role/funding plan and explicitly approve testnet broadcast.
+
+The previously discovered candidate backend address has zero native balance on Mantle Sepolia and
+Ink Sepolia and was not automatically assigned any role. No testnet transaction has been
+broadcast.
