@@ -163,7 +163,8 @@ Status dispatch per destination:
       clean-worktree deployment.
 - [ ] Buat atau import encrypted Foundry account untuk admin wallet.
 - [ ] Catat public address admin wallet tanpa mengekspor private key.
-- [ ] Tentukan public address backend operator/relayer.
+- [x] Tentukan public address backend operator/relayer:
+      `0x0f70A38610bbdcE47f6fc7AD6C4b1E5A6C68b62A`.
 - [ ] Tentukan public address user test wallet.
 - [ ] Periksa native token balance ketiga wallet.
 - [ ] Periksa ketersediaan LINK untuk mendanai sender.

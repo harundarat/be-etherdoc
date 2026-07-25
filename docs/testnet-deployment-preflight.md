@@ -52,33 +52,35 @@ dokumen.
 
 `cast wallet list` tidak menemukan named Foundry account. `sc-etherdoc/.env` juga belum tersedia.
 
-Backend lama mempunyai satu candidate public address:
+Pada 25 Juli 2026, backend operator key baru dibuat khusus untuk testnet/dev dan disimpan sebagai
+`BACKEND_PRIVATE_KEY` di ignored file `be-etherdoc/.env` dengan permission file `0600`. Private key
+tidak dicetak, didokumentasikan, atau dimasukkan ke Git. Public address yang diturunkan darinya:
 
 ```text
-0xB34a4eAECB848d573a0410bc305787d5B69328B8
+0x0f70A38610bbdcE47f6fc7AD6C4b1E5A6C68b62A
 ```
 
-Address itu adalah nilai `ADDRESS_ADMIN` sekaligus address yang diturunkan secara lokal dari signer
-backend lama. Private key tidak dicetak atau disalin. Sesuai wallet policy, address ini tidak akan
-otomatis dipakai untuk deployment atau diberi role apa pun. Pemilik harus mengonfirmasi apakah ia
-boleh menjadi backend operator/relayer. Address yang sama tidak direkomendasikan untuk admin dan
-operator karena mematahkan pemisahan tanggung jawab.
+Address lama `0xB34a4eAECB848d573a0410bc305787d5B69328B8`, yang sebelumnya dipakai sekaligus
+sebagai `ADDRESS_ADMIN` dan signer backend, tidak lagi menjadi candidate operator. Admin/deployer
+tetap harus menggunakan named encrypted Foundry account yang berbeda, dan user issuer tetap
+user-controlled.
 
 Read-only balance check:
 
-| Address | Mantle Sepolia native | Ink Sepolia native |
-| --- | ---: | ---: |
-| `0xB34a4eAECB848d573a0410bc305787d5B69328B8` | `0` wei | `0` wei |
+| Address | Mantle native | Ink native | Mantle LINK | Ink LINK |
+| --- | ---: | ---: | ---: | ---: |
+| `0x0f70A38610bbdcE47f6fc7AD6C4b1E5A6C68b62A` | `0` wei | `0` wei | `0` | `0` |
 
 Admin/deployer dan user issuer address belum diketahui, sehingga balance mereka dan ketersediaan
-LINK untuk funder belum dapat diperiksa.
+LINK untuk funder belum dapat diperiksa. Faucet resmi Mantle, Ink, dan Chainlink memerlukan koneksi
+wallet atau autentikasi interaktif, sehingga tidak ada faucet claim yang dilakukan secara otomatis.
 
 ## Blocker sebelum approval gate
 
 1. Pemilik perlu menentukan penanganan `sc-etherdoc/soljson-latest.js` agar deployment berasal dari
    worktree yang lolos clean-worktree guard. File belum dibaca, diubah, dipindah, atau dihapus.
 2. Named encrypted Foundry admin account belum ada.
-3. Public address admin/deployer, backend operator, dan user issuer belum disepakati.
+3. Public address admin/deployer dan user issuer belum diketahui.
 4. Ketiga wallet belum terbukti mempunyai native gas; LINK funder juga belum ditentukan.
 5. `sc-etherdoc/.env` perlu diisi RPC/API key dan public role address tanpa private key.
 
