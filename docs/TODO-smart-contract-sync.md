@@ -31,7 +31,7 @@ urutan karena task berikutnya bergantung pada artefak dan keputusan task sebelum
 
 ## Prinsip dan Batasan
 
-- [ ] Perlakukan `sc-etherdoc` sebagai source of truth tunggal.
+- [x] Perlakukan `sc-etherdoc` sebagai source of truth tunggal.
 - [ ] Jangan mengubah smart contract untuk mempertahankan kompatibilitas dengan backend stale.
 - [ ] Jangan memakai ABI, chain selector, atau contract address hardcoded dari backend lama.
 - [ ] Jangan membaca, mencetak, memindahkan, atau menyimpan private key pengguna.
@@ -113,9 +113,9 @@ Status dispatch per destination:
 
 ### TODO
 
-- [ ] Catat commit SHA `sc-etherdoc` yang menjadi baseline integrasi.
-- [ ] Jalankan `forge build` dan `forge test`.
-- [ ] Buat compatibility matrix yang memuat:
+- [x] Catat commit SHA `sc-etherdoc` yang menjadi baseline integrasi.
+- [x] Jalankan `forge build` dan `forge test`.
+- [x] Buat compatibility matrix yang memuat:
   - public/external function sender dan receiver;
   - struct dan enum;
   - event dan custom error;
@@ -124,7 +124,7 @@ Status dispatch per destination:
   - document lifecycle dan versioning;
   - source/destination chain;
   - role dan pause authority.
-- [ ] Catat seluruh integrasi stale pada backend:
+- [x] Catat seluruh integrasi stale pada backend:
   - Holešky;
   - Base Sepolia;
   - `addDocument`;
@@ -132,14 +132,14 @@ Status dispatch per destination:
   - address lama;
   - ABI manual lama;
   - identity yang hanya memakai CID.
-- [ ] Dokumentasikan bahwa CID bukan canonical document identity.
+- [x] Dokumentasikan bahwa CID bukan canonical document identity.
 
 ### Kriteria Keberhasilan
 
-- [ ] Compatibility matrix cocok dengan Solidity source dan ABI hasil kompilasi.
-- [ ] Commit baseline tercatat dan dapat direproduksi.
-- [ ] Seluruh call site backend yang stale sudah terinventarisasi.
-- [ ] Smart contract build dan test lulus tanpa perubahan behavior untuk mengakomodasi backend lama.
+- [x] Compatibility matrix cocok dengan Solidity source dan ABI hasil kompilasi.
+- [x] Commit baseline tercatat dan dapat direproduksi.
+- [x] Seluruh call site backend yang stale sudah terinventarisasi.
+- [x] Smart contract build dan test lulus tanpa perubahan behavior untuk mengakomodasi backend lama.
 
 ---
 
