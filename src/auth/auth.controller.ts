@@ -1,11 +1,7 @@
 import { Body, Controller, Post, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthService, type NonceChallenge } from './auth.service';
-import {
-  LoginResponseDto,
-  RequestNonceDto,
-  VerifyAuthDto,
-} from './dto';
+import { LoginResponseDto, RequestNonceDto, VerifyAuthDto } from './dto';
 import { ConfigService } from '@nestjs/config';
 import type { RuntimeConfig } from '../config/runtime-config';
 

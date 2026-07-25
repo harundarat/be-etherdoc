@@ -26,9 +26,7 @@ describe('buildRuntimeConfig', () => {
     const config = buildRuntimeConfig(validEnvironment());
 
     expect(config.blockchain.source.chainId).toBe(5003);
-    expect(config.blockchain.source.chainSelector).toBe(
-      8236463271206331221n,
-    );
+    expect(config.blockchain.source.chainSelector).toBe(8236463271206331221n);
     expect(config.blockchain.destination.chainId).toBe(763373);
     expect(config.blockchain.destination.chainSelector).toBe(
       9763904284804119144n,

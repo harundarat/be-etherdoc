@@ -23,6 +23,9 @@ import {
   classifyBlockchainError,
 } from './blockchain.errors';
 
+type EtherdocPublicClient = ReturnType<typeof createPublicClient>;
+type EtherdocWalletClient = ReturnType<typeof createWalletClient>;
+
 function networkChain(
   id: number,
   name: string,
@@ -52,10 +55,10 @@ export class BlockchainService implements OnModuleInit {
   private readonly logger = new Logger(BlockchainService.name);
   private readonly runtime: RuntimeConfig;
 
-  readonly destinationReader;
-  readonly operatorDispatch;
-  readonly relayerSubmission;
-  readonly sourceReader;
+  readonly destinationReader: EtherdocPublicClient;
+  readonly operatorDispatch: EtherdocWalletClient;
+  readonly relayerSubmission: EtherdocWalletClient;
+  readonly sourceReader: EtherdocPublicClient;
 
   constructor(configService: ConfigService) {
     this.runtime = configService.getOrThrow<RuntimeConfig>('runtime');
@@ -226,7 +229,11 @@ export class BlockchainService implements OnModuleInit {
 
     this.assertAddress(sourceRouter, source.router, 'sender router');
     this.assertAddress(sourceLink, source.linkToken, 'sender LINK token');
-    this.assertAddress(destinationRouter, destination.router, 'receiver router');
+    this.assertAddress(
+      destinationRouter,
+      destination.router,
+      'receiver router',
+    );
     this.assertAddress(trustedSender, source.contractAddress, 'trusted sender');
     if (receiverSourceChainId !== BigInt(source.chainId)) {
       throw new BlockchainClientError(
@@ -255,7 +262,11 @@ export class BlockchainService implements OnModuleInit {
     }
   }
 
-  private assertAddress(actual: Address, expected: Address, label: string): void {
+  private assertAddress(
+    actual: Address,
+    expected: Address,
+    label: string,
+  ): void {
     if (getAddress(actual) !== getAddress(expected)) {
       throw new BlockchainClientError(
         BlockchainErrorKind.CHAIN_MISMATCH,

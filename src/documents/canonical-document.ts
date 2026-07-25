@@ -149,12 +149,11 @@ export function parseCanonicalCid(
     throw new CanonicalDocumentError('Only CIDv1 is supported');
   }
   if (codec !== CID_CODEC_RAW && codec !== CID_CODEC_DAG_PB) {
-    throw new CanonicalDocumentError('Only raw and dag-pb CID codecs are supported');
+    throw new CanonicalDocumentError(
+      'Only raw and dag-pb CID codecs are supported',
+    );
   }
-  if (
-    multihash !== MULTIHASH_SHA2_256 ||
-    digestLength !== SHA2_256_LENGTH
-  ) {
+  if (multihash !== MULTIHASH_SHA2_256 || digestLength !== SHA2_256_LENGTH) {
     throw new CanonicalDocumentError('CID must use a SHA2-256 multihash');
   }
   const cidDigest = bytesToHex(decoded.slice(4));
@@ -198,7 +197,11 @@ export function canonicalizeMetadata(
   if (!Number.isSafeInteger(input.byteLength) || input.byteLength <= 0) {
     throw new CanonicalDocumentError('Metadata byteLength must be positive');
   }
-  if (!/^[a-z0-9][a-z0-9.+-]{0,126}\/[a-z0-9][a-z0-9.+-]{0,126}$/i.test(input.mimeType)) {
+  if (
+    !/^[a-z0-9][a-z0-9.+-]{0,126}\/[a-z0-9][a-z0-9.+-]{0,126}$/i.test(
+      input.mimeType,
+    )
+  ) {
     throw new CanonicalDocumentError('Metadata mimeType is invalid');
   }
   if (!['private', 'public'].includes(input.storageNetwork)) {
@@ -229,10 +232,7 @@ export function canonicalizeMetadata(
   };
 }
 
-export function computeDocumentId(
-  issuer: Address,
-  contentDigest: Hex,
-): Hex {
+export function computeDocumentId(issuer: Address, contentDigest: Hex): Hex {
   return keccak256(
     encodeAbiParameters(
       [{ type: 'address' }, { type: 'bytes32' }],

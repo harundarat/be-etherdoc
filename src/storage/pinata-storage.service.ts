@@ -24,6 +24,7 @@ export interface VerifiedPinnedArtifact extends ParsedCanonicalCid {
   contentDigest: Hex;
   providerId: string | null;
   retrievedBytes: number;
+  storageFilename: string;
 }
 
 @Injectable()
@@ -40,11 +41,13 @@ export class PinataStorageService {
     metadata: CanonicalMetadata,
   ): Promise<VerifiedPinnedArtifact> {
     const contentDigest = sha256Digest(file.buffer);
+    const storageFilename =
+      file.mimetype === 'application/pdf' ? 'document.pdf' : 'document.bin';
     const form = new FormData();
     form.append(
       'file',
       new Blob([file.buffer], { type: file.mimetype }),
-      file.originalname,
+      storageFilename,
     );
     form.append('network', storageNetwork);
     form.append('keyvalues', metadata.json);
@@ -55,11 +58,9 @@ export class PinataStorageService {
         body: form,
         headers: { Authorization: `Bearer ${this.runtime.pinata.jwt}` },
         method: 'POST',
-        signal: AbortSignal.timeout(
-          this.runtime.blockchain.requestTimeoutMs,
-        ),
+        signal: AbortSignal.timeout(this.runtime.blockchain.requestTimeoutMs),
       });
-    } catch (error) {
+    } catch {
       throw new ServiceUnavailableException({
         error: 'STORAGE_UNAVAILABLE',
         message: 'Pinata upload request failed',
@@ -90,15 +91,12 @@ export class PinataStorageService {
       });
     }
 
-    const retrievalUrl =
-      `${this.runtime.pinata.gatewayUrl}/ipfs/${encodeURIComponent(actualCid)}`;
+    const retrievalUrl = `${this.runtime.pinata.gatewayUrl}/ipfs/${encodeURIComponent(actualCid)}`;
     let retrieval: Response;
     try {
       retrieval = await fetch(retrievalUrl, {
         headers: { Authorization: `Bearer ${this.runtime.pinata.jwt}` },
-        signal: AbortSignal.timeout(
-          this.runtime.blockchain.requestTimeoutMs,
-        ),
+        signal: AbortSignal.timeout(this.runtime.blockchain.requestTimeoutMs),
       });
     } catch {
       throw new ServiceUnavailableException({
@@ -126,6 +124,7 @@ export class PinataStorageService {
       contentDigest,
       providerId: upload.data?.id ?? null,
       retrievedBytes: retrievedBytes.byteLength,
+      storageFilename,
     };
   }
 }

@@ -41,10 +41,7 @@ describe('AuthService', () => {
       | undefined;
     const database = {
       query: jest.fn(
-        (
-          _query: string,
-          values: [string, string, string, Date, Date],
-        ) => {
+        (_query: string, values: [string, string, string, Date, Date]) => {
           inserted = {
             address: values[0],
             nonce: values[1],
@@ -56,9 +53,7 @@ describe('AuthService', () => {
       ),
       transaction: jest.fn(
         async (
-          operation: (client: {
-            query: jest.Mock;
-          }) => Promise<unknown>,
+          operation: (client: { query: jest.Mock }) => Promise<unknown>,
         ) => {
           let calls = 0;
           return operation({

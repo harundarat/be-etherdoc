@@ -2,90 +2,127 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   HttpStatus,
   Param,
   ParseFilePipeBuilder,
   Post,
   Query,
+  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import type { Request } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Hex } from 'viem';
 import { DocumentsService } from './documents.service';
+import { DocumentIntentsService } from './document-intents.service';
 import {
   CreateGroupDto,
   GetListFilesDto,
   GetListGroupsDto,
-  UploadFileDto,
+  RegisterIntentDto,
+  RevokeIntentDto,
+  SubmitIntentSignatureDto,
+  SupersedeIntentDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { FileInterceptor } from '@nestjs/platform-express';
+import type { AuthenticatedUser } from '../auth/jwt.strategy';
+
+type AuthenticatedRequest = Request & { user: AuthenticatedUser };
+
+const filePipe = () =>
+  new ParseFilePipeBuilder()
+    .addFileTypeValidator({ fileType: 'application/pdf' })
+    .addMaxSizeValidator({ maxSize: 5 * 1024 * 1024 })
+    .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY });
 
 @Controller('documents')
 export class DocumentsController {
-  constructor(private readonly documentsService: DocumentsService) {}
+  constructor(
+    private readonly documentsService: DocumentsService,
+    private readonly intentsService: DocumentIntentsService,
+  ) {}
 
-  @Post('/search')
+  @UseGuards(JwtAuthGuard)
+  @Post('intents/register')
   @UseInterceptors(FileInterceptor('file'))
-  async getDocumentByFile(
-    @UploadedFile(
-      new ParseFilePipeBuilder()
-        .addFileTypeValidator({ fileType: 'application/pdf' })
-        .addMaxSizeValidator({ maxSize: 5 * 1024 * 1024 })
-        .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY }),
-    )
-    file: Express.Multer.File,
+  prepareRegister(
+    @Req() request: AuthenticatedRequest,
+    @UploadedFile(filePipe()) file: Express.Multer.File,
+    @Body() body: RegisterIntentDto,
   ) {
-    return await this.documentsService.getDocumentByFile(file);
+    return this.intentsService.prepareRegister(
+      request.user.address,
+      file,
+      body,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post()
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadDocument(
-    @UploadedFile(
-      new ParseFilePipeBuilder()
-        .addFileTypeValidator({
-          fileType: 'application/pdf',
-        })
-        .addMaxSizeValidator({ maxSize: 5 * 1024 * 1024 })
-        .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY }),
-    )
-    file: Express.Multer.File,
-    @Body() uploadFileDto: UploadFileDto,
+  @Post('intents/revoke')
+  prepareRevoke(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: RevokeIntentDto,
   ) {
-    return await this.documentsService.uploadDocument(file, uploadFileDto);
+    return this.intentsService.prepareRevoke(request.user.address, body);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('intents/supersede')
+  @UseInterceptors(FileInterceptor('file'))
+  prepareSupersede(
+    @Req() request: AuthenticatedRequest,
+    @UploadedFile(filePipe()) file: Express.Multer.File,
+    @Body() body: SupersedeIntentDto,
+  ) {
+    return this.intentsService.prepareSupersede(
+      request.user.address,
+      file,
+      body,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('intents/:intentId/signature')
+  @HttpCode(HttpStatus.ACCEPTED)
+  submitSignature(
+    @Req() request: AuthenticatedRequest,
+    @Param('intentId') intentId: string,
+    @Body() body: SubmitIntentSignatureDto,
+  ) {
+    return this.intentsService.submitSignature(
+      request.user.address,
+      intentId,
+      body.signature as Hex,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('intents/:intentId')
+  getIntent(
+    @Req() request: AuthenticatedRequest,
+    @Param('intentId') intentId: string,
+  ) {
+    return this.intentsService.getIntent(request.user.address, intentId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('groups')
+  getListGroups(@Query() query: GetListGroupsDto) {
+    return this.documentsService.getListGroups(query.network);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('groups')
+  createGroup(@Body() body: CreateGroupDto) {
+    return this.documentsService.createGroup(body.network, body.groupName);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get()
-  async getListFiles(@Query() getListFilesDto: GetListFilesDto) {
-    return await this.documentsService.getListFiles(
-      getListFilesDto.network,
-      getListFilesDto.groupId,
-    );
-  }
-
-  @Get('/:documentCID')
-  async getDocumentById(
-    @Param('documentCID') documentCID: string,
-    @Query('network') network: 'public' | 'private',
-  ) {
-    return this.documentsService.getDocumentByCid(network, documentCID);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('/groups')
-  async getListGroups(@Query() getListGroupsDto: GetListGroupsDto) {
-    return await this.documentsService.getListGroups(getListGroupsDto.network);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Post('/groups')
-  async createGroup(@Body() createGroupDto: CreateGroupDto) {
-    return await this.documentsService.createGroup(
-      createGroupDto.network,
-      createGroupDto.groupName,
-    );
+  getListFiles(@Query() query: GetListFilesDto) {
+    return this.documentsService.getListFiles(query.network, query.groupId);
   }
 }

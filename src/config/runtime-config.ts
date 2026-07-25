@@ -28,6 +28,9 @@ export interface RuntimeConfig {
     expiresIn: string;
     secret: string;
   };
+  intent: {
+    signatureTtlSeconds: number;
+  };
   pinata: {
     apiUrl: string;
     gatewayUrl: string;
@@ -74,7 +77,9 @@ function integer(
   }
   const value = Number(raw);
   if (!Number.isSafeInteger(value) || value < minimum) {
-    throw new Error(`${name} must be an integer greater than or equal to ${minimum}`);
+    throw new Error(
+      `${name} must be an integer greater than or equal to ${minimum}`,
+    );
   }
   return value;
 }
@@ -113,7 +118,9 @@ function deploymentAddress(
 function privateKey(environment: Environment): Hex {
   const value = required(environment, 'BACKEND_PRIVATE_KEY');
   if (!/^0x[0-9a-fA-F]{64}$/.test(value)) {
-    throw new Error('BACKEND_PRIVATE_KEY must be a 32-byte 0x-prefixed hex value');
+    throw new Error(
+      'BACKEND_PRIVATE_KEY must be a 32-byte 0x-prefixed hex value',
+    );
   }
   return value as Hex;
 }
@@ -159,12 +166,7 @@ export function buildRuntimeConfig(
       destination: {
         chainId: destinationNetwork.chainId,
         chainSelector: BigInt(destinationNetwork.chainSelector),
-        confirmations: integer(
-          environment,
-          'INK_CONFIRMATION_DEPTH',
-          2,
-          0,
-        ),
+        confirmations: integer(environment, 'INK_CONFIRMATION_DEPTH', 2, 0),
         contractAddress: deploymentAddress(
           environment,
           'ETHERDOC_RECEIVER_ADDRESS',
@@ -182,12 +184,7 @@ export function buildRuntimeConfig(
       source: {
         chainId: sourceNetwork.chainId,
         chainSelector: BigInt(sourceNetwork.chainSelector),
-        confirmations: integer(
-          environment,
-          'MANTLE_CONFIRMATION_DEPTH',
-          2,
-          0,
-        ),
+        confirmations: integer(environment, 'MANTLE_CONFIRMATION_DEPTH', 2, 0),
         contractAddress: deploymentAddress(
           environment,
           'ETHERDOC_SENDER_ADDRESS',
@@ -206,6 +203,13 @@ export function buildRuntimeConfig(
       expiresIn: environment.JWT_EXPIRES_IN?.trim() || '15m',
       secret: jwtSecret,
     },
+    intent: {
+      signatureTtlSeconds: integer(
+        environment,
+        'INTENT_SIGNATURE_TTL_SECONDS',
+        600,
+      ),
+    },
     pinata: {
       apiUrl: url(environment, 'PINATA_API_URL'),
       gatewayUrl: url(environment, 'PINATA_GATEWAY_URL'),
@@ -216,11 +220,7 @@ export function buildRuntimeConfig(
     siwe: {
       domain: siweDomain,
       nonceTtlSeconds: integer(environment, 'SIWE_NONCE_TTL_SECONDS', 300),
-      sessionTtlSeconds: integer(
-        environment,
-        'SIWE_SESSION_TTL_SECONDS',
-        900,
-      ),
+      sessionTtlSeconds: integer(environment, 'SIWE_SESSION_TTL_SECONDS', 900),
       uri: url(environment, 'SIWE_URI'),
     },
   };

@@ -7,8 +7,7 @@ import type { RuntimeConfig } from './config/runtime-config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const runtime =
-    app.get(ConfigService).getOrThrow<RuntimeConfig>('runtime');
+  const runtime = app.get(ConfigService).getOrThrow<RuntimeConfig>('runtime');
 
   app.use(cookieParser());
 

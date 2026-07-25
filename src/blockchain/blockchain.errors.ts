@@ -75,9 +75,5 @@ export function classifyBlockchainError(
       error,
     );
   }
-  return new BlockchainClientError(
-    BlockchainErrorKind.UNKNOWN,
-    message,
-    error,
-  );
+  return new BlockchainClientError(BlockchainErrorKind.UNKNOWN, message, error);
 }

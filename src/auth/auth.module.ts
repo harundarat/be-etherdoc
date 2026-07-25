@@ -14,8 +14,7 @@ import type { RuntimeConfig } from '../config/runtime-config';
       global: true,
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
-        const runtime =
-          configService.getOrThrow<RuntimeConfig>('runtime');
+        const runtime = configService.getOrThrow<RuntimeConfig>('runtime');
         return {
           secret: runtime.jwt.secret,
           signOptions: {

@@ -108,7 +108,9 @@ export class AuthService {
       );
       const challenge = result.rows[0];
       if (!challenge) {
-        throw new UnauthorizedException('SIWE nonce is missing or already used');
+        throw new UnauthorizedException(
+          'SIWE nonce is missing or already used',
+        );
       }
       if (
         challenge.expires_at.getTime() <= Date.now() ||
@@ -179,10 +181,7 @@ export class AuthService {
     }
     const lifetime =
       parsed.expirationTime.getTime() - parsed.issuedAt.getTime();
-    if (
-      lifetime <= 0 ||
-      lifetime > this.runtime.siwe.nonceTtlSeconds * 1_000
-    ) {
+    if (lifetime <= 0 || lifetime > this.runtime.siwe.nonceTtlSeconds * 1_000) {
       throw new UnauthorizedException('SIWE message lifetime is invalid');
     }
   }

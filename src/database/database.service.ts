@@ -77,10 +77,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async claimOutboxJobs(
-    workerId: string,
-    limit: number,
-  ): Promise<OutboxJob[]> {
+  async claimOutboxJobs(workerId: string, limit: number): Promise<OutboxJob[]> {
     return this.transaction(async (client) => {
       const result = await client.query<{
         attempt_count: number;

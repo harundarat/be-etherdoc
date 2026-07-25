@@ -63,11 +63,7 @@ describe('PinataStorageService', () => {
       .mockResolvedValueOnce(new Response(upload.buffer, { status: 200 }));
 
     await expect(
-      service().pinAndVerify(
-        upload,
-        'private',
-        metadata(upload.buffer.length),
-      ),
+      service().pinAndVerify(upload, 'private', metadata(upload.buffer.length)),
     ).resolves.toMatchObject({
       cid,
       cidCodec: CID_CODEC_RAW,
@@ -75,6 +71,7 @@ describe('PinataStorageService', () => {
       contentDigest: digest,
       providerId: 'pin-1',
       retrievedBytes: upload.buffer.length,
+      storageFilename: 'document.pdf',
     });
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
@@ -85,10 +82,7 @@ describe('PinataStorageService', () => {
 
   it('rejects a fetch-back digest mismatch before creating an intent', async () => {
     const upload = file();
-    const cid = encodeCanonicalCid(
-      CID_CODEC_RAW,
-      sha256Digest(upload.buffer),
-    );
+    const cid = encodeCanonicalCid(CID_CODEC_RAW, sha256Digest(upload.buffer));
     jest
       .spyOn(global, 'fetch')
       .mockResolvedValueOnce(
@@ -99,11 +93,7 @@ describe('PinataStorageService', () => {
       );
 
     await expect(
-      service().pinAndVerify(
-        upload,
-        'private',
-        metadata(upload.buffer.length),
-      ),
+      service().pinAndVerify(upload, 'private', metadata(upload.buffer.length)),
     ).rejects.toBeInstanceOf(UnprocessableEntityException);
   });
 
@@ -116,11 +106,7 @@ describe('PinataStorageService', () => {
     );
 
     await expect(
-      service().pinAndVerify(
-        upload,
-        'private',
-        metadata(upload.buffer.length),
-      ),
+      service().pinAndVerify(upload, 'private', metadata(upload.buffer.length)),
     ).rejects.toBeInstanceOf(UnprocessableEntityException);
   });
 });

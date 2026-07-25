@@ -260,15 +260,15 @@ Kemudian:
 - [x] Import artefak generated ke backend.
 - [x] Simpan checksum atau provenance metadata.
 - [x] Tambahkan CI drift check antara artifact kontrak dan backend.
-- [ ] Hapus ABI TypeScript lama setelah call site berhasil dipindahkan.
-- [ ] Larang address/selector hardcoded dalam service backend.
+- [x] Hapus ABI TypeScript lama setelah call site berhasil dipindahkan.
+- [x] Larang address/selector hardcoded dalam service backend.
 
 ### Kriteria Keberhasilan
 
 - [ ] Backend build menggunakan ABI dari commit kontrak yang tercatat pada manifest.
-- [ ] Backend membaca contract address dari deployment registry atau validated environment override.
+- [x] Backend membaca contract address dari deployment registry atau validated environment override.
 - [x] CI gagal jika ABI, schema, network, atau deployment registry stale.
-- [ ] Pencarian source backend tidak menemukan fungsi/address/network lama pada active code.
+- [x] Pencarian source backend tidak menemukan fungsi/address/network lama pada active code.
 
 ---
 
@@ -304,7 +304,7 @@ Kemudian:
 - [x] Backend signer address sama dengan operator on-chain.
 - [x] Readiness mendeteksi RPC chain atau bytecode yang salah.
 - [x] RPC error tidak pernah diubah menjadi `false` atau document-not-found.
-- [ ] Tidak ada address, selector, atau RPC stale di `DocumentsService`.
+- [x] Tidak ada address, selector, atau RPC stale di `DocumentsService`.
 
 ---
 
@@ -322,16 +322,16 @@ Kemudian:
 - [x] Bentuk metadata commitment dari JSON kanonis berversi.
 - [x] Sort object keys secara deterministik.
 - [x] Batasi metadata pada field yang disetujui dan non-PII.
-- [ ] Simpan metadata preimage off-chain.
-- [ ] Tolak mismatch sebelum membuat EIP-712 intent.
+- [x] Simpan metadata preimage off-chain.
+- [x] Tolak mismatch sebelum membuat EIP-712 intent.
 
 ### Kriteria Keberhasilan
 
 - [x] Test vector backend menghasilkan digest/CID/commitment yang deterministik.
-- [ ] Output diterima canonical digest getter smart contract.
+- [x] Output diterima canonical digest getter smart contract.
 - [x] Perubahan satu byte file menghasilkan content digest berbeda.
 - [x] Perubahan metadata menghasilkan metadata commitment berbeda.
-- [ ] Backend tidak membuat signable intent jika Pinata dan perhitungan lokal berbeda.
+- [x] Backend tidak membuat signable intent jika Pinata dan perhitungan lokal berbeda.
 
 ---
 
@@ -358,7 +358,7 @@ Kemudian:
   - transaction hash;
   - CCIP message ID;
   - document ID + version + destination selector.
-- [ ] Simpan transaction intent sebelum broadcast.
+- [x] Simpan transaction intent sebelum broadcast.
 - [x] Claim outbox job menggunakan transaction dan `FOR UPDATE SKIP LOCKED`.
 - [x] Terapkan bounded exponential backoff untuk retry yang aman.
 - [ ] Jangan blind-retry transaksi yang mungkin sudah broadcast.
@@ -389,28 +389,28 @@ Kemudian:
   - expiration;
   - nonce.
 - [x] Isi JWT subject dengan wallet address.
-- [ ] Verifikasi JWT subject sama dengan issuer intent.
-- [ ] Periksa `isIssuerAuthorized()` sebelum menghasilkan intent.
-- [ ] Ambil `issuerNonce()` dari source contract.
-- [ ] Bentuk EIP-712 domain `Etherdoc`, version `2`, Mantle chain ID, dan sender address.
-- [ ] Bentuk typed data sesuai operasi:
+- [x] Verifikasi JWT subject sama dengan issuer intent.
+- [x] Periksa `isIssuerAuthorized()` sebelum menghasilkan intent.
+- [x] Ambil `issuerNonce()` dari source contract.
+- [x] Bentuk EIP-712 domain `Etherdoc`, version `2`, Mantle chain ID, dan sender address.
+- [x] Bentuk typed data sesuai operasi:
   - `RegisterDocument`;
   - `RevokeDocument`;
   - `SupersedeDocument`.
-- [ ] Pada revoke/supersede, ambil current version dari source chain.
-- [ ] Verifikasi signature sebelum enqueue.
-- [ ] Dukung EOA dan ERC-1271 sesuai kemampuan kontrak.
-- [ ] Batasi satu signed pending operation per issuer nonce.
-- [ ] Gunakan `202 Accepted` setelah signature diterima.
+- [x] Pada revoke/supersede, ambil current version dari source chain.
+- [x] Verifikasi signature sebelum enqueue.
+- [x] Dukung EOA dan ERC-1271 sesuai kemampuan kontrak.
+- [x] Batasi satu signed pending operation per issuer nonce.
+- [x] Gunakan `202 Accepted` setelah signature diterima.
 
 ### Kriteria Keberhasilan
 
 - [x] Backend tidak pernah menerima user private key.
-- [ ] Signature wrong-chain, wrong-contract, wrong-version, expired, replayed, atau milik issuer lain
+- [x] Signature wrong-chain, wrong-contract, wrong-version, expired, replayed, atau milik issuer lain
   ditolak.
-- [ ] EOA dan ERC-1271 valid dapat melewati flow.
-- [ ] Register/revoke/supersede menghasilkan digest yang sama dengan getter kontrak.
-- [ ] API tidak menganggap penerimaan signature atau tx hash sebagai final success.
+- [x] EOA dan ERC-1271 valid dapat melewati flow.
+- [x] Register/revoke/supersede menghasilkan digest yang sama dengan getter kontrak.
+- [x] API tidak menganggap penerimaan signature atau tx hash sebagai final success.
 
 ---
 
@@ -418,25 +418,25 @@ Kemudian:
 
 ### TODO
 
-- [ ] Implementasikan `POST /documents/intents/register`.
-- [ ] Implementasikan `POST /documents/intents/revoke`.
-- [ ] Implementasikan `POST /documents/intents/supersede`.
-- [ ] Implementasikan `POST /documents/intents/:intentId/signature`.
-- [ ] Implementasikan `GET /documents/intents/:intentId`.
+- [x] Implementasikan `POST /documents/intents/register`.
+- [x] Implementasikan `POST /documents/intents/revoke`.
+- [x] Implementasikan `POST /documents/intents/supersede`.
+- [x] Implementasikan `POST /documents/intents/:intentId/signature`.
+- [x] Implementasikan `GET /documents/intents/:intentId`.
 - [ ] Implementasikan `GET /documents/:documentId`.
 - [ ] Ubah `POST /documents/search` agar menerima file plus issuer atau explicit document ID.
-- [ ] Hapus upload flow lama yang langsung memanggil `addDocument`.
-- [ ] Jangan gunakan CID sebagai satu-satunya document identity.
-- [ ] Pertahankan Pinata list/group hanya sebagai storage metadata API.
-- [ ] Perbaiki route precedence `/documents/groups` dan `/:documentId`.
+- [x] Hapus upload flow lama yang langsung memanggil `addDocument`.
+- [x] Jangan gunakan CID sebagai satu-satunya document identity.
+- [x] Pertahankan Pinata list/group hanya sebagai storage metadata API.
+- [x] Perbaiki route precedence `/documents/groups` dan `/:documentId`.
 
 ### Kriteria Keberhasilan
 
 - [ ] API menggunakan `documentId`, issuer, digest, version, dan lifecycle kontrak terbaru.
-- [ ] Tidak ada response `isExistEthereum` atau `isExistBase`.
+- [x] Tidak ada response `isExistEthereum` atau `isExistBase`.
 - [ ] Response membedakan integrity, active status, storage availability, source confirmation, dan
   destination replication.
-- [ ] Route statis tidak tertangkap dynamic document route.
+- [x] Route statis tidak tertangkap dynamic document route.
 
 ---
 
