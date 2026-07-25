@@ -444,25 +444,25 @@ Kemudian:
 
 ### TODO
 
-- [ ] Simulasikan contract call sebelum broadcast.
-- [ ] Submit `registerDocumentBySig`, `revokeDocumentBySig`, atau `supersedeDocumentBySig`.
-- [ ] Tunggu configured source confirmation depth.
-- [ ] Validasi receipt status dan canonical event.
+- [x] Simulasikan contract call sebelum broadcast.
+- [x] Submit `registerDocumentBySig`, `revokeDocumentBySig`, atau `supersedeDocumentBySig`.
+- [x] Tunggu configured source confirmation depth.
+- [x] Validasi receipt status dan canonical event.
 - [ ] Perlakukan duplicate sebagai idempotent hanya jika seluruh canonical record cocok.
-- [ ] Setelah source confirmed, panggil `quoteFee(documentId, selector)`.
-- [ ] Terapkan policy `maximumFee` dengan bounded quote buffer.
-- [ ] Dispatch melalui backend operator wallet.
-- [ ] Parse `MessageSent`.
-- [ ] Simpan message ID, tx/block evidence, receiver, version, gas limit, dan fee.
-- [ ] Jangan dispatch ulang document version yang sudah memiliki dispatch record.
-- [ ] Tangani nonce concurrency backend signer.
+- [x] Setelah source confirmed, panggil `quoteFee(documentId, selector)`.
+- [x] Terapkan policy `maximumFee` dengan bounded quote buffer.
+- [x] Dispatch melalui backend operator wallet.
+- [x] Parse `MessageSent`.
+- [x] Simpan message ID, tx/block evidence, receiver, version, gas limit, dan fee.
+- [x] Jangan dispatch ulang document version yang sudah memiliki dispatch record.
+- [x] Tangani nonce concurrency backend signer.
 
 ### Kriteria Keberhasilan
 
-- [ ] State menjadi `SOURCE_CONFIRMED` hanya setelah receipt dan event valid.
-- [ ] Dispatch hanya berjalan untuk canonical record/version yang ada.
-- [ ] Concurrent request tidak membuat register atau dispatch ganda.
-- [ ] Fee race, insufficient LINK, pause, RPC failure, dan unauthorized role menghasilkan status
+- [x] State menjadi `SOURCE_CONFIRMED` hanya setelah receipt dan event valid.
+- [x] Dispatch hanya berjalan untuk canonical record/version yang ada.
+- [x] Concurrent request tidak membuat register atau dispatch ganda.
+- [x] Fee race, insufficient LINK, pause, RPC failure, dan unauthorized role menghasilkan status
   yang benar.
 
 ---

@@ -77,6 +77,20 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  async withAdvisoryLock<T>(
+    lockId: number,
+    operation: (client: PoolClient) => Promise<T>,
+  ): Promise<T> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('SELECT pg_advisory_lock($1)', [lockId]);
+      return await operation(client);
+    } finally {
+      await client.query('SELECT pg_advisory_unlock($1)', [lockId]);
+      client.release();
+    }
+  }
+
   async claimOutboxJobs(workerId: string, limit: number): Promise<OutboxJob[]> {
     return this.transaction(async (client) => {
       const result = await client.query<{
@@ -131,6 +145,33 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         WHERE id = $1 AND state = 'RUNNING'
       `,
       [jobId, backoff, error],
+    );
+  }
+
+  async completeOutboxJob(jobId: string): Promise<void> {
+    await this.query(
+      `
+        UPDATE outbox_job
+        SET state = 'COMPLETED', locked_at = NULL, locked_by = NULL, updated_at = now()
+        WHERE id = $1 AND state = 'RUNNING'
+      `,
+      [jobId],
+    );
+  }
+
+  async failOutboxJob(jobId: string, error: string): Promise<void> {
+    await this.query(
+      `
+        UPDATE outbox_job
+        SET
+          state = 'FAILED',
+          locked_at = NULL,
+          locked_by = NULL,
+          last_error = $2,
+          updated_at = now()
+        WHERE id = $1 AND state = 'RUNNING'
+      `,
+      [jobId, error],
     );
   }
 }

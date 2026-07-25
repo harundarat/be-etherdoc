@@ -8,6 +8,7 @@ import { loadRuntimeConfiguration } from './config/runtime-config';
 import { BlockchainModule } from './blockchain/blockchain.module';
 import { DatabaseModule } from './database/database.module';
 import { StorageModule } from './storage/storage.module';
+import { WorkersModule } from './workers/workers.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { StorageModule } from './storage/storage.module';
     BlockchainModule,
     DatabaseModule,
     StorageModule,
+    WorkersModule,
     DocumentsModule,
     AuthModule,
   ],

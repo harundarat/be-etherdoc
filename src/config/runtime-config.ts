@@ -24,6 +24,11 @@ export interface RuntimeConfig {
   };
   corsOrigin: string;
   databaseUrl: string;
+  dispatch: {
+    feeBufferBps: number;
+    maximumFeeWei: bigint;
+    recoveryAfterSeconds: number;
+  };
   jwt: {
     expiresIn: string;
     secret: string;
@@ -43,6 +48,10 @@ export interface RuntimeConfig {
     nonceTtlSeconds: number;
     sessionTtlSeconds: number;
     uri: string;
+  };
+  worker: {
+    batchSize: number;
+    pollIntervalMs: number;
   };
 }
 
@@ -70,15 +79,16 @@ function integer(
   name: string,
   defaultValue: number,
   minimum = 1,
+  maximum = Number.MAX_SAFE_INTEGER,
 ): number {
   const raw = environment[name]?.trim();
   if (!raw) {
     return defaultValue;
   }
   const value = Number(raw);
-  if (!Number.isSafeInteger(value) || value < minimum) {
+  if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
     throw new Error(
-      `${name} must be an integer greater than or equal to ${minimum}`,
+      `${name} must be an integer between ${minimum} and ${maximum}`,
     );
   }
   return value;
@@ -137,6 +147,18 @@ function postgresUrl(environment: Environment): string {
     throw new Error('DATABASE_URL must use the postgres or postgresql scheme');
   }
   return value;
+}
+
+function unsignedBigInt(
+  environment: Environment,
+  name: string,
+  defaultValue: string,
+): bigint {
+  const value = environment[name]?.trim() || defaultValue;
+  if (!/^\d+$/.test(value)) {
+    throw new Error(`${name} must be an unsigned decimal integer`);
+  }
+  return BigInt(value);
 }
 
 export function buildRuntimeConfig(
@@ -199,6 +221,25 @@ export function buildRuntimeConfig(
     },
     corsOrigin: environment.CORS_ORIGIN?.trim() || 'http://localhost:3000',
     databaseUrl: postgresUrl(environment),
+    dispatch: {
+      feeBufferBps: integer(
+        environment,
+        'DISPATCH_FEE_BUFFER_BPS',
+        1_000,
+        0,
+        10_000,
+      ),
+      maximumFeeWei: unsignedBigInt(
+        environment,
+        'MAXIMUM_DISPATCH_FEE_WEI',
+        '10000000000000000000',
+      ),
+      recoveryAfterSeconds: integer(
+        environment,
+        'CCIP_RECOVERY_AFTER_SECONDS',
+        3600,
+      ),
+    },
     jwt: {
       expiresIn: environment.JWT_EXPIRES_IN?.trim() || '15m',
       secret: jwtSecret,
@@ -222,6 +263,10 @@ export function buildRuntimeConfig(
       nonceTtlSeconds: integer(environment, 'SIWE_NONCE_TTL_SECONDS', 300),
       sessionTtlSeconds: integer(environment, 'SIWE_SESSION_TTL_SECONDS', 900),
       uri: url(environment, 'SIWE_URI'),
+    },
+    worker: {
+      batchSize: integer(environment, 'OUTBOX_BATCH_SIZE', 10),
+      pollIntervalMs: integer(environment, 'OUTBOX_POLL_INTERVAL_MS', 1_000),
     },
   };
 }
