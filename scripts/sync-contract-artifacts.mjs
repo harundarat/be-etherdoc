@@ -80,6 +80,18 @@ function stableJson(value) {
   return `${JSON.stringify(sortValue(value), null, 2)}\n`;
 }
 
+function artifactInputChecksum(artifact, compiler) {
+  // Foundry's full artifact includes environment-sensitive compiler metadata,
+  // such as auto-detected remappings. Hash only the fields exported to the
+  // backend so equivalent ABI/compiler inputs remain portable across builders.
+  return sha256(
+    stableJson({
+      abi: artifact.abi,
+      compiler,
+    }),
+  );
+}
+
 function extractNumber(source, pattern, label) {
   const match = source.match(pattern);
   if (!match) {
@@ -376,8 +388,14 @@ const generatedArtifact = {
     contentChecksum: `sha256:${contentChecksum}`,
     inputs: {
       networkConfig: `sha256:${sha256(networkConfigText)}`,
-      receiverArtifact: `sha256:${sha256(receiverArtifactText)}`,
-      senderArtifact: `sha256:${sha256(senderArtifactText)}`,
+      receiverArtifact: `sha256:${artifactInputChecksum(
+        receiverArtifact,
+        receiverCompilerSettings,
+      )}`,
+      senderArtifact: `sha256:${artifactInputChecksum(
+        senderArtifact,
+        compilerSettings,
+      )}`,
       senderSource: `sha256:${sha256(senderSource)}`,
       typesSource: `sha256:${sha256(typesSource)}`,
     },

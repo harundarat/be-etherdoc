@@ -41,6 +41,7 @@ jobs:
           # Includes the public deployment manifests, which pin the deployed
           # Solidity inputs to b132bf4360108db00959fc5aa75009a12283ed69.
           ref: 391053981c1513b2123ec0c1f751271597c76742
+          fetch-depth: 0
           submodules: recursive
           path: sc-etherdoc
 
