@@ -3310,8 +3310,8 @@ export const etherdocContractArtifacts = {
     "contentChecksum": "sha256:7f9dd59639fbb966f3b8d8cc4ee3dbebd482eac742e5be9e3768093d15b37acc",
     "inputs": {
       "networkConfig": "sha256:87095a728138e1d83910f09fc0699ef4b832e9087a15f19886f33dffb765b46a",
-      "receiverArtifact": "sha256:2f251d2dc96493c7282119a2e8ff3a2d946bab811209cec4421cb835678bd226",
-      "senderArtifact": "sha256:dbe86823b5d10f16c8328fc96a8706e6a09cb8395a83c055060d439f5ac80360",
+      "receiverArtifact": "sha256:351e43ee94b803c0fdc333099a9a250e4a243530c7f2bbbd8acde40f9c38fd75",
+      "senderArtifact": "sha256:73bb0aa752fcb64cd101295a99395f069ed606e2994c09b8e12bc39d19e7b946",
       "senderSource": "sha256:825b06ab4100d4fe63af2865dfa9d810d79f68b5628735198f95d45a1c5db2a2",
       "typesSource": "sha256:f163261ff46ecfdc5751a3a93fbd0c92186c7455c515b34127a4f7686c217c97"
     },
