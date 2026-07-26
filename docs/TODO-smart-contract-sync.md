@@ -189,25 +189,25 @@ Status dispatch per destination:
 
 Sebelum broadcast, tampilkan kepada pengguna:
 
-- [ ] source/destination chain dan chain ID;
-- [ ] deployer address;
-- [ ] `GOVERNANCE` address;
-- [ ] `INITIAL_ISSUER` address;
-- [ ] `OPERATOR` address;
-- [ ] `PAUSER` address;
-- [ ] router dan LINK token address;
-- [ ] receiver source selector dan source chain ID;
-- [ ] seluruh constructor arguments;
-- [ ] native gas balance;
-- [ ] LINK funding target;
-- [ ] estimasi jumlah transaksi dan gas;
-- [ ] command deployment yang akan dijalankan.
+- [x] source/destination chain dan chain ID;
+- [x] deployer address;
+- [x] `GOVERNANCE` address;
+- [x] `INITIAL_ISSUER` address;
+- [x] `OPERATOR` address;
+- [x] `PAUSER` address;
+- [x] router dan LINK token address;
+- [x] receiver source selector dan source chain ID;
+- [x] seluruh constructor arguments;
+- [x] native gas balance;
+- [x] LINK funding target;
+- [x] estimasi jumlah transaksi dan gas;
+- [x] command deployment yang akan dijalankan.
 
 Kemudian:
 
 - [ ] Minta persetujuan eksplisit pengguna untuk broadcast ke Ethereum Sepolia dan Mantle Sepolia.
-- [ ] Jangan melanjutkan deployment bila approval belum diberikan.
-- [ ] Jangan menampilkan private key saat meminta approval.
+- [x] Jangan melanjutkan deployment bila approval belum diberikan.
+- [x] Jangan menampilkan private key saat meminta approval.
 
 ### Deployment TODO
 

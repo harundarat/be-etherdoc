@@ -119,6 +119,64 @@ Nonce admin adalah `0` pada kedua chain saat simulasi. Jika nonce tidak berubah 
 sender dan receiver diprediksi sama-sama berada di
 `0xAab5e5dA0b2C6E89D64B188df4dB18D655D629e7`; chain ID tetap membedakan kedua deployment.
 
+## Frozen approval plan
+
+Constructor sender Ethereum Sepolia:
+
+```text
+router        = 0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59
+LINK          = 0x779877A7B0D9E8603169DdbD7836e478b4624789
+governance    = 0x6AeFe6b1253E04f61f8378D41d6790AA46e07c8F
+initialIssuer = 0xB34a4eAECB848d573a0410bc305787d5B69328B8
+operator      = 0x0f70A38610bbdcE47f6fc7AD6C4b1E5A6C68b62A
+pauser        = 0x6AeFe6b1253E04f61f8378D41d6790AA46e07c8F
+```
+
+Constructor receiver Mantle Sepolia:
+
+```text
+router              = 0xFd33fd627017fEf041445FC19a2B6521C9778f86
+governance          = 0x6AeFe6b1253E04f61f8378D41d6790AA46e07c8F
+pauser              = 0x6AeFe6b1253E04f61f8378D41d6790AA46e07c8F
+sourceChainSelector = 16015286601757825753
+sourceChainId       = 11155111
+trustedSender       = actual deployed Ethereum sender
+```
+
+Setelah password file lokal tersedia, exact broadcast commands adalah:
+
+```bash
+cd /home/harundarat/Projects/Etherdoc/sc-etherdoc
+source .env
+wallet=(
+  --keystore "$HOME/.foundry/keystores/etherdoc-admin"
+  --password-file "$HOME/.foundry/keystores/etherdoc-admin.password"
+)
+
+NETWORK=ethereumSepolia RPC_URL="$ETHEREUM_SEPOLIA_RPC_URL" \
+  bash script/deploy-contract.sh sender "${wallet[@]}"
+
+NETWORK=mantleSepolia SOURCE_NETWORK=ethereumSepolia RPC_URL="$MANTLE_SEPOLIA_RPC_URL" \
+  bash script/deploy-contract.sh receiver "${wallet[@]}"
+
+SOURCE_NETWORK=ethereumSepolia DESTINATION_NETWORK=mantleSepolia CONFIGURE_TARGET=RECEIVER \
+  forge script script/ConfigureEtherdocRemotes.s.sol:ConfigureEtherdocRemotesScript \
+    --rpc-url mantle_sepolia --broadcast "${wallet[@]}"
+
+SOURCE_NETWORK=ethereumSepolia DESTINATION_NETWORK=mantleSepolia CONFIGURE_TARGET=SENDER \
+  forge script script/ConfigureEtherdocRemotes.s.sol:ConfigureEtherdocRemotesScript \
+    --rpc-url ethereum_sepolia --broadcast "${wallet[@]}"
+
+NETWORK=ethereumSepolia TREASURY_ACTION=FUND TARGET_LINK_BALANCE=1000000000000000000 \
+  forge script script/ManageEtherdocTreasury.s.sol:ManageEtherdocTreasuryScript \
+    --rpc-url ethereum_sepolia --broadcast "${wallet[@]}"
+```
+
+Receiver reconciliation diperkirakan no-op, sehingga rangkaian tersebut menghasilkan empat
+transaksi EVM. Wrapper deployment akan menghentikan proses bila nonce/predicted address, chain ID,
+runtime code, receipt, atau manifest tidak dapat direkonsiliasi. Setiap langkah harus dijalankan
+berurutan dan dihentikan bila satu langkah gagal.
+
 ## Blocker sebelum approval gate
 
 1. Foundry memerlukan password keystore saat broadcast. Password harus diberikan melalui local
