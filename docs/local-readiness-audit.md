@@ -57,7 +57,8 @@ or resolved:
    user issuer;
 3. fund native gas for the admin and user wallets; the backend operator already has gas on both
    chains and `7` LINK on Ethereum Sepolia;
-4. populate RPC/API settings and public role addresses in the contract environment;
+4. populate the remaining admin/user public role addresses and explorer API setting in the contract
+   environment; public RPCs, network selection, target LINK balance, and operator address are ready;
 5. review the complete constructor/role/funding plan and explicitly approve testnet broadcast.
 
 The backend operator address has `0.15` Ethereum Sepolia ETH, `10` Mantle Sepolia MNT, and `7`

@@ -167,6 +167,7 @@ Status dispatch per destination:
 - [ ] Periksa native token balance ketiga wallet.
 - [x] Periksa ketersediaan LINK untuk mendanai sender: backend operator mempunyai `7` LINK pada
       Ethereum Sepolia.
+- [x] Simulasikan deployment tanpa broadcast pada RPC live dan catat estimasi gas/native balance.
 - [x] Validasi router, LINK token, chain ID, selector, gas limit, dan governance mode dari network
       config.
 

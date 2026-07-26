@@ -49,7 +49,10 @@ dokumen.
 
 ## Wallet readiness
 
-`cast wallet list` tidak menemukan named Foundry account. `sc-etherdoc/.env` juga belum tersedia.
+`cast wallet list` tidak menemukan named Foundry account. Ignored file `sc-etherdoc/.env` sudah
+tersedia dengan permission `0600` dan hanya memuat public RPC, pilihan network, target sender
+`1 LINK`, serta public operator address. File tersebut tidak memuat private key, password, atau
+placeholder admin/user address.
 
 Pada 25 Juli 2026, backend operator key baru dibuat khusus untuk testnet/dev dan disimpan sebagai
 `BACKEND_PRIVATE_KEY` di ignored file `be-etherdoc/.env` dengan permission file `0600`. Private key
@@ -74,12 +77,43 @@ Admin/deployer dan user issuer address belum diketahui, sehingga balance mereka 
 diperiksa. Backend operator sudah mempunyai gas pada kedua chain dan `7` LINK pada canonical source;
 penggunaan address ini sebagai LINK funder tetap menjadi bagian approval gate.
 
+## Live no-broadcast estimates
+
+Simulasi terhadap RPC live dilakukan tanpa `--broadcast`, menggunakan address operator sebagai
+nilai nonzero sementara untuk seluruh constructor address. Address tersebut hanya dipakai agar
+estimasi gas merepresentasikan storage write address nonzero dan bukan keputusan role:
+
+| Operasi                         | Network          | Estimated gas | Estimasi native pada gas price observasi |
+| ------------------------------- | ---------------- | ------------: | ---------------------------------------: |
+| Deploy `EtherdocSender`         | Ethereum Sepolia |   `5,856,532` |                            `0.01143` ETH |
+| Deploy `EtherdocReceiver`       | Mantle Sepolia   |   `3,480,119` |                            `0.34802` MNT |
+| Configure sender remote (Anvil) | Ethereum Sepolia |      `72,143` |                      gas price dependent |
+
+Quote Router Ethereum Sepolia untuk satu payload schema v3, destination gas limit `500000`, adalah
+`0.057004147051697975 LINK` pada saat preflight. Smoke lifecycle aktif, superseded, replacement, dan
+revoked membutuhkan empat dispatch, atau sekitar `0.22802 LINK` bila quote tidak berubah. Target
+balance sender `1 LINK` memberi buffer lebih dari empat kali estimasi tersebut; operator mempunyai
+`7 LINK`.
+
+Rencana deployment menghasilkan empat transaksi bila semua state masih kosong:
+
+1. admin deploy sender di Ethereum Sepolia;
+2. admin deploy receiver di Mantle Sepolia;
+3. admin mengonfigurasi remote Mantle pada sender;
+4. operator/funder mentransfer deficit hingga sender memiliki `1 LINK`.
+
+Receiver trusted sender sudah dibentuk di constructor, sehingga reconciliation receiver seharusnya
+no-op. Verifikasi explorer bukan transaksi EVM. Dengan buffer, minimum readiness yang disarankan
+adalah admin `0.02 ETH` dan `0.5 MNT`; saldo operator saat ini sudah memadai untuk funding dan
+dispatch. Saldo user issuer tetap perlu diperiksa untuk smoke script direct-call.
+
 ## Blocker sebelum approval gate
 
 1. Named encrypted Foundry admin account belum ada.
 2. Public address admin/deployer dan user issuer belum diketahui.
 3. Native gas admin dan user belum dapat diperiksa; operator sudah funded dan tersedia sebagai
    candidate LINK funder.
-4. `sc-etherdoc/.env` perlu diisi RPC/API key dan public role address tanpa private key.
+4. `sc-etherdoc/.env` masih perlu public admin/user role address dan explorer API key bila source
+   verification akan dijalankan melalui Etherscan API.
 
 Tidak ada transaksi testnet yang dibroadcast selama preflight ini.
