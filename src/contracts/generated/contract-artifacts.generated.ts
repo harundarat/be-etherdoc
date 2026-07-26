@@ -3204,26 +3204,60 @@ export const etherdocContractArtifacts = {
   },
   "deployments": {
     "receiver": {
-      "address": null,
+      "address": "0xAab5e5dA0b2C6E89D64B188df4dB18D655D629e7",
       "chainId": 5003,
       "chainSelector": "8236463271206331221",
-      "deploymentBlock": null,
-      "manifest": null,
+      "deploymentBlock": 41758817,
+      "manifest": {
+        "blockNumber": 41758817,
+        "constructorArgs": {
+          "encoded": "0x000000000000000000000000fd33fd627017fef041445fc19a2b6521c9778f860000000000000000000000006aefe6b1253e04f61f8378d41d6790aa46e07c8f0000000000000000000000006aefe6b1253e04f61f8378d41d6790aa46e07c8f000000000000000000000000000000000000000000000000de41ba4fc9d91ad90000000000000000000000000000000000000000000000000000000000aa36a7000000000000000000000000aab5e5da0b2c6e89d64b188df4db18d655d629e7",
+          "values": [
+            "0xFd33fd627017fEf041445FC19a2B6521C9778f86",
+            "0x6AeFe6b1253E04f61f8378D41d6790AA46e07c8F",
+            "0x6AeFe6b1253E04f61f8378D41d6790AA46e07c8F",
+            "16015286601757825753",
+            "11155111",
+            "0xAab5e5dA0b2C6E89D64B188df4dB18D655D629e7"
+          ]
+        },
+        "deployer": "0x6aefe6b1253e04f61f8378d41d6790aa46e07c8f",
+        "runtimeCodeHash": "0xf6d7a933eb65676f6ec3bc6d6eb50307f58994649157f010a675646f2f518531",
+        "timestamp": 1785062307,
+        "transactionHash": "0x68c4cd2052ca66ae21d5b084ac197aee9f93619c42349cc931af2221f7913e9f"
+      },
       "network": "mantleSepolia",
       "role": "receiver",
-      "runtimeCodeHash": null,
-      "status": "UNDEPLOYED"
+      "runtimeCodeHash": "0xf6d7a933eb65676f6ec3bc6d6eb50307f58994649157f010a675646f2f518531",
+      "status": "DEPLOYED"
     },
     "sender": {
-      "address": null,
+      "address": "0xAab5e5dA0b2C6E89D64B188df4dB18D655D629e7",
       "chainId": 11155111,
       "chainSelector": "16015286601757825753",
-      "deploymentBlock": null,
-      "manifest": null,
+      "deploymentBlock": 11354109,
+      "manifest": {
+        "blockNumber": 11354109,
+        "constructorArgs": {
+          "encoded": "0x0000000000000000000000000bf3de8c5d3e8a2b34d2beeb17abfcebaf363a59000000000000000000000000779877a7b0d9e8603169ddbd7836e478b46247890000000000000000000000006aefe6b1253e04f61f8378d41d6790aa46e07c8f000000000000000000000000b34a4eaecb848d573a0410bc305787d5b69328b80000000000000000000000000f70a38610bbdce47f6fc7ad6c4b1e5a6c68b62a0000000000000000000000006aefe6b1253e04f61f8378d41d6790aa46e07c8f",
+          "values": [
+            "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59",
+            "0x779877A7B0D9E8603169DdbD7836e478b4624789",
+            "0x6AeFe6b1253E04f61f8378D41d6790AA46e07c8F",
+            "0xB34a4eAECB848d573a0410bc305787d5B69328B8",
+            "0x0f70A38610bbdcE47f6fc7AD6C4b1E5A6C68b62A",
+            "0x6AeFe6b1253E04f61f8378D41d6790AA46e07c8F"
+          ]
+        },
+        "deployer": "0x6aefe6b1253e04f61f8378d41d6790aa46e07c8f",
+        "runtimeCodeHash": "0x7fdd145e13ac74986afae4df105d091429fa4342b237df13133c6e6d2dcb339e",
+        "timestamp": 1785062256,
+        "transactionHash": "0x3a24898943d7daccab82e3148e160bbaa19d4eb9811439634d77b11da66acfee"
+      },
       "network": "ethereumSepolia",
       "role": "sender",
-      "runtimeCodeHash": null,
-      "status": "UNDEPLOYED"
+      "runtimeCodeHash": "0x7fdd145e13ac74986afae4df105d091429fa4342b237df13133c6e6d2dcb339e",
+      "status": "DEPLOYED"
     }
   },
   "networks": {
@@ -3273,7 +3307,7 @@ export const etherdocContractArtifacts = {
     "payloadSchemaVersion": 3
   },
   "provenance": {
-    "contentChecksum": "sha256:cc388f1107853bd21c00c437331036947862a43ff5134f3690a78632300f3b68",
+    "contentChecksum": "sha256:7f9dd59639fbb966f3b8d8cc4ee3dbebd482eac742e5be9e3768093d15b37acc",
     "inputs": {
       "networkConfig": "sha256:87095a728138e1d83910f09fc0699ef4b832e9087a15f19886f33dffb765b46a",
       "receiverArtifact": "sha256:2f251d2dc96493c7282119a2e8ff3a2d946bab811209cec4421cb835678bd226",

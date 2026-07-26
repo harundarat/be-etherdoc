@@ -39,21 +39,35 @@ describe('generated contract artifacts', () => {
     });
   });
 
-  it('does not invent deployment addresses before manifests exist', () => {
+  it('exports the exact deployment manifests', () => {
     expect(etherdocContractArtifacts.deployments.sender).toMatchObject({
-      address: null,
+      address: '0xAab5e5dA0b2C6E89D64B188df4dB18D655D629e7',
+      deploymentBlock: 11354109,
       network: 'ethereumSepolia',
       role: 'sender',
-      runtimeCodeHash: null,
-      status: 'UNDEPLOYED',
+      runtimeCodeHash:
+        '0x7fdd145e13ac74986afae4df105d091429fa4342b237df13133c6e6d2dcb339e',
+      status: 'DEPLOYED',
     });
+    expect(
+      etherdocContractArtifacts.deployments.sender.manifest?.transactionHash,
+    ).toBe(
+      '0x3a24898943d7daccab82e3148e160bbaa19d4eb9811439634d77b11da66acfee',
+    );
     expect(etherdocContractArtifacts.deployments.receiver).toMatchObject({
-      address: null,
+      address: '0xAab5e5dA0b2C6E89D64B188df4dB18D655D629e7',
+      deploymentBlock: 41758817,
       network: 'mantleSepolia',
       role: 'receiver',
-      runtimeCodeHash: null,
-      status: 'UNDEPLOYED',
+      runtimeCodeHash:
+        '0xf6d7a933eb65676f6ec3bc6d6eb50307f58994649157f010a675646f2f518531',
+      status: 'DEPLOYED',
     });
+    expect(
+      etherdocContractArtifacts.deployments.receiver.manifest?.transactionHash,
+    ).toBe(
+      '0x68c4cd2052ca66ae21d5b084ac197aee9f93619c42349cc931af2221f7913e9f',
+    );
   });
 
   it('contains the current lifecycle API and excludes legacy functions', () => {

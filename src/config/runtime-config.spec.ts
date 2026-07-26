@@ -1,4 +1,5 @@
 import { buildRuntimeConfig } from './runtime-config';
+import { etherdocContractArtifacts } from '../contracts/generated/contract-artifacts.generated';
 
 const privateKey =
   '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
@@ -7,10 +8,6 @@ function validEnvironment(): Record<string, string> {
   return {
     BACKEND_PRIVATE_KEY: privateKey,
     DATABASE_URL: 'postgresql://etherdoc:etherdoc@localhost:5432/etherdoc',
-    ETHERDOC_RECEIVER_ADDRESS: '0x0000000000000000000000000000000000000002',
-    ETHERDOC_RECEIVER_DEPLOYMENT_BLOCK: '1',
-    ETHERDOC_SENDER_ADDRESS: '0x0000000000000000000000000000000000000001',
-    ETHERDOC_SENDER_DEPLOYMENT_BLOCK: '1',
     ETHEREUM_SEPOLIA_RPC_URL: 'https://ethereum.example/rpc',
     JWT_SECRET: 'a-secure-test-secret-with-more-than-32-characters',
     MANTLE_SEPOLIA_RPC_URL: 'https://mantle.example/rpc',
@@ -33,6 +30,18 @@ describe('buildRuntimeConfig', () => {
     );
     expect(config.blockchain.source.chainSelector).toBe(16015286601757825753n);
     expect(config.blockchain.destination.chainId).toBe(5003);
+    expect(config.blockchain.source.contractAddress).toBe(
+      etherdocContractArtifacts.deployments.sender.address,
+    );
+    expect(config.blockchain.source.deploymentBlock).toBe(
+      BigInt(etherdocContractArtifacts.deployments.sender.deploymentBlock),
+    );
+    expect(config.blockchain.destination.contractAddress).toBe(
+      etherdocContractArtifacts.deployments.receiver.address,
+    );
+    expect(config.blockchain.destination.deploymentBlock).toBe(
+      BigInt(etherdocContractArtifacts.deployments.receiver.deploymentBlock),
+    );
     expect(config.blockchain.signerAddress).toMatch(/^0x[0-9A-Fa-f]{40}$/);
   });
 
@@ -41,8 +50,6 @@ describe('buildRuntimeConfig', () => {
     'ETHEREUM_SEPOLIA_RPC_URL',
     'MANTLE_SEPOLIA_RPC_URL',
     'BACKEND_PRIVATE_KEY',
-    'ETHERDOC_RECEIVER_DEPLOYMENT_BLOCK',
-    'ETHERDOC_SENDER_DEPLOYMENT_BLOCK',
     'SIWE_DOMAIN',
     'SIWE_URI',
     'JWT_SECRET',
@@ -54,14 +61,23 @@ describe('buildRuntimeConfig', () => {
   });
 
   it('rejects an address override that differs from a deployed registry', () => {
-    // The current baseline is intentionally undeployed; this behavior is covered
-    // by deploymentAddress when generated manifests populate the registry.
     const environment = validEnvironment();
-    environment.ETHERDOC_SENDER_ADDRESS = 'not-an-address';
+    environment.ETHERDOC_SENDER_ADDRESS =
+      '0x0000000000000000000000000000000000000001';
 
     expect(() => buildRuntimeConfig(environment)).toThrow(
-      'ETHERDOC_SENDER_ADDRESS must be a valid EVM address',
+      'ETHERDOC_SENDER_ADDRESS does not match the generated deployment registry',
     );
+  });
+
+  it('accepts optional overrides that match the deployed registry', () => {
+    const environment = validEnvironment();
+    environment.ETHERDOC_SENDER_ADDRESS =
+      etherdocContractArtifacts.deployments.sender.address;
+    environment.ETHERDOC_RECEIVER_ADDRESS =
+      etherdocContractArtifacts.deployments.receiver.address;
+
+    expect(() => buildRuntimeConfig(environment)).not.toThrow();
   });
 
   it('rejects unsafe numeric and secret configuration', () => {
