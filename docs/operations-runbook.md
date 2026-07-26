@@ -1,7 +1,7 @@
 # Etherdoc Operations and Recovery Runbook
 
-This runbook covers the Mantle Sepolia → Ink Sepolia release. Mainnet and extra destinations are out
-of scope.
+This runbook covers the Ethereum Sepolia → Mantle Sepolia release. Mainnet and extra destinations
+are out of scope.
 
 ## Roles and secrets
 
@@ -35,8 +35,8 @@ override for testnet deployment.
 | Area                | Variables                                                                                                                        |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | Database            | `DATABASE_URL`                                                                                                                   |
-| Source RPC          | `MANTLE_SEPOLIA_RPC_URL`, `MANTLE_CONFIRMATION_DEPTH`                                                                            |
-| Destination RPC     | `INK_SEPOLIA_RPC_URL`, `INK_CONFIRMATION_DEPTH`                                                                                  |
+| Source RPC          | `ETHEREUM_SEPOLIA_RPC_URL`, `ETHEREUM_CONFIRMATION_DEPTH`                                                                        |
+| Destination RPC     | `MANTLE_SEPOLIA_RPC_URL`, `MANTLE_CONFIRMATION_DEPTH`                                                                            |
 | Deployment override | `ETHERDOC_SENDER_ADDRESS`, `ETHERDOC_SENDER_DEPLOYMENT_BLOCK`, `ETHERDOC_RECEIVER_ADDRESS`, `ETHERDOC_RECEIVER_DEPLOYMENT_BLOCK` |
 | Signer              | `BACKEND_PRIVATE_KEY`                                                                                                            |
 | SIWE/JWT            | `SIWE_DOMAIN`, `SIWE_URI`, `SIWE_NONCE_TTL_SECONDS`, `SIWE_SESSION_TTL_SECONDS`, `JWT_SECRET`, `JWT_EXPIRES_IN`                  |
@@ -72,7 +72,8 @@ receiver evidence plus `getProcessedMessage`, `getReceipt`, and `verifyDocument`
 
 1. Request and sign the exact SIWE message.
 2. Prepare an intent with an idempotency key unique to the canonical request.
-3. Display chain ID `5003`, sender address, operation, document IDs, version, nonce, and deadline to
+3. Display chain ID `11155111`, sender address, operation, document IDs, version, nonce, and deadline
+   to
    the user.
 4. Sign the returned typed data without reconstructing or coercing numeric fields.
 5. Submit only the signature.

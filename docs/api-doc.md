@@ -1,7 +1,8 @@
 # Etherdoc API
 
-The source contract on Mantle Sepolia is canonical. PostgreSQL is a rebuildable projection, Ink
-Sepolia is a CCIP replica, and Pinata availability is reported independently from authenticity.
+The source contract on Ethereum Sepolia is canonical. PostgreSQL is a rebuildable projection,
+Mantle Sepolia is a CCIP replica, and Pinata availability is reported independently from
+authenticity.
 
 All addresses use EIP-55-compatible EVM address syntax. `documentId`, digests, commitments, message
 IDs, and transaction hashes are 32-byte `0x`-prefixed hex values.
@@ -19,7 +20,7 @@ Creates a one-use, expiring SIWE challenge for one wallet.
 ```
 
 The response contains the exact `message` to sign and its expiration. It is bound to the configured
-domain, URI, Mantle Sepolia chain ID, wallet, nonce, issued-at, and expiration.
+domain, URI, Ethereum Sepolia chain ID, wallet, nonce, issued-at, and expiration.
 
 ### `POST /auth/verify`
 
@@ -152,7 +153,7 @@ Public canonical read. Returns the current source record even when it is revoked
     "cidDigest": "0x...",
     "metadataCommitment": "0x...",
     "issuer": "0x...",
-    "sourceChainId": "5003",
+    "sourceChainId": "11155111",
     "registeredAt": "2026-07-25T10:00:00.000Z",
     "updatedAt": "2026-07-25T10:05:00.000Z",
     "schemaVersion": 1,

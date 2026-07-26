@@ -1,13 +1,14 @@
 # Local Readiness Audit
 
-Audit date: 25 July 2026.
+Audit date: 26 July 2026.
 
 ## Revisions
 
 - Backend implementation head before this audit record:
-  `9eb2707838dcccd9775b0509ee111ae765614540`
-- Contract baseline: `175b902733794f9466ef73dc97f69a074b4b80c8`
-- Generated backend contract artifact provenance matches the contract baseline.
+  `b55531717083498ccd7cf6681259a4e33b7ec4c0`
+- Contract baseline: `b132bf4360108db00959fc5aa75009a12283ed69`
+- Generated backend contract artifact provenance matches the contract baseline and records Ethereum
+  Sepolia as canonical source with Mantle Sepolia as destination.
 
 The backend worktree was clean when this audit began. The contract worktree still contains the
 user-owned untracked `soljson-latest.js`; it was not read, changed, moved, or deleted.
@@ -57,10 +58,11 @@ or resolved:
 2. create/import an encrypted named Foundry admin account;
 3. provide and approve distinct public addresses for admin/governance/pauser, backend operator, and
    user issuer;
-4. fund native gas on the required chains and identify/fund the LINK source;
+4. fund native gas for the admin and user wallets; the backend operator already has gas on both
+   chains and `7` LINK on Ethereum Sepolia;
 5. populate RPC/API settings and public role addresses in the contract environment;
 6. review the complete constructor/role/funding plan and explicitly approve testnet broadcast.
 
-The previously discovered candidate backend address has zero native balance on Mantle Sepolia and
-Ink Sepolia and was not automatically assigned any role. No testnet transaction has been
-broadcast.
+The backend operator address has `0.15` Ethereum Sepolia ETH, `10` Mantle Sepolia MNT, and `7`
+Ethereum Sepolia LINK, but it was not automatically assigned any on-chain role. No testnet
+transaction has been broadcast.

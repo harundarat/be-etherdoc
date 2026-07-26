@@ -1,8 +1,8 @@
 # Etherdoc Backend
 
 NestJS backend for Etherdoc’s signed document lifecycle. The canonical source is
-`EtherdocSender` on Mantle Sepolia; `EtherdocReceiver` on Ink Sepolia is a replicated view delivered
-through Chainlink CCIP.
+`EtherdocSender` on Ethereum Sepolia; `EtherdocReceiver` on Mantle Sepolia is a replicated view
+delivered through Chainlink CCIP.
 
 The backend never treats PostgreSQL, Pinata, or the destination contract as stronger evidence than
 the source contract. Document identity is:
@@ -13,7 +13,7 @@ documentId = keccak256(abi.encode(issuer, contentDigest))
 ```
 
 Contract ABI, network configuration, protocol constants, and deployment registry are generated
-from `sc-etherdoc` commit `175b902733794f9466ef73dc97f69a074b4b80c8`.
+from `sc-etherdoc` commit `b132bf4360108db00959fc5aa75009a12283ed69`.
 
 ## Current deployment status
 
@@ -27,7 +27,7 @@ worktree, and explicit broadcast approval requirements in
 - Node.js 22
 - pnpm 10
 - PostgreSQL 16
-- access to Mantle Sepolia and Ink Sepolia RPC endpoints
+- access to Ethereum Sepolia and Mantle Sepolia RPC endpoints
 - Pinata credentials
 - a backend signer authorized as sender `OPERATOR` and used to submit permissionless `*BySig` calls
 

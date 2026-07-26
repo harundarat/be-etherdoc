@@ -17,8 +17,8 @@ urutan karena task berikutnya bergantung pada artefak dan keputusan task sebelum
 - Smart contract terbaru menggunakan:
   - `EtherdocSender` pada canonical source chain;
   - `EtherdocReceiver` pada destination chain;
-  - Mantle Sepolia sebagai source;
-  - Ink Sepolia sebagai destination;
+  - Ethereum Sepolia sebagai source;
+  - Mantle Sepolia sebagai destination;
   - CCIP payload schema v3;
   - EIP-712 domain `Etherdoc` version `2`;
   - `documentId = keccak256(abi.encode(issuer, contentDigest))`;
@@ -44,10 +44,10 @@ urutan karena task berikutnya bergantung pada artefak dan keputusan task sebelum
 
 ## Target Network
 
-| Peran            | Network        | Chain ID |         CCIP selector |
-| ---------------- | -------------- | -------: | --------------------: |
-| Canonical source | Mantle Sepolia |   `5003` | `8236463271206331221` |
-| Destination      | Ink Sepolia    | `763373` | `9763904284804119144` |
+| Peran            | Network          |   Chain ID |          CCIP selector |
+| ---------------- | ---------------- | ---------: | ---------------------: |
+| Canonical source | Ethereum Sepolia | `11155111` | `16015286601757825753` |
+| Destination      | Mantle Sepolia   |     `5003` |  `8236463271206331221` |
 
 Nilai router, LINK token, gas limit, dan explorer harus dibaca dari
 `sc-etherdoc/config/networks/testnet.json`, bukan disalin ke business logic backend.
@@ -167,7 +167,8 @@ Status dispatch per destination:
       `0x0f70A38610bbdcE47f6fc7AD6C4b1E5A6C68b62A`.
 - [ ] Tentukan public address user test wallet.
 - [ ] Periksa native token balance ketiga wallet.
-- [ ] Periksa ketersediaan LINK untuk mendanai sender.
+- [x] Periksa ketersediaan LINK untuk mendanai sender: backend operator mempunyai `7` LINK pada
+      Ethereum Sepolia.
 - [x] Validasi router, LINK token, chain ID, selector, gas limit, dan governance mode dari network
       config.
 
@@ -203,21 +204,21 @@ Sebelum broadcast, tampilkan kepada pengguna:
 
 Kemudian:
 
-- [ ] Minta persetujuan eksplisit pengguna untuk broadcast ke Mantle Sepolia dan Ink Sepolia.
+- [ ] Minta persetujuan eksplisit pengguna untuk broadcast ke Ethereum Sepolia dan Mantle Sepolia.
 - [ ] Jangan melanjutkan deployment bila approval belum diberikan.
 - [ ] Jangan menampilkan private key saat meminta approval.
 
 ### Deployment TODO
 
-- [ ] Deploy `EtherdocSender` ke Mantle Sepolia menggunakan encrypted admin Foundry account.
+- [ ] Deploy `EtherdocSender` ke Ethereum Sepolia menggunakan encrypted admin Foundry account.
 - [ ] Isi constructor sender dengan:
   - governance = admin wallet;
   - initial issuer = user test wallet;
   - operator = backend wallet;
   - pauser = admin wallet.
-- [ ] Deploy `EtherdocReceiver` ke Ink Sepolia menggunakan encrypted admin Foundry account.
-- [ ] Bind receiver ke source selector, source chain ID, dan sender address Mantle.
-- [ ] Konfigurasikan remote Ink pada sender.
+- [ ] Deploy `EtherdocReceiver` ke Mantle Sepolia menggunakan encrypted admin Foundry account.
+- [ ] Bind receiver ke source selector, source chain ID, dan sender address Ethereum.
+- [ ] Konfigurasikan remote Mantle pada sender.
 - [ ] Rekonsiliasi trusted sender pada receiver.
 - [ ] Fund sender dengan LINK menggunakan target-balance workflow.
 - [ ] Verifikasi source code sender dan receiver di explorer.
@@ -280,8 +281,8 @@ Kemudian:
 - [x] Buat typed configuration untuk:
   - PostgreSQL;
   - Pinata;
+  - Ethereum Sepolia RPC;
   - Mantle Sepolia RPC;
-  - Ink Sepolia RPC;
   - sender/receiver address;
   - confirmation depth;
   - timeout;
@@ -393,7 +394,7 @@ Kemudian:
 - [x] Verifikasi JWT subject sama dengan issuer intent.
 - [x] Periksa `isIssuerAuthorized()` sebelum menghasilkan intent.
 - [x] Ambil `issuerNonce()` dari source contract.
-- [x] Bentuk EIP-712 domain `Etherdoc`, version `2`, Mantle chain ID, dan sender address.
+- [x] Bentuk EIP-712 domain `Etherdoc`, version `2`, Ethereum Sepolia chain ID, dan sender address.
 - [x] Bentuk typed data sesuai operasi:
   - `RegisterDocument`;
   - `RevokeDocument`;
@@ -611,4 +612,4 @@ Codex harus berhenti dan meminta input pengguna bila:
 - approval broadcast testnet belum diberikan;
 - manifest deployment bertentangan dengan live bytecode;
 - diperlukan penghapusan atau perubahan file yang bukan dibuat oleh Codex;
-- diperlukan mainnet deployment atau perluasan destination di luar Ink Sepolia.
+- diperlukan mainnet deployment atau perluasan destination di luar Mantle Sepolia.
