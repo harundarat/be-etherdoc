@@ -27,6 +27,11 @@ chain. The generated deployment registry is canonical, so address/block environm
 optional and must match the registry when supplied. Receipt and verification evidence is recorded
 in [testnet-deployment-preflight.md](docs/testnet-deployment-preflight.md).
 
+The approved live lifecycle smoke test is also complete: register, supersede, revoke, and four CCIP
+dispatches were confirmed on both chains. A clean PostgreSQL replay reconstructed 12 canonical
+events, 2 final document projections, and 4 destination-confirmed dispatches with no recovery
+backlog.
+
 ## Requirements
 
 - Node.js 22
@@ -101,7 +106,7 @@ resent.
 
 - [API reference](docs/api-doc.md)
 - [Operations and recovery runbook](docs/operations-runbook.md)
-- [Local readiness audit and remaining blockers](docs/local-readiness-audit.md)
+- [Local readiness audit](docs/local-readiness-audit.md)
 - [Smart-contract compatibility baseline](docs/smart-contract-compatibility.md)
 - [Synchronization checklist](docs/TODO-smart-contract-sync.md)
 

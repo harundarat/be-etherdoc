@@ -37,6 +37,12 @@ The Foundry results and live read-only network preflight are recorded in
 [testnet-deployment-preflight.md](testnet-deployment-preflight.md). Build, lint, tests, coverage,
 contract size, gas snapshot, dry run, and the exact clean-source deployment workflow pass.
 
+The final post-deployment rerun passed 116 tests with no failures or skips, including both live fork
+checks. Coverage remained 100% for lines, statements, branches, and functions. A test-only contract
+commit now permits the network-config suite to run with active local manifests; backend artifact
+provenance remains pinned to deployed source commit `b132bf4360108db00959fc5aa75009a12283ed69` and
+rejects any later change to contract, dependency, compiler, or network inputs without new manifests.
+
 ## Legacy and secret scan
 
 Active source, README, API documentation, runbook, example environment, scripts, CI, and tests were
@@ -47,13 +53,19 @@ No tracked runtime `.env` exists. Secret-shaped tracked values are deterministic
 and digest vectors; no runtime key, mnemonic, JWT, Pinata token, or encrypted keystore was added.
 No private key was copied from the old backend environment, contract workspace, or wallet tooling.
 
-## Remaining release blockers
+## Live lifecycle and reconciliation
 
-Deployment, configuration, funding, registry synchronization, and source verification are complete.
-The encrypted user issuer signer has also been validated. The remaining external step is explicit
-approval for the seven-transaction lifecycle smoke test using the user issuer and backend operator,
-followed by final backend reconciliation.
+Deployment, configuration, funding, registry synchronization, source verification, lifecycle smoke
+test, and final reconciliation are complete. The seven separately approved source transactions and
+all four CCIP messages succeeded. The original document reached `SUPERSEDED`; its replacement
+reached `REVOKED`; source and destination verification remained consistent.
 
-The admin, backend operator, and user issuer are distinct and funded for their intended chain
-actions. The backend operator holds only `OPERATOR`; the four approved deployment transactions and
-their receipts are recorded in the deployment preflight.
+A clean PostgreSQL 16 replay from the live deployment blocks produced 12 canonical events,
+2 document projections, and 4 `DESTINATION_CONFIRMED` dispatches. All 4 tracking jobs completed with
+no failure or READY backlog. The dry-run reconciliation and two repeated enqueue reconciliations
+both found zero candidates and made zero changes.
+
+There are no remaining release blockers in this synchronization scope. The admin, backend operator,
+and user issuer remain distinct and funded for their intended chain actions; the backend operator
+holds only `OPERATOR`. Full transaction, CCIP, and projection evidence is recorded in
+[testnet-deployment-preflight.md](testnet-deployment-preflight.md).

@@ -184,4 +184,6 @@ Then verify:
 - one smoke document can be traced by intent ID, document ID, source transaction, CCIP message ID,
   and destination transaction.
 
-The current testnet deployment blockers mean the final live smoke test cannot run yet.
+The live lifecycle smoke test and clean-database reconciliation completed on 26 July 2026. Use the
+transaction, CCIP message, and projection evidence in
+[testnet-deployment-preflight.md](testnet-deployment-preflight.md) as the cutover baseline.

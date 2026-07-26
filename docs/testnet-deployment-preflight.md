@@ -1,7 +1,8 @@
 # Testnet Deployment and Receipt Record
 
-Dokumen ini mencatat preflight, approval eksplisit pengguna, dan hasil deployment baseline kontrak
-`b132bf4360108db00959fc5aa75009a12283ed69` pada 26 Juli 2026.
+Dokumen ini mencatat preflight, approval eksplisit pengguna, hasil deployment baseline kontrak
+`b132bf4360108db00959fc5aa75009a12283ed69`, lifecycle smoke test, dan final reconciliation pada
+26 Juli 2026.
 
 ## Quality gate
 
@@ -216,24 +217,57 @@ Verification:
 The backend generated registry imports both manifests, addresses, deployment blocks, constructor
 arguments, transaction hashes, and runtime code hashes.
 
-## Remaining before cutover
+## Lifecycle smoke-test record
 
-Encrypted issuer keystore `etherdoc-issuer` and its password file are both mode `0600`. Local
-decryption resolves to the approved issuer
-`0xB34a4eAECB848d573a0410bc305787d5B69328B8`, which is an authorized EOA with source gas.
+Pengguna memberi approval eksplisit terpisah untuk tujuh transaksi lifecycle. Encrypted issuer
+keystore `etherdoc-issuer` dan password file lokalnya tetap berpermission `0600`; decryption lokal
+sesuai dengan issuer yang disetujui tanpa menulis atau mencetak raw private key.
 
-The lifecycle smoke test requires separate approval for seven Ethereum Sepolia transactions:
+Dokumen original:
+`0x2ef389af5cdb74f89cbe9bb002a34ab600d92dd8ab508c6d1723493aaaa00195`.
+Dokumen replacement:
+`0xaa7c2056a8e13ab03401fabbe3a165941dc40aefed9305abffefb3c99507b4eb`.
 
-1. issuer registers the original document;
-2. operator dispatches the active version;
-3. issuer supersedes the original;
-4. operator dispatches the superseded version;
-5. operator dispatches the active replacement;
-6. issuer revokes the replacement;
-7. operator dispatches the revoked version.
+| Operasi                      | Source transaction                                                   |    Block |
+| ---------------------------- | -------------------------------------------------------------------- | -------: |
+| Register original            | `0xd51b6d9ac82e5811daca16359c7974d8138ac419a3d364c4ac3e020b685c10d6` | 11354227 |
+| Dispatch original active     | `0x7c17ea6eaccb6924de81fa707fc527fb098c323c0b379b5799af1b1972b931aa` | 11354228 |
+| Supersede original           | `0x798f10125e05b93fceade0430500bafaf18ec96566c392dfd4ffbd716d27aed9` | 11354311 |
+| Dispatch original superseded | `0x0a6720a52acb60fa5d42e9b354ae14121e97d837ffebfe8eb0d539c8304cd399` | 11354312 |
+| Dispatch replacement active  | `0x7b4fecfd098026f24820cf32c9c1de9703c1247294930f6123edc891e0a811a5` | 11354399 |
+| Revoke replacement           | `0x462de96b12c15c0c792af37a1a667d4aa5061f6e073b8e89440fd3dc72fc2912` | 11354488 |
+| Dispatch replacement revoked | `0x614ace2c23c0f3ca926233a980777434ba06ff93309c5b582b05ab55823de75d` | 11354489 |
 
-Those four dispatches are expected to consume approximately `0.22802 LINK` at the preflight quote.
-The sender currently holds `1 LINK`. The issuer keystore will be decrypted only into process memory;
-no raw user private key will be written to a file, log, documentation, Git, or command text.
+Ketujuh receipt berstatus `1`. Empat dispatch menghasilkan CCIP delivery berikut:
 
-After separate approval, run the lifecycle smoke test and final backend reconciliation.
+| Lifecycle snapshot  | CCIP message ID                                                      | Destination transaction                                              | Mantle block |
+| ------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------- | -----------: |
+| Original active     | `0x86abfa7d6fd6a480236c101211240d96510fbf045d4aa671703009434f9f0a79` | `0x188bc76b50948a3451b29bad42af87a236cb2c1d916e7bd33f55014faaacfc4b` |     41760075 |
+| Original superseded | `0x1a02c25bedc2a141e236d561a3edc85bde0de698ef9be15fa8c58a99227404b8` | `0x00e9bab36b0735dcceb64a884f19c31dbe11fc5ff566e248080c0c6f383391e9` |     41760650 |
+| Replacement active  | `0xa6ee707416c3c4d7f2b8a1b8b0d2c699e34b1ee26c36a6e4d0ec52797284f8cf` | `0x2e222533dc580c6992092aa57c4e1ec4c4f38a9102e848c74a1d3c626d5020db` |     41761233 |
+| Replacement revoked | `0x4ae1e08e5a78983c2a1003788b90a03bc84d7314c278ac788490e60aba0231ad` | `0xb46eda744d5028d07320941e52e4fe2f73a96628d9668b904e3609ddc78e038a` |     41761801 |
+
+Semua message mencapai status CCIP `Success` dan masing-masing menghasilkan tepat satu
+`MessageReceived`. Final source dan destination state cocok: original version `2` berstatus
+`SUPERSEDED`, replacement version `2` berstatus `REVOKED`, integrity check berhasil, dan keduanya
+tidak dilaporkan active. Saldo sender setelah empat dispatch adalah
+`0.771994783715452157 LINK`.
+
+## Final backend reconciliation
+
+Backend dibangun dan dijalankan terhadap PostgreSQL 16 kosong menggunakan live deployment registry.
+Indexer memulai dari kedua deployment block dan mencapai finalized head. Karena endpoint Ethereum
+yang semula dikonfigurasi menolak historical `eth_getLogs` tanpa token, audit read-only memakai
+endpoint Sepolia alternatif yang mendukung historical logs; tidak ada transaksi tambahan.
+
+Hasil projection:
+
+- 12 canonical events: 2 `DocumentRegistered`, 2 `DocumentStatusChanged`, 4 `MessageSent`, dan
+  4 `MessageReceived`;
+- 2 document projections dengan final lifecycle `SUPERSEDED` dan `REVOKED`;
+- 4 dispatch berstatus `DESTINATION_CONFIRMED`, lengkap dengan source/destination block evidence;
+- 4 `TRACK_DESTINATION` job selesai, tanpa failed dispatch atau READY backlog;
+- `pnpm reconcile` melaporkan nol source unknown, recovery dispatch, dan destination tracking;
+- dua kali `pnpm reconcile --enqueue` masing-masing membuat nol job, membuktikan idempotensi akhir.
+
+Lifecycle smoke test dan final reconciliation selesai tanpa release blocker yang tersisa.

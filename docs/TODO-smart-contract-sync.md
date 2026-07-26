@@ -24,8 +24,9 @@ urutan karena task berikutnya bergantung pada artefak dan keputusan task sebelum
   - `documentId = keccak256(abi.encode(issuer, contentDigest))`;
   - lifecycle `ACTIVE`, `REVOKED`, dan `SUPERSEDED`;
   - register, revoke, dan supersede melalui direct call atau signature.
-- Kontrak terbaru belum dideploy ke testnet.
-- `sc-etherdoc/deployments/testnet` belum memiliki manifest deployment.
+- Kontrak baseline telah dideploy ke Ethereum Sepolia dan Mantle Sepolia.
+- `sc-etherdoc/deployments/testnet` memiliki manifest deployment yang telah disinkronkan ke
+  generated registry backend.
 - File untracked lama `sc-etherdoc/soljson-latest.js` telah dihapus pada 26 Juli 2026 setelah
   persetujuan eksplisit pemilik; file tersebut tidak pernah menjadi bagian baseline.
 
@@ -232,7 +233,7 @@ Kemudian:
   - runtime code hash;
   - compiler/EVM settings;
   - Git commit.
-- [ ] Jalankan testnet E2E untuk register, dispatch, receive, verify, revoke, supersede, dan dispatch
+- [x] Jalankan testnet E2E untuk register, dispatch, receive, verify, revoke, supersede, dan dispatch
       lifecycle version berikutnya.
 
 ### Kriteria Keberhasilan
@@ -242,8 +243,8 @@ Kemudian:
 - [x] `getRemoteConfig()` dan `isTrustedRemote()` saling konsisten.
 - [x] Sender memiliki LINK dan operator memiliki native gas yang cukup.
 - [x] Manifest deployment lengkap tersedia.
-- [ ] E2E menghasilkan `DocumentRegistered`, `MessageSent`, dan `MessageReceived`.
-- [ ] `verifyDocument()` berhasil pada source dan destination.
+- [x] E2E menghasilkan `DocumentRegistered`, `MessageSent`, dan `MessageReceived`.
+- [x] `verifyDocument()` berhasil pada source dan destination.
 - [x] Deployment dapat diaudit tanpa mengetahui private key.
 
 ---
@@ -554,7 +555,7 @@ Kemudian:
   - restart;
   - reconciliation.
 - [x] Tambahkan deterministic local E2E tanpa Pinata/RPC publik.
-- [ ] Tambahkan testnet smoke test terhadap deployment manifest aktif.
+- [x] Tambahkan testnet smoke test terhadap deployment manifest aktif.
 - [x] Uji register, revoke, supersede, duplicate request, stale nonce, invalid signature, paused
       contract, insufficient fee, dropped transaction, receiver delay, replay event, RPC outage, dan
       reorg.
@@ -572,7 +573,7 @@ Kemudian:
   - reconciliation;
   - rollback.
 - [x] Hapus konfigurasi, ABI, DTO, endpoint, dan dokumentasi lama.
-- [ ] Jalankan final reconciliation dan smoke test sebelum cutover.
+- [x] Jalankan final reconciliation dan smoke test sebelum cutover.
 
 ### Kriteria Keberhasilan
 
@@ -594,12 +595,12 @@ Kemudian:
 - [x] User wallet tercatat sebagai issuer dan private key tetap di pengguna.
 - [x] ABI backend berasal dari exact contract commit.
 - [x] Digest, CID, metadata commitment, dan document ID konsisten.
-- [ ] Register, revoke, dan supersede berfungsi end-to-end.
+- [x] Register, revoke, dan supersede berfungsi end-to-end.
 - [x] Source confirmation dan destination confirmation dilaporkan terpisah.
 - [x] Restart, retry, duplicate request, dan multi-worker tidak menghasilkan transaksi ganda.
 - [x] Database dapat direkonsiliasi ulang dari on-chain evidence.
 - [x] RPC, Pinata, atau CCIP failure tidak disamarkan sebagai not-found atau success.
-- [ ] Semua test dan quality gate kedua repository lulus.
+- [x] Semua test dan quality gate kedua repository lulus.
 
 ## Batas Berhenti untuk Long-Running Codex Task
 
