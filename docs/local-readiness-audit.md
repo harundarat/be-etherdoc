@@ -52,10 +52,8 @@ No private key was copied from the old backend environment, contract workspace, 
 Local backend work can proceed no further toward a live smoke test until all of these are supplied
 or resolved:
 
-1. provide the encrypted admin keystore password through a local mode-`0600` password file, never
-   through chat, Git, `.env`, or a command argument;
-2. populate explorer API settings if Etherscan/Mantlescan verification is used;
-3. review the complete constructor/role/funding plan and explicitly approve testnet broadcast.
+1. populate explorer API settings if Etherscan/Mantlescan verification is used;
+2. explicitly approve the frozen constructor/role/funding plan and testnet broadcast.
 
 The admin, backend operator, and user issuer are distinct and funded for their intended chain
 actions. The backend operator is assigned only the future `OPERATOR` role; no testnet transaction

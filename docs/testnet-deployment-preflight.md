@@ -52,9 +52,10 @@ dokumen.
 Named encrypted Foundry keystore `etherdoc-admin` tersedia dengan permission `0600`. Pemilik
 mengonfirmasi public address keystore sebagai
 `0x6AeFe6b1253E04f61f8378D41d6790AA46e07c8F`; password dan ciphertext tidak dicetak atau disimpan
-di repository. Ignored file `sc-etherdoc/.env` juga berpermission `0600` dan memuat public RPC,
-pilihan network, target sender `1 LINK`, serta seluruh public role address. File tersebut tidak
-memuat private key atau password.
+di repository. Local password file berpermission `0600` berhasil mendekripsi keystore ke public
+address tersebut tanpa menampilkan secret. Ignored file `sc-etherdoc/.env` juga berpermission `0600`
+dan memuat public RPC, pilihan network, target sender `1 LINK`, serta seluruh public role address.
+File tersebut tidak memuat private key atau password.
 
 Pada 25 Juli 2026, backend operator key baru dibuat khusus untuk testnet/dev dan disimpan sebagai
 `BACKEND_PRIVATE_KEY` di ignored file `be-etherdoc/.env` dengan permission file `0600`. Private key
@@ -179,9 +180,7 @@ berurutan dan dihentikan bila satu langkah gagal.
 
 ## Blocker sebelum approval gate
 
-1. Foundry memerlukan password keystore saat broadcast. Password harus diberikan melalui local
-   `--password-file` berpermission `0600`, bukan chat, command argument, Git, atau `.env`.
-2. Explorer API key masih diperlukan bila verification dijalankan melalui Etherscan/Mantlescan.
-3. Pengguna belum memberi approval eksplisit untuk empat transaksi deployment/configuration/funding.
+1. Explorer API key masih diperlukan bila verification dijalankan melalui Etherscan/Mantlescan.
+2. Pengguna belum memberi approval eksplisit untuk empat transaksi deployment/configuration/funding.
 
 Tidak ada transaksi testnet yang dibroadcast selama preflight ini.
