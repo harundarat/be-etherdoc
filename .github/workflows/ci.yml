@@ -38,7 +38,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: harundarat/sc-etherdoc
-          ref: 175b902733794f9466ef73dc97f69a074b4b80c8
+          ref: b132bf4360108db00959fc5aa75009a12283ed69
           submodules: recursive
           path: sc-etherdoc
 
