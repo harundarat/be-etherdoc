@@ -115,6 +115,66 @@ function getCommit() {
   }
 }
 
+function getPinnedContractCommit(headCommit) {
+  const manifestPaths = [
+    'deployments/testnet/manifests/ethereumSepolia-sender.json',
+    'deployments/testnet/manifests/mantleSepolia-receiver.json',
+  ].filter((relativePath) => existsSync(resolve(contractsRoot, relativePath)));
+  if (manifestPaths.length === 0) {
+    return headCommit;
+  }
+
+  const manifests = manifestPaths.map(readJson);
+  const commits = new Set(
+    manifests.map((manifest) => manifest.source?.gitCommit),
+  );
+  if (
+    commits.size !== 1 ||
+    [...commits].some(
+      (commit) => typeof commit !== 'string' || !/^[0-9a-f]{40}$/.test(commit),
+    ) ||
+    manifests.some((manifest) => manifest.source?.gitDirty !== false)
+  ) {
+    fail('Active deployment manifests must reference one clean contract commit');
+  }
+  const deploymentCommit = [...commits][0];
+  try {
+    execFileSync(
+      'git',
+      ['-C', contractsRoot, 'cat-file', '-e', `${deploymentCommit}^{commit}`],
+      { stdio: 'ignore' },
+    );
+  } catch {
+    fail(`Deployment contract commit ${deploymentCommit} is unavailable`);
+  }
+  try {
+    execFileSync(
+      'git',
+      [
+        '-C',
+        contractsRoot,
+        'diff',
+        '--quiet',
+        deploymentCommit,
+        headCommit,
+        '--',
+        '.foundry-version',
+        'config/networks/testnet.json',
+        'foundry.toml',
+        'lib',
+        'remappings.txt',
+        'src',
+      ],
+      { stdio: 'ignore' },
+    );
+  } catch {
+    fail(
+      `Contract inputs changed after deployed commit ${deploymentCommit}; deploy new manifests before syncing`,
+    );
+  }
+  return deploymentCommit;
+}
+
 function getDeployment(networkName, role, network, contractCommit) {
   const addressRelativePath = `deployments/testnet/${networkName}.json`;
   const manifestRelativePath = `deployments/testnet/manifests/${networkName}-${role}.json`;
@@ -210,7 +270,7 @@ const senderSource = readText(senderSourceRelativePath);
 const senderArtifact = JSON.parse(senderArtifactText);
 const receiverArtifact = JSON.parse(receiverArtifactText);
 const networkConfig = parseNetworkConfig(networkConfigText);
-const contractCommit = getCommit();
+const contractCommit = getPinnedContractCommit(getCommit());
 
 for (const requiredNetwork of ['ethereumSepolia', 'mantleSepolia']) {
   if (!networkConfig.networks?.[requiredNetwork]) {
