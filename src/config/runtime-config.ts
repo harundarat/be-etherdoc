@@ -181,8 +181,8 @@ export function buildRuntimeConfig(
 ): RuntimeConfig {
   const signerPrivateKey = privateKey(environment);
   const signerAddress = privateKeyToAccount(signerPrivateKey).address;
-  const sourceNetwork = etherdocContractArtifacts.networks.mantleSepolia;
-  const destinationNetwork = etherdocContractArtifacts.networks.inkSepolia;
+  const sourceNetwork = etherdocContractArtifacts.networks.ethereumSepolia;
+  const destinationNetwork = etherdocContractArtifacts.networks.mantleSepolia;
 
   const jwtSecret = required(environment, 'JWT_SECRET');
   if (jwtSecret.length < 32) {
@@ -203,7 +203,7 @@ export function buildRuntimeConfig(
       destination: {
         chainId: destinationNetwork.chainId,
         chainSelector: BigInt(destinationNetwork.chainSelector),
-        confirmations: integer(environment, 'INK_CONFIRMATION_DEPTH', 2, 0),
+        confirmations: integer(environment, 'MANTLE_CONFIRMATION_DEPTH', 2, 0),
         contractAddress: deploymentAddress(
           environment,
           'ETHERDOC_RECEIVER_ADDRESS',
@@ -215,10 +215,10 @@ export function buildRuntimeConfig(
           etherdocContractArtifacts.deployments.receiver.deploymentBlock,
         ),
         explorerUrl: destinationNetwork.explorer,
-        linkToken: address(destinationNetwork.linkToken, 'Ink LINK token'),
-        name: 'Ink Sepolia',
-        router: address(destinationNetwork.router, 'Ink CCIP router'),
-        rpcUrl: url(environment, 'INK_SEPOLIA_RPC_URL'),
+        linkToken: address(destinationNetwork.linkToken, 'Mantle LINK token'),
+        name: 'Mantle Sepolia',
+        router: address(destinationNetwork.router, 'Mantle CCIP router'),
+        rpcUrl: url(environment, 'MANTLE_SEPOLIA_RPC_URL'),
       },
       requestTimeoutMs: integer(environment, 'RPC_REQUEST_TIMEOUT_MS', 15_000),
       signerAddress,
@@ -226,7 +226,12 @@ export function buildRuntimeConfig(
       source: {
         chainId: sourceNetwork.chainId,
         chainSelector: BigInt(sourceNetwork.chainSelector),
-        confirmations: integer(environment, 'MANTLE_CONFIRMATION_DEPTH', 2, 0),
+        confirmations: integer(
+          environment,
+          'ETHEREUM_CONFIRMATION_DEPTH',
+          2,
+          0,
+        ),
         contractAddress: deploymentAddress(
           environment,
           'ETHERDOC_SENDER_ADDRESS',
@@ -238,10 +243,10 @@ export function buildRuntimeConfig(
           etherdocContractArtifacts.deployments.sender.deploymentBlock,
         ),
         explorerUrl: sourceNetwork.explorer,
-        linkToken: address(sourceNetwork.linkToken, 'Mantle LINK token'),
-        name: 'Mantle Sepolia',
-        router: address(sourceNetwork.router, 'Mantle CCIP router'),
-        rpcUrl: url(environment, 'MANTLE_SEPOLIA_RPC_URL'),
+        linkToken: address(sourceNetwork.linkToken, 'Ethereum LINK token'),
+        name: 'Ethereum Sepolia',
+        router: address(sourceNetwork.router, 'Ethereum CCIP router'),
+        rpcUrl: url(environment, 'ETHEREUM_SEPOLIA_RPC_URL'),
       },
     },
     corsOrigin: environment.CORS_ORIGIN?.trim() || 'http://localhost:3000',

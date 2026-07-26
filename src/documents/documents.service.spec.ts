@@ -19,13 +19,13 @@ function runtime(): RuntimeConfig {
   return {
     blockchain: {
       destination: {
-        chainId: 763373,
-        chainSelector: 9_763_904_284_804_119_144n,
+        chainId: 5003,
+        chainSelector: 8_236_463_271_206_331_221n,
         contractAddress: destinationAddress,
       },
       source: {
-        chainId: 5003,
-        chainSelector: 8_236_463_271_206_331_221n,
+        chainId: 11155111,
+        chainSelector: 16_015_286_601_757_825_753n,
         confirmations: 2,
         contractAddress: sourceAddress,
       },
@@ -48,7 +48,7 @@ function canonicalDocument() {
     metadataCommitment: `0x${'33'.repeat(32)}`,
     registeredAt: 1_700_000_000n,
     schemaVersion: 1,
-    sourceChainId: 5003n,
+    sourceChainId: 11155111n,
     status: 2,
     supersededBy: `0x${'0'.repeat(64)}`,
     supersedes: `0x${'0'.repeat(64)}`,

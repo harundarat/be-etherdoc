@@ -7,7 +7,7 @@ import {
 } from './intent-typed-data';
 
 const domain = {
-  chainId: 5003,
+  chainId: 11155111,
   verifyingContract: '0x0000000000000000000000000000000000000001',
 } as const;
 const issuer = '0x0000000000000000000000000000000000000002';
@@ -30,7 +30,7 @@ describe('intent typed data', () => {
     });
 
     expect(typedData.domain).toEqual({
-      chainId: 5003,
+      chainId: 11155111,
       name: 'Etherdoc',
       verifyingContract: domain.verifyingContract,
       version: '2',

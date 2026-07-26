@@ -6,7 +6,7 @@ import {
 describe('normalizedIndexedLog', () => {
   it('keeps lossless finalized log evidence', () => {
     const log = normalizedIndexedLog('MessageSent', {
-      args: { destinationChainSelector: 9_763_904_284_804_119_144n },
+      args: { destinationChainSelector: 8_236_463_271_206_331_221n },
       blockHash: `0x${'11'.repeat(32)}`,
       blockNumber: 42n,
       logIndex: 3,
@@ -14,7 +14,7 @@ describe('normalizedIndexedLog', () => {
     });
 
     expect(log).toEqual({
-      args: { destinationChainSelector: 9_763_904_284_804_119_144n },
+      args: { destinationChainSelector: 8_236_463_271_206_331_221n },
       blockHash: `0x${'11'.repeat(32)}`,
       blockNumber: 42n,
       eventName: 'MessageSent',

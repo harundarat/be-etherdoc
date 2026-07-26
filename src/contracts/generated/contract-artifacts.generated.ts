@@ -8,7 +8,7 @@ export const etherdocContractArtifacts = {
     },
     "version": "0.8.36+commit.8a079791"
   },
-  "contractCommit": "175b902733794f9466ef73dc97f69a074b4b80c8",
+  "contractCommit": "b132bf4360108db00959fc5aa75009a12283ed69",
   "contracts": {
     "receiver": {
       "abi": [
@@ -3205,45 +3205,45 @@ export const etherdocContractArtifacts = {
   "deployments": {
     "receiver": {
       "address": null,
-      "chainId": 763373,
-      "chainSelector": "9763904284804119144",
+      "chainId": 5003,
+      "chainSelector": "8236463271206331221",
       "deploymentBlock": null,
       "manifest": null,
-      "network": "inkSepolia",
+      "network": "mantleSepolia",
       "role": "receiver",
       "runtimeCodeHash": null,
       "status": "UNDEPLOYED"
     },
     "sender": {
       "address": null,
-      "chainId": 5003,
-      "chainSelector": "8236463271206331221",
+      "chainId": 11155111,
+      "chainSelector": "16015286601757825753",
       "deploymentBlock": null,
       "manifest": null,
-      "network": "mantleSepolia",
+      "network": "ethereumSepolia",
       "role": "sender",
       "runtimeCodeHash": null,
       "status": "UNDEPLOYED"
     }
   },
   "networks": {
-    "inkSepolia": {
-      "chainId": 763373,
-      "chainSelector": "9763904284804119144",
-      "directoryVerifiedAt": 1784419200,
-      "explorer": "https://explorer-sepolia.inkonchain.com",
+    "ethereumSepolia": {
+      "chainId": 11155111,
+      "chainSelector": "16015286601757825753",
+      "directoryVerifiedAt": 1785058991,
+      "explorer": "https://sepolia.etherscan.io",
       "feeMode": "LINK",
       "gasLimit": 500000,
       "governanceMode": "DIRECT",
-      "linkToken": "0x3423C922911956b1Ccbc2b5d4f38216a6f4299b4",
+      "linkToken": "0x779877A7B0D9E8603169DdbD7836e478b4624789",
       "production": false,
-      "router": "0x17fCda531D8E43B4e2a2A2492FBcd4507a1685A1",
-      "rpcAlias": "ink_sepolia"
+      "router": "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59",
+      "rpcAlias": "ethereum_sepolia"
     },
     "mantleSepolia": {
       "chainId": 5003,
       "chainSelector": "8236463271206331221",
-      "directoryVerifiedAt": 1784419200,
+      "directoryVerifiedAt": 1785058991,
       "explorer": "https://sepolia.mantlescan.xyz",
       "feeMode": "LINK",
       "gasLimit": 500000,
@@ -3273,9 +3273,9 @@ export const etherdocContractArtifacts = {
     "payloadSchemaVersion": 3
   },
   "provenance": {
-    "contentChecksum": "sha256:d7306f40ca74801a51e50b102c2b298d37742334a2be0ff77c4616aa8ecf0563",
+    "contentChecksum": "sha256:cc388f1107853bd21c00c437331036947862a43ff5134f3690a78632300f3b68",
     "inputs": {
-      "networkConfig": "sha256:3a373b515dad0fa5f76b3a31eca2424bf70260f5c07f82f783e72c0810e588c6",
+      "networkConfig": "sha256:87095a728138e1d83910f09fc0699ef4b832e9087a15f19886f33dffb765b46a",
       "receiverArtifact": "sha256:2f251d2dc96493c7282119a2e8ff3a2d946bab811209cec4421cb835678bd226",
       "senderArtifact": "sha256:dbe86823b5d10f16c8328fc96a8706e6a09cb8395a83c055060d439f5ac80360",
       "senderSource": "sha256:825b06ab4100d4fe63af2865dfa9d810d79f68b5628735198f95d45a1c5db2a2",

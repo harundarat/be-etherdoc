@@ -117,9 +117,10 @@ function getCommit() {
 
 function getDeployment(networkName, role, network, contractCommit) {
   const addressRelativePath = `deployments/testnet/${networkName}.json`;
-  const manifestRelativePath =
-    `deployments/testnet/manifests/${networkName}-${role}.json`;
-  const hasAddressRegistry = existsSync(resolve(contractsRoot, addressRelativePath));
+  const manifestRelativePath = `deployments/testnet/manifests/${networkName}-${role}.json`;
+  const hasAddressRegistry = existsSync(
+    resolve(contractsRoot, addressRelativePath),
+  );
   const hasManifest = existsSync(resolve(contractsRoot, manifestRelativePath));
 
   if (!hasAddressRegistry && !hasManifest) {
@@ -194,8 +195,7 @@ function getDeployment(networkName, role, network, contractCommit) {
   };
 }
 
-const senderArtifactRelativePath =
-  'out/EtherdocSender.sol/EtherdocSender.json';
+const senderArtifactRelativePath = 'out/EtherdocSender.sol/EtherdocSender.json';
 const receiverArtifactRelativePath =
   'out/EtherdocReceiver.sol/EtherdocReceiver.json';
 const networksRelativePath = 'config/networks/testnet.json';
@@ -212,7 +212,7 @@ const receiverArtifact = JSON.parse(receiverArtifactText);
 const networkConfig = parseNetworkConfig(networkConfigText);
 const contractCommit = getCommit();
 
-for (const requiredNetwork of ['mantleSepolia', 'inkSepolia']) {
+for (const requiredNetwork of ['ethereumSepolia', 'mantleSepolia']) {
   if (!networkConfig.networks?.[requiredNetwork]) {
     fail(`Network config is missing ${requiredNetwork}`);
   }
@@ -275,17 +275,17 @@ const protocol = {
   ),
 };
 
-const sourceNetwork = networkConfig.networks.mantleSepolia;
-const destinationNetwork = networkConfig.networks.inkSepolia;
+const sourceNetwork = networkConfig.networks.ethereumSepolia;
+const destinationNetwork = networkConfig.networks.mantleSepolia;
 const deployments = {
   receiver: getDeployment(
-    'inkSepolia',
+    'mantleSepolia',
     'receiver',
     destinationNetwork,
     contractCommit,
   ),
   sender: getDeployment(
-    'mantleSepolia',
+    'ethereumSepolia',
     'sender',
     sourceNetwork,
     contractCommit,

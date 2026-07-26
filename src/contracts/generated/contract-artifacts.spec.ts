@@ -25,15 +25,15 @@ describe('generated contract artifacts', () => {
   });
 
   it('exports the canonical source and destination network', () => {
-    expect(etherdocContractArtifacts.networks.mantleSepolia).toMatchObject({
-      chainId: 5003,
-      chainSelector: '8236463271206331221',
+    expect(etherdocContractArtifacts.networks.ethereumSepolia).toMatchObject({
+      chainId: 11155111,
+      chainSelector: '16015286601757825753',
       feeMode: 'LINK',
       gasLimit: 500000,
     });
-    expect(etherdocContractArtifacts.networks.inkSepolia).toMatchObject({
-      chainId: 763373,
-      chainSelector: '9763904284804119144',
+    expect(etherdocContractArtifacts.networks.mantleSepolia).toMatchObject({
+      chainId: 5003,
+      chainSelector: '8236463271206331221',
       feeMode: 'LINK',
       gasLimit: 500000,
     });
@@ -42,14 +42,14 @@ describe('generated contract artifacts', () => {
   it('does not invent deployment addresses before manifests exist', () => {
     expect(etherdocContractArtifacts.deployments.sender).toMatchObject({
       address: null,
-      network: 'mantleSepolia',
+      network: 'ethereumSepolia',
       role: 'sender',
       runtimeCodeHash: null,
       status: 'UNDEPLOYED',
     });
     expect(etherdocContractArtifacts.deployments.receiver).toMatchObject({
       address: null,
-      network: 'inkSepolia',
+      network: 'mantleSepolia',
       role: 'receiver',
       runtimeCodeHash: null,
       status: 'UNDEPLOYED',

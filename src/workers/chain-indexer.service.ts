@@ -461,7 +461,7 @@ export class ChainIndexerService implements OnModuleInit, OnModuleDestroy {
           document.version.toString(),
           this.runtime.blockchain.destination.chainSelector.toString(),
           this.runtime.blockchain.destination.contractAddress,
-          etherdocContractArtifacts.networks.inkSepolia.gasLimit,
+          etherdocContractArtifacts.networks.mantleSepolia.gasLimit,
           document.contentDigest,
           lifecycle,
           document.issuer,

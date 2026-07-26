@@ -23,7 +23,7 @@ function runtime(): RuntimeConfig {
   return {
     blockchain: {
       source: {
-        chainId: 5003,
+        chainId: 11155111,
         contractAddress: sender,
       },
     },
@@ -54,7 +54,7 @@ describe('DocumentIntentsService', () => {
             return Promise.resolve(
               typedDataDigest(
                 registerTypedData(
-                  { chainId: 5003, verifyingContract: sender },
+                  { chainId: 11155111, verifyingContract: sender },
                   {
                     cidCodec: CID_CODEC_RAW,
                     cidDigest,

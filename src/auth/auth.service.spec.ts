@@ -14,7 +14,7 @@ const account = privateKeyToAccount(
 function runtime(): RuntimeConfig {
   return {
     blockchain: {
-      source: { chainId: 5003 },
+      source: { chainId: 11155111 },
     },
     jwt: {
       expiresIn: '15m',
@@ -120,7 +120,7 @@ describe('AuthService', () => {
     const message =
       `attacker.example wants you to sign in with your Ethereum account:\n` +
       `${account.address}\n\nURI: https://attacker.example\nVersion: 1\n` +
-      `Chain ID: 5003\nNonce: abcdefgh\nIssued At: ${new Date().toISOString()}\n` +
+      `Chain ID: 11155111\nNonce: abcdefgh\nIssued At: ${new Date().toISOString()}\n` +
       `Expiration Time: ${new Date(Date.now() + 60_000).toISOString()}`;
 
     await expect(service.verify(message, '0x00')).rejects.toThrow(

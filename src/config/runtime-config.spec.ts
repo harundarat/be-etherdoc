@@ -11,7 +11,7 @@ function validEnvironment(): Record<string, string> {
     ETHERDOC_RECEIVER_DEPLOYMENT_BLOCK: '1',
     ETHERDOC_SENDER_ADDRESS: '0x0000000000000000000000000000000000000001',
     ETHERDOC_SENDER_DEPLOYMENT_BLOCK: '1',
-    INK_SEPOLIA_RPC_URL: 'https://ink.example/rpc',
+    ETHEREUM_SEPOLIA_RPC_URL: 'https://ethereum.example/rpc',
     JWT_SECRET: 'a-secure-test-secret-with-more-than-32-characters',
     MANTLE_SEPOLIA_RPC_URL: 'https://mantle.example/rpc',
     PINATA_API_URL: 'https://api.pinata.example',
@@ -27,19 +27,19 @@ describe('buildRuntimeConfig', () => {
   it('builds lossless chain configuration from generated artifacts', () => {
     const config = buildRuntimeConfig(validEnvironment());
 
-    expect(config.blockchain.source.chainId).toBe(5003);
-    expect(config.blockchain.source.chainSelector).toBe(8236463271206331221n);
-    expect(config.blockchain.destination.chainId).toBe(763373);
+    expect(config.blockchain.source.chainId).toBe(11155111);
     expect(config.blockchain.destination.chainSelector).toBe(
-      9763904284804119144n,
+      8236463271206331221n,
     );
+    expect(config.blockchain.source.chainSelector).toBe(16015286601757825753n);
+    expect(config.blockchain.destination.chainId).toBe(5003);
     expect(config.blockchain.signerAddress).toMatch(/^0x[0-9A-Fa-f]{40}$/);
   });
 
   it.each([
     'DATABASE_URL',
+    'ETHEREUM_SEPOLIA_RPC_URL',
     'MANTLE_SEPOLIA_RPC_URL',
-    'INK_SEPOLIA_RPC_URL',
     'BACKEND_PRIVATE_KEY',
     'ETHERDOC_RECEIVER_DEPLOYMENT_BLOCK',
     'ETHERDOC_SENDER_DEPLOYMENT_BLOCK',

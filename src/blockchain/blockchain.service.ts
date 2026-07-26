@@ -238,13 +238,13 @@ export class BlockchainService implements OnModuleInit {
     if (receiverSourceChainId !== BigInt(source.chainId)) {
       throw new BlockchainClientError(
         BlockchainErrorKind.CHAIN_MISMATCH,
-        'Receiver source chain ID does not match Mantle Sepolia',
+        'Receiver source chain ID does not match Ethereum Sepolia',
       );
     }
     if (receiverSourceSelector !== source.chainSelector) {
       throw new BlockchainClientError(
         BlockchainErrorKind.CHAIN_MISMATCH,
-        'Receiver source selector does not match Mantle Sepolia',
+        'Receiver source selector does not match Ethereum Sepolia',
       );
     }
 

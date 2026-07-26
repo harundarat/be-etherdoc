@@ -677,7 +677,7 @@ export class SourceTransactionWorker {
         document.version.toString(),
         destination.chainSelector.toString(),
         destination.contractAddress,
-        etherdocContractArtifacts.networks.inkSepolia.gasLimit,
+        etherdocContractArtifacts.networks.mantleSepolia.gasLimit,
         document.contentDigest,
         ['UNKNOWN', 'ACTIVE', 'REVOKED', 'SUPERSEDED'][document.status],
         document.issuer,

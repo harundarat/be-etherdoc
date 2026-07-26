@@ -177,7 +177,7 @@ describe('PostgreSQL protocol state', () => {
           chain_id, contract_address, transaction_hash, log_index,
           block_number, block_hash, event_name, event_payload
         )
-        VALUES(5003,$1,$2,0,100,$3,'DocumentRegistered','{}')
+        VALUES(11155111,$1,$2,0,100,$3,'DocumentRegistered','{}')
         ON CONFLICT (chain_id, transaction_hash, log_index)
         DO UPDATE SET canonical = true
       `,
@@ -189,7 +189,7 @@ describe('PostgreSQL protocol state', () => {
           chain_id, contract_address, transaction_hash, log_index,
           block_number, block_hash, event_name, event_payload
         )
-        VALUES(5003,$1,$2,0,100,$3,'DocumentRegistered','{}')
+        VALUES(11155111,$1,$2,0,100,$3,'DocumentRegistered','{}')
         ON CONFLICT (chain_id, transaction_hash, log_index)
         DO UPDATE SET canonical = true
       `,
