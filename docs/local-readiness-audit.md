@@ -10,8 +10,8 @@ Audit date: 26 July 2026.
 - Generated backend contract artifact provenance matches the contract baseline and records Ethereum
   Sepolia as canonical source with Mantle Sepolia as destination.
 
-The backend worktree was clean when this audit began. The contract worktree still contains the
-user-owned untracked `soljson-latest.js`; it was not read, changed, moved, or deleted.
+The backend and contract worktrees are clean. The old untracked `soljson-latest.js` was deleted on
+26 July 2026 after explicit owner approval; it was never part of the contract baseline.
 
 ## Backend gates
 
@@ -35,8 +35,7 @@ reconciliation-job deduplication.
 
 The Foundry results and live read-only network preflight are recorded in
 [testnet-deployment-preflight.md](testnet-deployment-preflight.md). Build, lint, tests, coverage,
-contract size, gas snapshot, dry run, and local deployment workflow logic pass. The exact deployment
-workflow remains blocked by the contract worktree clean-source guard.
+contract size, gas snapshot, dry run, and the exact clean-source deployment workflow pass.
 
 ## Legacy and secret scan
 
@@ -53,15 +52,13 @@ No private key was copied from the old backend environment, contract workspace, 
 Local backend work can proceed no further toward a live smoke test until all of these are supplied
 or resolved:
 
-1. decide how the contract repository should handle `soljson-latest.js` so the exact clean-worktree
-   gate passes;
-2. create/import an encrypted named Foundry admin account;
-3. provide and approve distinct public addresses for admin/governance/pauser, backend operator, and
+1. create/import an encrypted named Foundry admin account;
+2. provide and approve distinct public addresses for admin/governance/pauser, backend operator, and
    user issuer;
-4. fund native gas for the admin and user wallets; the backend operator already has gas on both
+3. fund native gas for the admin and user wallets; the backend operator already has gas on both
    chains and `7` LINK on Ethereum Sepolia;
-5. populate RPC/API settings and public role addresses in the contract environment;
-6. review the complete constructor/role/funding plan and explicitly approve testnet broadcast.
+4. populate RPC/API settings and public role addresses in the contract environment;
+5. review the complete constructor/role/funding plan and explicitly approve testnet broadcast.
 
 The backend operator address has `0.15` Ethereum Sepolia ETH, `10` Mantle Sepolia MNT, and `7`
 Ethereum Sepolia LINK, but it was not automatically assigned any on-chain role. No testnet

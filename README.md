@@ -18,8 +18,8 @@ from `sc-etherdoc` commit `b132bf4360108db00959fc5aa75009a12283ed69`.
 ## Current deployment status
 
 The baseline contracts are not yet deployed to testnet, so the backend requires validated sender
-and receiver address/block overrides. Deployment is blocked until the wallet, funding, clean
-worktree, and explicit broadcast approval requirements in
+and receiver address/block overrides. Deployment is blocked until the wallet, funding, and explicit
+broadcast approval requirements in
 [testnet-deployment-preflight.md](docs/testnet-deployment-preflight.md) are satisfied.
 
 ## Requirements

@@ -26,8 +26,8 @@ urutan karena task berikutnya bergantung pada artefak dan keputusan task sebelum
   - register, revoke, dan supersede melalui direct call atau signature.
 - Kontrak terbaru belum dideploy ke testnet.
 - `sc-etherdoc/deployments/testnet` belum memiliki manifest deployment.
-- `sc-etherdoc` memiliki file untracked `soljson-latest.js`; jangan hapus atau ubah tanpa
-  persetujuan pemilik.
+- File untracked lama `sc-etherdoc/soljson-latest.js` telah dihapus pada 26 Juli 2026 setelah
+  persetujuan eksplisit pemilik; file tersebut tidak pernah menjadi bagian baseline.
 
 ## Prinsip dan Batasan
 
@@ -148,7 +148,7 @@ Status dispatch per destination:
 ### TODO
 
 - [x] Jalankan toolchain Foundry sesuai `.foundry-version`.
-- [ ] Jalankan:
+- [x] Jalankan:
   - [x] `forge fmt --check`;
   - [x] `forge lint --deny warnings src script test`;
   - [x] `forge test -vv`;
@@ -156,11 +156,9 @@ Status dispatch per destination:
   - [x] `bash script/check-contract-sizes.sh`;
   - [x] `bash script/check-gas-snapshot.sh`;
   - [x] `bash script/ci-deployment-dry-run.sh`;
-  - [ ] `bash script/test-deployment-workflow.sh` (logic lulus dengan
-        `ALLOW_DIRTY_DEPLOYMENT=1`, tetapi exact gate menolak `soljson-latest.js` yang untracked).
-- [ ] Pastikan worktree bersih dan exact source sudah committed.
-- [x] Jangan menghapus `soljson-latest.js`; minta arahan pemilik bila file tersebut menghalangi
-      clean-worktree deployment.
+  - [x] `bash script/test-deployment-workflow.sh`.
+- [x] Pastikan worktree bersih dan exact source sudah committed.
+- [x] Hapus `soljson-latest.js` hanya setelah persetujuan eksplisit pemilik.
 - [ ] Buat atau import encrypted Foundry account untuk admin wallet.
 - [ ] Catat public address admin wallet tanpa mengekspor private key.
 - [x] Tentukan public address backend operator/relayer:
@@ -174,10 +172,10 @@ Status dispatch per destination:
 
 ### Kriteria Keberhasilan
 
-- [ ] Seluruh quality gate kontrak lulus.
-- [ ] Deployment dapat dikaitkan dengan clean commit tertentu.
+- [x] Seluruh quality gate kontrak lulus.
+- [x] Deployment dapat dikaitkan dengan clean commit tertentu.
 - [ ] Admin, backend, dan user wallet mempunyai address yang telah diketahui dan tidak tertukar.
-- [ ] Tidak ada private key atau mnemonic pada Git, log, dokumentasi, atau command history.
+- [x] Tidak ada private key atau mnemonic pada Git, log, dokumentasi, atau command history.
 - [ ] Tidak ada placeholder constructor argument yang belum diputuskan.
 
 ---
@@ -575,7 +573,7 @@ Kemudian:
 
 ### Kriteria Keberhasilan
 
-- [ ] Contract dan backend quality gate lulus.
+- [x] Contract dan backend quality gate lulus.
 - [x] Tidak ada secret di Git atau log.
 - [x] Tidak ada referensi aktif ke Holešky, Base Sepolia, address lama, `addDocument`, atau
       `documentExists(string)`.
@@ -606,7 +604,6 @@ Codex harus berhenti dan meminta input pengguna bila:
 
 - address admin, backend, atau user issuer belum tersedia;
 - encrypted Foundry account belum tersedia;
-- worktree smart contract belum bersih;
 - saldo native/LINK tidak cukup;
 - constructor arguments tidak cocok dengan plan;
 - approval broadcast testnet belum diberikan;

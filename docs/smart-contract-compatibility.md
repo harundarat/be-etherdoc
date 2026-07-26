@@ -26,9 +26,9 @@ forge test -vv
 ```
 
 Dua test yang dilewati adalah fork test Ethereum/Mantle yang membutuhkan RPC. Source contract,
-submodule, config, deployment script, dan test semuanya berasal dari commit di atas. File lokal
-untracked `sc-etherdoc/soljson-latest.js` tidak termasuk baseline dan tidak boleh dibaca, diubah,
-atau dihapus oleh workflow sinkronisasi.
+submodule, config, deployment script, dan test semuanya berasal dari commit di atas. File lokal lama
+`sc-etherdoc/soljson-latest.js` tidak termasuk baseline dan telah dihapus setelah persetujuan
+eksplisit pemilik.
 
 ## Network dan deployment roles
 

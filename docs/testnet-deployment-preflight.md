@@ -7,22 +7,21 @@ Status ini mencatat evidence read-only untuk baseline kontrak
 
 Dijalankan pada 26 Juli 2026 dengan Foundry `v1.7.1`:
 
-| Gate                                                               | Hasil                                                         |
-| ------------------------------------------------------------------ | ------------------------------------------------------------- |
-| `forge fmt --check`                                                | Pass                                                          |
-| `forge lint --deny warnings src script test`                       | Pass                                                          |
-| `forge test -vv`                                                   | Pass: 112, fail: 0, skip: 2 fork test tanpa RPC               |
-| `bash script/check-coverage.sh`                                    | Pass: line, statement, branch, dan function 100%              |
-| `bash script/check-contract-sizes.sh`                              | Pass                                                          |
-| `bash script/check-gas-snapshot.sh`                                | Pass                                                          |
-| `bash script/ci-deployment-dry-run.sh`                             | Pass; sender dan receiver tersimulasi tanpa broadcast         |
-| `bash script/test-deployment-workflow.sh`                          | Blocked oleh clean-worktree guard                             |
-| `ALLOW_DIRTY_DEPLOYMENT=1 bash script/test-deployment-workflow.sh` | Pass untuk validasi lokal saja; bukan izin testnet deployment |
+| Gate                                         | Hasil                                                 |
+| -------------------------------------------- | ----------------------------------------------------- |
+| `forge fmt --check`                          | Pass                                                  |
+| `forge lint --deny warnings src script test` | Pass                                                  |
+| `forge test -vv`                             | Pass: 112, fail: 0, skip: 2 fork test tanpa RPC       |
+| `bash script/check-coverage.sh`              | Pass: line, statement, branch, dan function 100%      |
+| `bash script/check-contract-sizes.sh`        | Pass                                                  |
+| `bash script/check-gas-snapshot.sh`          | Pass                                                  |
+| `bash script/ci-deployment-dry-run.sh`       | Pass; sender dan receiver tersimulasi tanpa broadcast |
+| `bash script/test-deployment-workflow.sh`    | Pass dari worktree bersih pada exact commit           |
 
 Deployment workflow lokal membuktikan deployment sender/receiver, manifest, idempotent rerun, remote
-configuration, LINK fund/withdraw target, dan verification workflow. Override dirty hanya dipakai
-pada Anvil karena file milik pengguna `sc-etherdoc/soljson-latest.js` tetap untracked. Override
-tersebut tidak boleh dipakai untuk deployment testnet.
+configuration, LINK fund/withdraw target, dan verification workflow. File untracked lama
+`sc-etherdoc/soljson-latest.js` dihapus setelah persetujuan eksplisit pemilik. Exact gate kemudian
+lulus tanpa dirty-worktree override.
 
 Optional live fork checks juga dijalankan menggunakan public RPC:
 
@@ -77,12 +76,10 @@ penggunaan address ini sebagai LINK funder tetap menjadi bagian approval gate.
 
 ## Blocker sebelum approval gate
 
-1. Pemilik perlu menentukan penanganan `sc-etherdoc/soljson-latest.js` agar deployment berasal dari
-   worktree yang lolos clean-worktree guard. File belum dibaca, diubah, dipindah, atau dihapus.
-2. Named encrypted Foundry admin account belum ada.
-3. Public address admin/deployer dan user issuer belum diketahui.
-4. Native gas admin dan user belum dapat diperiksa; operator sudah funded dan tersedia sebagai
+1. Named encrypted Foundry admin account belum ada.
+2. Public address admin/deployer dan user issuer belum diketahui.
+3. Native gas admin dan user belum dapat diperiksa; operator sudah funded dan tersedia sebagai
    candidate LINK funder.
-5. `sc-etherdoc/.env` perlu diisi RPC/API key dan public role address tanpa private key.
+4. `sc-etherdoc/.env` perlu diisi RPC/API key dan public role address tanpa private key.
 
 Tidak ada transaksi testnet yang dibroadcast selama preflight ini.
