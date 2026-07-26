@@ -159,12 +159,14 @@ Status dispatch per destination:
   - [x] `bash script/test-deployment-workflow.sh`.
 - [x] Pastikan worktree bersih dan exact source sudah committed.
 - [x] Hapus `soljson-latest.js` hanya setelah persetujuan eksplisit pemilik.
-- [ ] Buat atau import encrypted Foundry account untuk admin wallet.
-- [ ] Catat public address admin wallet tanpa mengekspor private key.
+- [x] Buat atau import encrypted Foundry account untuk admin wallet: `etherdoc-admin`.
+- [x] Catat public address admin wallet tanpa mengekspor private key:
+      `0x6AeFe6b1253E04f61f8378D41d6790AA46e07c8F`.
 - [x] Tentukan public address backend operator/relayer:
       `0x0f70A38610bbdcE47f6fc7AD6C4b1E5A6C68b62A`.
-- [ ] Tentukan public address user test wallet.
-- [ ] Periksa native token balance ketiga wallet.
+- [x] Tentukan public address user test wallet:
+      `0xB34a4eAECB848d573a0410bc305787d5B69328B8`.
+- [x] Periksa native token balance ketiga wallet.
 - [x] Periksa ketersediaan LINK untuk mendanai sender: backend operator mempunyai `7` LINK pada
       Ethereum Sepolia.
 - [x] Simulasikan deployment tanpa broadcast pada RPC live dan catat estimasi gas/native balance.
@@ -175,9 +177,9 @@ Status dispatch per destination:
 
 - [x] Seluruh quality gate kontrak lulus.
 - [x] Deployment dapat dikaitkan dengan clean commit tertentu.
-- [ ] Admin, backend, dan user wallet mempunyai address yang telah diketahui dan tidak tertukar.
+- [x] Admin, backend, dan user wallet mempunyai address yang telah diketahui dan tidak tertukar.
 - [x] Tidak ada private key atau mnemonic pada Git, log, dokumentasi, atau command history.
-- [ ] Tidak ada placeholder constructor argument yang belum diputuskan.
+- [x] Tidak ada placeholder constructor argument yang belum diputuskan.
 
 ---
 

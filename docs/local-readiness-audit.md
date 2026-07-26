@@ -52,15 +52,11 @@ No private key was copied from the old backend environment, contract workspace, 
 Local backend work can proceed no further toward a live smoke test until all of these are supplied
 or resolved:
 
-1. create/import an encrypted named Foundry admin account;
-2. provide and approve distinct public addresses for admin/governance/pauser, backend operator, and
-   user issuer;
-3. fund native gas for the admin and user wallets; the backend operator already has gas on both
-   chains and `7` LINK on Ethereum Sepolia;
-4. populate the remaining admin/user public role addresses and explorer API setting in the contract
-   environment; public RPCs, network selection, target LINK balance, and operator address are ready;
-5. review the complete constructor/role/funding plan and explicitly approve testnet broadcast.
+1. provide the encrypted admin keystore password through a local mode-`0600` password file, never
+   through chat, Git, `.env`, or a command argument;
+2. populate explorer API settings if Etherscan/Mantlescan verification is used;
+3. review the complete constructor/role/funding plan and explicitly approve testnet broadcast.
 
-The backend operator address has `0.15` Ethereum Sepolia ETH, `10` Mantle Sepolia MNT, and `7`
-Ethereum Sepolia LINK, but it was not automatically assigned any on-chain role. No testnet
-transaction has been broadcast.
+The admin, backend operator, and user issuer are distinct and funded for their intended chain
+actions. The backend operator is assigned only the future `OPERATOR` role; no testnet transaction
+has been broadcast by this workflow.
