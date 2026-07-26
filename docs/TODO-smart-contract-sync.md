@@ -205,25 +205,25 @@ Sebelum broadcast, tampilkan kepada pengguna:
 
 Kemudian:
 
-- [ ] Minta persetujuan eksplisit pengguna untuk broadcast ke Ethereum Sepolia dan Mantle Sepolia.
+- [x] Minta persetujuan eksplisit pengguna untuk broadcast ke Ethereum Sepolia dan Mantle Sepolia.
 - [x] Jangan melanjutkan deployment bila approval belum diberikan.
 - [x] Jangan menampilkan private key saat meminta approval.
 
 ### Deployment TODO
 
-- [ ] Deploy `EtherdocSender` ke Ethereum Sepolia menggunakan encrypted admin Foundry account.
-- [ ] Isi constructor sender dengan:
+- [x] Deploy `EtherdocSender` ke Ethereum Sepolia menggunakan encrypted admin Foundry account.
+- [x] Isi constructor sender dengan:
   - governance = admin wallet;
   - initial issuer = user test wallet;
   - operator = backend wallet;
   - pauser = admin wallet.
-- [ ] Deploy `EtherdocReceiver` ke Mantle Sepolia menggunakan encrypted admin Foundry account.
-- [ ] Bind receiver ke source selector, source chain ID, dan sender address Ethereum.
-- [ ] Konfigurasikan remote Mantle pada sender.
-- [ ] Rekonsiliasi trusted sender pada receiver.
-- [ ] Fund sender dengan LINK menggunakan target-balance workflow.
-- [ ] Verifikasi source code sender dan receiver di explorer.
-- [ ] Simpan deployment address dan manifest yang memuat:
+- [x] Deploy `EtherdocReceiver` ke Mantle Sepolia menggunakan encrypted admin Foundry account.
+- [x] Bind receiver ke source selector, source chain ID, dan sender address Ethereum.
+- [x] Konfigurasikan remote Mantle pada sender.
+- [x] Rekonsiliasi trusted sender pada receiver.
+- [x] Fund sender dengan LINK menggunakan target-balance workflow.
+- [x] Verifikasi source code sender di Etherscan dan kedua kontrak di Sourcify.
+- [x] Simpan deployment address dan manifest yang memuat:
   - contract address;
   - creation transaction hash;
   - deployer;
@@ -237,14 +237,14 @@ Kemudian:
 
 ### Kriteria Keberhasilan
 
-- [ ] Sender dan receiver mempunyai live runtime bytecode yang sesuai artifact.
-- [ ] Owner dan role on-chain cocok dengan address yang disetujui.
-- [ ] `getRemoteConfig()` dan `isTrustedRemote()` saling konsisten.
-- [ ] Sender memiliki LINK dan operator memiliki native gas yang cukup.
-- [ ] Manifest deployment lengkap tersedia.
+- [x] Sender dan receiver mempunyai live runtime bytecode yang sesuai artifact.
+- [x] Owner dan role on-chain cocok dengan address yang disetujui.
+- [x] `getRemoteConfig()` dan `isTrustedRemote()` saling konsisten.
+- [x] Sender memiliki LINK dan operator memiliki native gas yang cukup.
+- [x] Manifest deployment lengkap tersedia.
 - [ ] E2E menghasilkan `DocumentRegistered`, `MessageSent`, dan `MessageReceived`.
 - [ ] `verifyDocument()` berhasil pada source dan destination.
-- [ ] Deployment dapat diaudit tanpa mengetahui private key.
+- [x] Deployment dapat diaudit tanpa mengetahui private key.
 
 ---
 
@@ -268,7 +268,7 @@ Kemudian:
 
 ### Kriteria Keberhasilan
 
-- [ ] Backend build menggunakan ABI dari commit kontrak yang tercatat pada manifest.
+- [x] Backend build menggunakan ABI dari commit kontrak yang tercatat pada manifest.
 - [x] Backend membaca contract address dari deployment registry atau validated environment override.
 - [x] CI gagal jika ABI, schema, network, atau deployment registry stale.
 - [x] Pencarian source backend tidak menemukan fungsi/address/network lama pada active code.
@@ -588,10 +588,10 @@ Kemudian:
 
 ## Definition of Done Rilis
 
-- [ ] Smart contract deployment registry menjadi sumber tunggal chain/address backend.
-- [ ] Admin wallet hanya memegang deployer/governance/pauser sesuai approval.
-- [ ] Backend wallet memegang operator/relayer sesuai approval.
-- [ ] User wallet tercatat sebagai issuer dan private key tetap di pengguna.
+- [x] Smart contract deployment registry menjadi sumber tunggal chain/address backend.
+- [x] Admin wallet hanya memegang deployer/governance/pauser sesuai approval.
+- [x] Backend wallet memegang operator/relayer sesuai approval.
+- [x] User wallet tercatat sebagai issuer dan private key tetap di pengguna.
 - [x] ABI backend berasal dari exact contract commit.
 - [x] Digest, CID, metadata commitment, dan document ID konsisten.
 - [ ] Register, revoke, dan supersede berfungsi end-to-end.

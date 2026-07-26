@@ -21,14 +21,13 @@ private keys, mnemonics, raw keystores, bearer JWTs, or Pinata credentials.
 transaction, deployment block/hash, runtime code hash, constructor arguments, and contract commit.
 The backend artifact generator imports that registry and rejects drift.
 
-Until manifests exist, address and deployment-block environment overrides are mandatory. They are
-an explicit pre-deployment bridge, not a second permanent registry. Startup rejects an override that
-conflicts with a generated manifest.
+The active manifests are imported into the generated backend artifact. Address and deployment-block
+environment overrides are now optional; startup rejects any address override that conflicts with
+the generated registry.
 
-Before testnet broadcast, complete the approval gate in
-[TODO-smart-contract-sync.md](TODO-smart-contract-sync.md) and the blockers in
-[testnet-deployment-preflight.md](testnet-deployment-preflight.md). Do not use the dirty-worktree
-override for testnet deployment.
+The completed deployment approval and receipt evidence are recorded in
+[testnet-deployment-preflight.md](testnet-deployment-preflight.md). A separate explicit approval is
+required before broadcasting lifecycle smoke-test transactions.
 
 ## Required environment
 

@@ -17,10 +17,15 @@ from `sc-etherdoc` commit `b132bf4360108db00959fc5aa75009a12283ed69`.
 
 ## Current deployment status
 
-The baseline contracts are not yet deployed to testnet, so the backend requires validated sender
-and receiver address/block overrides. Deployment is blocked until the wallet, funding, and explicit
-broadcast approval requirements in
-[testnet-deployment-preflight.md](docs/testnet-deployment-preflight.md) are satisfied.
+The baseline contracts are deployed and configured:
+
+- Ethereum Sepolia sender: `0xAab5e5dA0b2C6E89D64B188df4dB18D655D629e7`, block `11354109`;
+- Mantle Sepolia receiver: `0xAab5e5dA0b2C6E89D64B188df4dB18D655D629e7`, block `41758817`.
+
+The same address on both chains is expected because the admin deployed from nonce `0` on each
+chain. The generated deployment registry is canonical, so address/block environment overrides are
+optional and must match the registry when supplied. Receipt and verification evidence is recorded
+in [testnet-deployment-preflight.md](docs/testnet-deployment-preflight.md).
 
 ## Requirements
 

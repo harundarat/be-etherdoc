@@ -1,7 +1,7 @@
-# Testnet Deployment Preflight
+# Testnet Deployment and Receipt Record
 
-Status ini mencatat evidence read-only untuk baseline kontrak
-`b132bf4360108db00959fc5aa75009a12283ed69`. Dokumen ini tidak memberi approval untuk broadcast.
+Dokumen ini mencatat preflight, approval eksplisit pengguna, dan hasil deployment baseline kontrak
+`b132bf4360108db00959fc5aa75009a12283ed69` pada 26 Juli 2026.
 
 ## Quality gate
 
@@ -178,9 +178,45 @@ transaksi EVM. Wrapper deployment akan menghentikan proses bila nonce/predicted 
 runtime code, receipt, atau manifest tidak dapat direkonsiliasi. Setiap langkah harus dijalankan
 berurutan dan dihentikan bila satu langkah gagal.
 
-## Blocker sebelum approval gate
+## Execution record
 
-1. Explorer API key masih diperlukan bila verification dijalankan melalui Etherscan/Mantlescan.
-2. Pengguna belum memberi approval eksplisit untuk empat transaksi deployment/configuration/funding.
+Pengguna memberi approval eksplisit untuk empat transaksi deployment/configuration/funding. Tidak
+ada lifecycle smoke-test transaction yang termasuk dalam approval tersebut.
 
-Tidak ada transaksi testnet yang dibroadcast selama preflight ini.
+| Operasi                 | Network          | Transaction                                                          |      Block |  Gas used |
+| ----------------------- | ---------------- | -------------------------------------------------------------------- | ---------: | --------: |
+| Deploy sender           | Ethereum Sepolia | `0x3a24898943d7daccab82e3148e160bbaa19d4eb9811439634d77b11da66acfee` | `11354109` | `4506411` |
+| Deploy receiver         | Mantle Sepolia   | `0x68c4cd2052ca66ae21d5b084ac197aee9f93619c42349cc931af2221f7913e9f` | `41758817` | `2654778` |
+| Configure sender remote | Ethereum Sepolia | `0x1d37923ea18c71bac9a23731641e584e9e3be952a0ae537c7ac45afab18ed691` | `11354119` |   `49413` |
+| Fund sender to `1 LINK` | Ethereum Sepolia | `0x1066aaeb7aaf84ef0faebbb8b8c7560abe09a70f1e784f80e21b06f6aba7a709` | `11354123` |   `51658` |
+
+All receipts have status `1`. The deployed contracts are:
+
+| Role     | Network          | Address                                      | Runtime code hash                                                    |
+| -------- | ---------------- | -------------------------------------------- | -------------------------------------------------------------------- |
+| Sender   | Ethereum Sepolia | `0xAab5e5dA0b2C6E89D64B188df4dB18D655D629e7` | `0x7fdd145e13ac74986afae4df105d091429fa4342b237df13133c6e6d2dcb339e` |
+| Receiver | Mantle Sepolia   | `0xAab5e5dA0b2C6E89D64B188df4dB18D655D629e7` | `0xf6d7a933eb65676f6ec3bc6d6eb50307f58994649157f010a675646f2f518531` |
+
+Post-deployment reconciliation proves:
+
+- live bytecode hashes equal the manifests;
+- owner, issuer, operator, and pauser match the frozen constructor plan;
+- receiver trusts selector `16015286601757825753` and the deployed sender;
+- sender remote points to selector `8236463271206331221`, the deployed receiver, gas `500000`, and
+  is allowlisted;
+- receiver reconciliation is an on-chain no-op;
+- sender balance is exactly `1 LINK`;
+- manifests record clean Git commit `b132bf4360108db00959fc5aa75009a12283ed69`.
+
+Verification:
+
+- sender: Sourcify `exact_match` job `d0c6759c-e026-4743-9c55-ba947a67f426` and Etherscan verified;
+- receiver: Sourcify `exact_match` job `85b1670c-e8e0-4512-87ee-b92f104f99ff`.
+
+The backend generated registry imports both manifests, addresses, deployment blocks, constructor
+arguments, transaction hashes, and runtime code hashes.
+
+## Remaining before cutover
+
+1. Obtain separate approval for lifecycle smoke-test transactions.
+2. Run register, dispatch, receive, verify, supersede, revoke, and final reconciliation.

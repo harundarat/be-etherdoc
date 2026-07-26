@@ -4,8 +4,8 @@ Audit date: 26 July 2026.
 
 ## Revisions
 
-- Backend implementation head before this audit record:
-  `b55531717083498ccd7cf6681259a4e33b7ec4c0`
+- Backend deployment-registry commit:
+  `1ed5d51aa80d365a96af598056afadfcddcb0f61`
 - Contract baseline: `b132bf4360108db00959fc5aa75009a12283ed69`
 - Generated backend contract artifact provenance matches the contract baseline and records Ethereum
   Sepolia as canonical source with Mantle Sepolia as destination.
@@ -19,7 +19,7 @@ The backend and contract worktrees are clean. The old untracked `soljson-latest.
 | ------------------------------------------------------ | -------------------------------- |
 | `pnpm contracts:check`                                 | pass                             |
 | `pnpm lint:check`                                      | pass, no write                   |
-| `pnpm test --runInBand`                                | pass: 15 suites, 67 tests        |
+| `pnpm test --runInBand`                                | pass: 15 suites, 66 tests        |
 | `pnpm test:e2e`                                        | pass: 4 deterministic HTTP tests |
 | `pnpm test:integration`                                | pass: 5 PostgreSQL 16 tests      |
 | migrations applied twice to clean PostgreSQL 16        | pass, 4 migrations               |
@@ -49,12 +49,10 @@ No private key was copied from the old backend environment, contract workspace, 
 
 ## Remaining release blockers
 
-Local backend work can proceed no further toward a live smoke test until all of these are supplied
-or resolved:
-
-1. populate explorer API settings if Etherscan/Mantlescan verification is used;
-2. explicitly approve the frozen constructor/role/funding plan and testnet broadcast.
+Deployment, configuration, funding, registry synchronization, and source verification are complete.
+The remaining external step is a separately approved lifecycle smoke test using the user issuer and
+backend operator, followed by final backend reconciliation.
 
 The admin, backend operator, and user issuer are distinct and funded for their intended chain
-actions. The backend operator is assigned only the future `OPERATOR` role; no testnet transaction
-has been broadcast by this workflow.
+actions. The backend operator holds only `OPERATOR`; the four approved deployment transactions and
+their receipts are recorded in the deployment preflight.
