@@ -50,8 +50,9 @@ No private key was copied from the old backend environment, contract workspace, 
 ## Remaining release blockers
 
 Deployment, configuration, funding, registry synchronization, and source verification are complete.
-The remaining external step is a separately approved lifecycle smoke test using the user issuer and
-backend operator, followed by final backend reconciliation.
+The encrypted user issuer signer has also been validated. The remaining external step is explicit
+approval for the seven-transaction lifecycle smoke test using the user issuer and backend operator,
+followed by final backend reconciliation.
 
 The admin, backend operator, and user issuer are distinct and funded for their intended chain
 actions. The backend operator holds only `OPERATOR`; the four approved deployment transactions and

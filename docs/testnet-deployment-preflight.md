@@ -218,5 +218,22 @@ arguments, transaction hashes, and runtime code hashes.
 
 ## Remaining before cutover
 
-1. Obtain separate approval for lifecycle smoke-test transactions.
-2. Run register, dispatch, receive, verify, supersede, revoke, and final reconciliation.
+Encrypted issuer keystore `etherdoc-issuer` and its password file are both mode `0600`. Local
+decryption resolves to the approved issuer
+`0xB34a4eAECB848d573a0410bc305787d5B69328B8`, which is an authorized EOA with source gas.
+
+The lifecycle smoke test requires separate approval for seven Ethereum Sepolia transactions:
+
+1. issuer registers the original document;
+2. operator dispatches the active version;
+3. issuer supersedes the original;
+4. operator dispatches the superseded version;
+5. operator dispatches the active replacement;
+6. issuer revokes the replacement;
+7. operator dispatches the revoked version.
+
+Those four dispatches are expected to consume approximately `0.22802 LINK` at the preflight quote.
+The sender currently holds `1 LINK`. The issuer keystore will be decrypted only into process memory;
+no raw user private key will be written to a file, log, documentation, Git, or command text.
+
+After separate approval, run the lifecycle smoke test and final backend reconciliation.
