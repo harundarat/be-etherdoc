@@ -62,6 +62,9 @@ ETHERDOC_RECEIVER_ADDRESS
 ETHERDOC_RECEIVER_DEPLOYMENT_BLOCK
 ```
 
+Use `COOKIE_SECURE=false` only for local HTTP development. Deployed HTTPS environments must set it
+to `true`.
+
 Startup validates configuration, RPC chain IDs, deployed bytecode, Router/LINK bindings, trusted
 remote configuration, and backend signer roles. A mismatch stops the application.
 
@@ -126,7 +129,8 @@ The primary API flow is:
 
 The server accepts an `etherdoc-auth` HTTP-only cookie or bearer JWT for protected endpoints.
 `SIWE_SESSION_TTL_SECONDS` is the single lifetime used by the JWT, cookie, and authentication
-response.
+response. Cookie-authenticated mutations require the configured frontend `Origin`; explicit bearer
+authentication is CSRF-exempt.
 
 ## License
 

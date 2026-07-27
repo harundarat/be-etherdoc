@@ -9,6 +9,7 @@ import { BlockchainModule } from './blockchain/blockchain.module';
 import { DatabaseModule } from './database/database.module';
 import { StorageModule } from './storage/storage.module';
 import { WorkersModule } from './workers/workers.module';
+import { HttpSecurityModule } from './http/http-security.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { WorkersModule } from './workers/workers.module';
       isGlobal: true,
       load: [loadRuntimeConfiguration],
     }),
+    HttpSecurityModule,
     BlockchainModule,
     DatabaseModule,
     StorageModule,

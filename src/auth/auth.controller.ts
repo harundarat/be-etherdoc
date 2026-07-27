@@ -14,7 +14,7 @@ export class AuthController {
     configService: ConfigService,
   ) {
     const runtime = configService.getOrThrow<RuntimeConfig>('runtime');
-    this.secureCookie = new URL(runtime.siwe.uri).protocol === 'https:';
+    this.secureCookie = runtime.http.cookieSecure;
   }
 
   @Post('nonce')
@@ -34,6 +34,7 @@ export class AuthController {
     response.cookie('etherdoc-auth', session.accessToken, {
       httpOnly: true,
       maxAge: session.expiresInSeconds * 1_000,
+      path: '/',
       sameSite: 'lax',
       secure: this.secureCookie,
     });

@@ -41,6 +41,11 @@ export interface RuntimeConfig {
   intent: {
     signatureTtlSeconds: number;
   };
+  http: {
+    cookieSecure: boolean;
+    replicaCount: number;
+    trustProxyHops: number;
+  };
   pinata: {
     apiUrl: string;
     gatewayUrl: string;
@@ -48,6 +53,13 @@ export interface RuntimeConfig {
     uploadUrl: string;
   };
   port: number;
+  rateLimit: {
+    apiLimit: number;
+    authLimit: number;
+    searchLimit: number;
+    uploadLimit: number;
+    windowMs: number;
+  };
   siwe: {
     domain: string;
     nonceTtlSeconds: number;
@@ -100,6 +112,42 @@ function integer(
     );
   }
   return value;
+}
+
+function boolean(environment: Environment, name: string): boolean {
+  const value = required(environment, name).toLowerCase();
+  if (value === 'true') {
+    return true;
+  }
+  if (value === 'false') {
+    return false;
+  }
+  throw new Error(`${name} must be either true or false`);
+}
+
+function httpOrigin(
+  environment: Environment,
+  name: string,
+  defaultValue: string,
+): string {
+  const value = environment[name]?.trim() || defaultValue;
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(`${name} must be a valid HTTP origin`);
+  }
+  if (
+    !['http:', 'https:'].includes(parsed.protocol) ||
+    parsed.username ||
+    parsed.password ||
+    parsed.pathname !== '/' ||
+    parsed.search ||
+    parsed.hash
+  ) {
+    throw new Error(`${name} must be a valid HTTP origin without a path`);
+  }
+  return parsed.origin;
 }
 
 function address(value: string, name: string): Address {
@@ -201,6 +249,12 @@ export function buildRuntimeConfig(
   ) {
     throw new Error('SIWE_DOMAIN must be a hostname without scheme or path');
   }
+  const replicaCount = integer(environment, 'API_REPLICA_COUNT', 1);
+  if (replicaCount !== 1) {
+    throw new Error(
+      'API_REPLICA_COUNT must remain 1 while rate limiting uses in-memory storage',
+    );
+  }
 
   return {
     auth: {
@@ -274,7 +328,7 @@ export function buildRuntimeConfig(
         rpcUrl: url(environment, 'ETHEREUM_SEPOLIA_RPC_URL'),
       },
     },
-    corsOrigin: environment.CORS_ORIGIN?.trim() || 'http://localhost:3000',
+    corsOrigin: httpOrigin(environment, 'CORS_ORIGIN', 'http://localhost:3000'),
     databaseUrl: postgresUrl(environment),
     dispatch: {
       feeBufferBps: integer(
@@ -305,6 +359,11 @@ export function buildRuntimeConfig(
         600,
       ),
     },
+    http: {
+      cookieSecure: boolean(environment, 'COOKIE_SECURE'),
+      replicaCount,
+      trustProxyHops: integer(environment, 'TRUST_PROXY_HOPS', 0, 0, 10),
+    },
     pinata: {
       apiUrl: url(environment, 'PINATA_API_URL'),
       gatewayUrl: url(environment, 'PINATA_GATEWAY_URL'),
@@ -312,6 +371,13 @@ export function buildRuntimeConfig(
       uploadUrl: url(environment, 'PINATA_UPLOAD_URL'),
     },
     port: integer(environment, 'PORT', 3000),
+    rateLimit: {
+      apiLimit: integer(environment, 'RATE_LIMIT_API_REQUESTS', 120),
+      authLimit: integer(environment, 'RATE_LIMIT_AUTH_REQUESTS', 5),
+      searchLimit: integer(environment, 'RATE_LIMIT_SEARCH_REQUESTS', 30),
+      uploadLimit: integer(environment, 'RATE_LIMIT_UPLOAD_REQUESTS', 8),
+      windowMs: integer(environment, 'RATE_LIMIT_WINDOW_MS', 60_000, 1_000),
+    },
     siwe: {
       domain: siweDomain,
       nonceTtlSeconds: integer(environment, 'SIWE_NONCE_TTL_SECONDS', 300),

@@ -7,6 +7,7 @@ const privateKey =
 function validEnvironment(): Record<string, string> {
   return {
     BACKEND_PRIVATE_KEY: privateKey,
+    COOKIE_SECURE: 'true',
     DATABASE_URL: 'postgresql://etherdoc:etherdoc@localhost:5432/etherdoc',
     ETHEREUM_SEPOLIA_RPC_URL: 'https://ethereum.example/rpc',
     JWT_SECRET: 'a-secure-test-secret-with-more-than-32-characters',
@@ -53,6 +54,7 @@ describe('buildRuntimeConfig', () => {
     'SIWE_DOMAIN',
     'SIWE_URI',
     'JWT_SECRET',
+    'COOKIE_SECURE',
   ])('rejects missing %s', (name) => {
     const environment = validEnvironment();
     delete environment[name];
@@ -127,5 +129,40 @@ describe('buildRuntimeConfig', () => {
         AUTH_NONCE_CLEANUP_BATCH_SIZE: '10001',
       }),
     ).toThrow('AUTH_NONCE_CLEANUP_BATCH_SIZE');
+  });
+
+  it('requires an explicit cookie security mode and one in-memory-limited replica', () => {
+    expect(buildRuntimeConfig(validEnvironment()).http).toEqual({
+      cookieSecure: true,
+      replicaCount: 1,
+      trustProxyHops: 0,
+    });
+    expect(() =>
+      buildRuntimeConfig({
+        ...validEnvironment(),
+        COOKIE_SECURE: 'sometimes',
+      }),
+    ).toThrow('COOKIE_SECURE');
+    expect(() =>
+      buildRuntimeConfig({
+        ...validEnvironment(),
+        API_REPLICA_COUNT: '2',
+      }),
+    ).toThrow('in-memory storage');
+  });
+
+  it('accepts only a CORS origin without path, query, or fragment', () => {
+    expect(
+      buildRuntimeConfig({
+        ...validEnvironment(),
+        CORS_ORIGIN: 'https://app.etherdoc.example/',
+      }).corsOrigin,
+    ).toBe('https://app.etherdoc.example');
+    expect(() =>
+      buildRuntimeConfig({
+        ...validEnvironment(),
+        CORS_ORIGIN: 'https://app.etherdoc.example/path',
+      }),
+    ).toThrow('CORS_ORIGIN');
   });
 });

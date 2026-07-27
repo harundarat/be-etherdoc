@@ -31,18 +31,20 @@ required before broadcasting lifecycle smoke-test transactions.
 
 ## Required environment
 
-| Area                | Variables                                                                                                                        |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Database            | `DATABASE_URL`                                                                                                                   |
-| Source RPC          | `ETHEREUM_SEPOLIA_RPC_URL`, `ETHEREUM_CONFIRMATION_DEPTH`                                                                        |
-| Destination RPC     | `MANTLE_SEPOLIA_RPC_URL`, `MANTLE_CONFIRMATION_DEPTH`                                                                            |
-| Deployment override | `ETHERDOC_SENDER_ADDRESS`, `ETHERDOC_SENDER_DEPLOYMENT_BLOCK`, `ETHERDOC_RECEIVER_ADDRESS`, `ETHERDOC_RECEIVER_DEPLOYMENT_BLOCK` |
-| Signer              | `BACKEND_PRIVATE_KEY`                                                                                                            |
-| SIWE/JWT            | `SIWE_DOMAIN`, `SIWE_URI`, `SIWE_NONCE_TTL_SECONDS`, `SIWE_SESSION_TTL_SECONDS`, `JWT_SECRET`                                    |
-| Auth retention      | `AUTH_NONCE_RETENTION_SECONDS`, `AUTH_NONCE_CLEANUP_INTERVAL_SECONDS`, `AUTH_NONCE_CLEANUP_BATCH_SIZE`                           |
-| Pinata              | `PINATA_API_URL`, `PINATA_UPLOAD_URL`, `PINATA_GATEWAY_URL`, `PINATA_JWT_TOKEN`                                                  |
-| Dispatch            | `DISPATCH_FEE_BUFFER_BPS`, `MAXIMUM_DISPATCH_FEE_WEI`, `CCIP_RECOVERY_AFTER_SECONDS`                                             |
-| Workers             | `OUTBOX_BATCH_SIZE`, `OUTBOX_POLL_INTERVAL_MS`, `OUTBOX_LOCK_TIMEOUT_MS`, `CHAIN_INDEX_BLOCK_RANGE`, `CHAIN_INDEX_INTERVAL_MS`   |
+| Area                | Variables                                                                                                                                 |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Database            | `DATABASE_URL`                                                                                                                            |
+| HTTP edge           | `CORS_ORIGIN`, `COOKIE_SECURE`, `TRUST_PROXY_HOPS`, `API_REPLICA_COUNT`                                                                   |
+| Rate limits         | `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_API_REQUESTS`, `RATE_LIMIT_AUTH_REQUESTS`, `RATE_LIMIT_SEARCH_REQUESTS`, `RATE_LIMIT_UPLOAD_REQUESTS` |
+| Source RPC          | `ETHEREUM_SEPOLIA_RPC_URL`, `ETHEREUM_CONFIRMATION_DEPTH`                                                                                 |
+| Destination RPC     | `MANTLE_SEPOLIA_RPC_URL`, `MANTLE_CONFIRMATION_DEPTH`                                                                                     |
+| Deployment override | `ETHERDOC_SENDER_ADDRESS`, `ETHERDOC_SENDER_DEPLOYMENT_BLOCK`, `ETHERDOC_RECEIVER_ADDRESS`, `ETHERDOC_RECEIVER_DEPLOYMENT_BLOCK`          |
+| Signer              | `BACKEND_PRIVATE_KEY`                                                                                                                     |
+| SIWE/JWT            | `SIWE_DOMAIN`, `SIWE_URI`, `SIWE_NONCE_TTL_SECONDS`, `SIWE_SESSION_TTL_SECONDS`, `JWT_SECRET`                                             |
+| Auth retention      | `AUTH_NONCE_RETENTION_SECONDS`, `AUTH_NONCE_CLEANUP_INTERVAL_SECONDS`, `AUTH_NONCE_CLEANUP_BATCH_SIZE`                                    |
+| Pinata              | `PINATA_API_URL`, `PINATA_UPLOAD_URL`, `PINATA_GATEWAY_URL`, `PINATA_JWT_TOKEN`                                                           |
+| Dispatch            | `DISPATCH_FEE_BUFFER_BPS`, `MAXIMUM_DISPATCH_FEE_WEI`, `CCIP_RECOVERY_AFTER_SECONDS`                                                      |
+| Workers             | `OUTBOX_BATCH_SIZE`, `OUTBOX_POLL_INTERVAL_MS`, `OUTBOX_LOCK_TIMEOUT_MS`, `CHAIN_INDEX_BLOCK_RANGE`, `CHAIN_INDEX_INTERVAL_MS`            |
 
 Inject secrets at runtime. Restrict `.env` to local development and keep it untracked.
 `SIWE_SESSION_TTL_SECONDS` is the only session lifetime: changing it changes the JWT expiry, cookie
@@ -53,6 +55,24 @@ default) and then removed in bounded, lock-skipping batches. One cleanup runs pe
 interval and overlapping runs are skipped. Keep the retention period long enough for incident
 review; monitor cleanup errors and table growth rather than manually truncating authentication
 evidence.
+
+## HTTP security and proxy topology
+
+Helmet is installed before cookie parsing and CORS middleware. `CORS_ORIGIN` is one exact HTTP(S)
+origin without a path. Production HTTPS deployments must set `COOKIE_SECURE=true`; local plain HTTP
+development uses `false`. Cookie sessions always use `Path=/`, `HttpOnly`, and `SameSite=Lax`.
+
+Cookie-authenticated state changes require an exact `Origin: <CORS_ORIGIN>`. Bearer-authenticated
+requests are exempt because JavaScript cannot attach an ambient bearer credential cross-site.
+Investigate repeated `CSRF_ORIGIN_REJECTED` responses as client misconfiguration or possible abuse;
+do not work around them by broadening CORS.
+
+The default limiter store is process memory and is approved only for `API_REPLICA_COUNT=1`; startup
+rejects a larger declared count. Deploy a shared limiter store and test cross-replica behavior
+before scaling the API horizontally. Configure `TRUST_PROXY_HOPS` only to the exact number of known,
+trusted reverse-proxy hops, and prevent clients from connecting directly to the application port.
+Leave it at `0` when there is no trusted proxy. This keeps untrusted `X-Forwarded-For` values from
+becoming limiter identities.
 
 ## Upload memory budget
 

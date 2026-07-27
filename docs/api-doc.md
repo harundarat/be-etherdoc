@@ -50,6 +50,20 @@ Nonce replay evidence is retained for a bounded operational window. Signature ve
 including ERC-1271 RPC verification, happens without holding a database transaction; a final
 conditional update ensures concurrent valid submissions can create only one session.
 
+The cookie uses `Path=/`, `HttpOnly`, `SameSite=Lax`, and the explicitly configured `Secure` mode.
+For every cookie-authenticated `POST`, `PUT`, `PATCH`, or `DELETE`, clients must send an `Origin`
+header exactly equal to `CORS_ORIGIN`; otherwise the API returns `403 CSRF_ORIGIN_REJECTED`.
+Requests that explicitly authenticate with `Authorization: Bearer <JWT>` use the bearer token in
+preference to any cookie and are exempt from this browser-cookie CSRF check.
+
+## Request rate limits
+
+The default one-minute limits are 120 requests per API route, 5 per authentication route, 30
+non-multipart document searches, and 8 multipart uploads. Authentication is counted independently
+by client IP and wallet address. JSON searches with an issuer are also counted by IP and wallet;
+multipart uploads are counted by client IP before their body is buffered. Exceeding a limit returns
+`429` with `message: "RATE_LIMIT_EXCEEDED"` and a limiter-specific `Retry-After` header.
+
 ## Signed intent flow
 
 An accepted signature is not final success. Prepare endpoints return exact EIP-712 typed data;
@@ -225,16 +239,17 @@ These protected endpoints manage storage metadata only and do not change protoco
 
 ## Error semantics
 
-|  HTTP | Example meaning                                                     |
-| ----: | ------------------------------------------------------------------- |
-| `400` | malformed input or multipart field/part limits exceeded             |
-| `401` | missing/invalid session or SIWE signature                           |
-| `403` | JWT subject differs from issuer or issuer not authorized            |
-| `404` | document/intent not found                                           |
-| `409` | stale nonce/version, inactive record, conflicting idempotency input |
-| `413` | multipart PDF exceeds the 5 MiB parser limit (`File too large`)     |
-| `422` | invalid PDF magic bytes, signature, CID, digest, or commitment      |
-| `503` | source RPC, destination RPC, storage, or readiness unavailable      |
+|  HTTP | Example meaning                                                       |
+| ----: | --------------------------------------------------------------------- |
+| `400` | malformed input or multipart field/part limits exceeded               |
+| `401` | missing/invalid session or SIWE signature                             |
+| `403` | JWT subject differs from issuer or issuer not authorized              |
+| `404` | document/intent not found                                             |
+| `409` | stale nonce/version, inactive record, conflicting idempotency input   |
+| `413` | multipart PDF exceeds the 5 MiB parser limit (`File too large`)       |
+| `422` | invalid PDF magic bytes, signature, CID, digest, or commitment        |
+| `429` | configured API, auth, search, or multipart upload rate limit exceeded |
+| `503` | source RPC, destination RPC, storage, or readiness unavailable        |
 
 RPC failures are never converted to “document not found.” Storage failure is never converted to
 “inauthentic.” Pinata fetch-back bodies are limited to 5 MiB and Pinata JSON bodies to 1 MiB;
