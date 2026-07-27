@@ -108,6 +108,27 @@ describe('Documents API (e2e)', () => {
     expect(documents.getDocument).toHaveBeenCalledWith(documentId);
   });
 
+  it('rejects an invalid intent UUID before querying the intent service', async () => {
+    await request(app.getHttpServer())
+      .get('/documents/intents/not-a-uuid')
+      .expect(400);
+
+    expect(intents.getIntent).not.toHaveBeenCalled();
+  });
+
+  it('bounds Pinata group names and identifiers', async () => {
+    await request(app.getHttpServer())
+      .post('/documents/groups')
+      .send({ groupName: 'x'.repeat(129), network: 'private' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .get(`/documents?network=private&groupId=${'x'.repeat(129)}`)
+      .expect(400);
+
+    expect(documents.createGroup).not.toHaveBeenCalled();
+    expect(documents.getListFiles).not.toHaveBeenCalled();
+  });
+
   it('searches by explicit document identity', async () => {
     await request(app.getHttpServer())
       .post('/documents/search')

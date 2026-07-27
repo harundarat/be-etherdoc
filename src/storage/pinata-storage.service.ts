@@ -21,6 +21,7 @@ import {
   readBoundedResponseBody,
   ResponseBodyTooLargeError,
 } from './bounded-response';
+import { StorageNetwork } from './storage-network';
 
 interface PinataUploadResponse {
   data?: {
@@ -52,7 +53,7 @@ export class PinataStorageService {
 
   async pinAndVerify(
     file: Express.Multer.File,
-    storageNetwork: 'private' | 'public',
+    storageNetwork: StorageNetwork,
     metadata: CanonicalMetadata,
   ): Promise<VerifiedPinnedArtifact> {
     const contentDigest = sha256Digest(file.buffer);

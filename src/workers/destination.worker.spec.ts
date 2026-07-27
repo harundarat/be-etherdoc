@@ -27,6 +27,11 @@ function runtime(): RuntimeConfig {
     router: destinationAddress as Address,
   };
   return {
+    auth: {
+      nonceCleanupBatchSize: 500,
+      nonceCleanupIntervalSeconds: 3_600,
+      nonceRetentionSeconds: 604_800,
+    },
     blockchain: {
       destination: {
         ...chain,
@@ -52,7 +57,12 @@ function runtime(): RuntimeConfig {
       recoveryAfterSeconds: 3_600,
     },
     intent: { signatureTtlSeconds: 600 },
-    jwt: { expiresIn: '15m', secret: 'x'.repeat(32) },
+    http: {
+      cookieSecure: true,
+      replicaCount: 1,
+      trustProxyHops: 0,
+    },
+    jwt: { secret: 'x'.repeat(32) },
     pinata: {
       apiUrl: 'https://pinata.example',
       gatewayUrl: 'https://gateway.example',
@@ -60,6 +70,13 @@ function runtime(): RuntimeConfig {
       uploadUrl: 'https://upload.example',
     },
     port: 3_000,
+    rateLimit: {
+      apiLimit: 120,
+      authLimit: 5,
+      searchLimit: 30,
+      uploadLimit: 8,
+      windowMs: 60_000,
+    },
     siwe: {
       domain: 'app.example',
       nonceTtlSeconds: 300,

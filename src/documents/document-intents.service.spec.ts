@@ -11,6 +11,7 @@ import {
 } from './canonical-document';
 import { registerTypedData, typedDataDigest } from './intent-typed-data';
 import { DocumentIntentsService } from './document-intents.service';
+import { StorageNetwork } from '../storage/storage-network';
 
 const issuer = '0x0000000000000000000000000000000000000002';
 const sender = '0x0000000000000000000000000000000000000001';
@@ -149,7 +150,7 @@ describe('DocumentIntentsService', () => {
         {
           idempotencyKey: 'register-idempotency',
           issuer,
-          storageNetwork: 'private',
+          storageNetwork: StorageNetwork.PRIVATE,
         },
       ),
     ).resolves.toMatchObject({

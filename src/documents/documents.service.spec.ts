@@ -6,6 +6,7 @@ import type { PinataStorageService } from '../storage/pinata-storage.service';
 import { PINATA_JSON_RESPONSE_MAX_BYTES } from '../storage/bounded-response';
 import { computeDocumentId, sha256Digest } from './canonical-document';
 import { DocumentsService } from './documents.service';
+import { StorageNetwork } from '../storage/storage-network';
 
 const issuer = '0x0000000000000000000000000000000000000003';
 const sourceAddress = '0x0000000000000000000000000000000000000001';
@@ -181,7 +182,9 @@ describe('DocumentsService read model', () => {
       }),
     );
 
-    await expect(service.getListGroups('private')).rejects.toMatchObject({
+    await expect(
+      service.getListGroups(StorageNetwork.PRIVATE),
+    ).rejects.toMatchObject({
       response: { error: 'STORAGE_METADATA_RESPONSE_TOO_LARGE' },
       status: 503,
     });

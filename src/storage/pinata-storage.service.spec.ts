@@ -12,6 +12,7 @@ import {
   sha256Digest,
 } from '../documents/canonical-document';
 import { PinataStorageService } from './pinata-storage.service';
+import { StorageNetwork } from './storage-network';
 
 function service(): PinataStorageService {
   const runtime = {
@@ -44,7 +45,7 @@ function metadata(byteLength: number) {
   return canonicalizeMetadata({
     byteLength,
     mimeType: 'application/pdf',
-    storageNetwork: 'private',
+    storageNetwork: StorageNetwork.PRIVATE,
   });
 }
 
@@ -69,7 +70,11 @@ describe('PinataStorageService', () => {
       );
 
     await expect(
-      service().pinAndVerify(upload, 'private', metadata(upload.buffer.length)),
+      service().pinAndVerify(
+        upload,
+        StorageNetwork.PRIVATE,
+        metadata(upload.buffer.length),
+      ),
     ).resolves.toMatchObject({
       cid,
       cidCodec: CID_CODEC_RAW,
@@ -99,7 +104,11 @@ describe('PinataStorageService', () => {
       );
 
     await expect(
-      service().pinAndVerify(upload, 'private', metadata(upload.buffer.length)),
+      service().pinAndVerify(
+        upload,
+        StorageNetwork.PRIVATE,
+        metadata(upload.buffer.length),
+      ),
     ).rejects.toBeInstanceOf(UnprocessableEntityException);
   });
 
@@ -130,7 +139,11 @@ describe('PinataStorageService', () => {
       );
 
     await expect(
-      service().pinAndVerify(upload, 'private', metadata(upload.buffer.length)),
+      service().pinAndVerify(
+        upload,
+        StorageNetwork.PRIVATE,
+        metadata(upload.buffer.length),
+      ),
     ).rejects.toMatchObject({
       response: { error: 'STORAGE_RETRIEVAL_TOO_LARGE' },
       status: 503,
@@ -161,7 +174,11 @@ describe('PinataStorageService', () => {
       .mockResolvedValueOnce(new Response(body, { status: 200 }));
 
     await expect(
-      service().pinAndVerify(upload, 'private', metadata(upload.buffer.length)),
+      service().pinAndVerify(
+        upload,
+        StorageNetwork.PRIVATE,
+        metadata(upload.buffer.length),
+      ),
     ).rejects.toMatchObject({
       response: { error: 'STORAGE_RETRIEVAL_TOO_LARGE' },
       status: 503,
@@ -190,7 +207,11 @@ describe('PinataStorageService', () => {
       );
 
     await expect(
-      service().pinAndVerify(upload, 'private', metadata(upload.buffer.length)),
+      service().pinAndVerify(
+        upload,
+        StorageNetwork.PRIVATE,
+        metadata(upload.buffer.length),
+      ),
     ).resolves.toMatchObject({
       cid,
       contentDigest: digest,
@@ -219,7 +240,11 @@ describe('PinataStorageService', () => {
 
     const upload = file();
     await expect(
-      service().pinAndVerify(upload, 'private', metadata(upload.buffer.length)),
+      service().pinAndVerify(
+        upload,
+        StorageNetwork.PRIVATE,
+        metadata(upload.buffer.length),
+      ),
     ).rejects.toMatchObject({
       response: { error: 'STORAGE_UPLOAD_RESPONSE_TOO_LARGE' },
       status: 503,
@@ -236,7 +261,11 @@ describe('PinataStorageService', () => {
     );
 
     await expect(
-      service().pinAndVerify(upload, 'private', metadata(upload.buffer.length)),
+      service().pinAndVerify(
+        upload,
+        StorageNetwork.PRIVATE,
+        metadata(upload.buffer.length),
+      ),
     ).rejects.toBeInstanceOf(UnprocessableEntityException);
   });
 

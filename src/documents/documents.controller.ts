@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Param,
   ParseFilePipeBuilder,
+  ParseUUIDPipe,
   Post,
   Query,
   Req,
@@ -107,7 +108,7 @@ export class DocumentsController {
   @HttpCode(HttpStatus.ACCEPTED)
   submitSignature(
     @Req() request: AuthenticatedRequest,
-    @Param('intentId') intentId: string,
+    @Param('intentId', new ParseUUIDPipe({ version: '4' })) intentId: string,
     @Body() body: SubmitIntentSignatureDto,
   ) {
     return this.intentsService.submitSignature(
@@ -121,7 +122,7 @@ export class DocumentsController {
   @Get('intents/:intentId')
   getIntent(
     @Req() request: AuthenticatedRequest,
-    @Param('intentId') intentId: string,
+    @Param('intentId', new ParseUUIDPipe({ version: '4' })) intentId: string,
   ) {
     return this.intentsService.getIntent(request.user.address, intentId);
   }

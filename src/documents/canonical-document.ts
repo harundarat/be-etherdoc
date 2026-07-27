@@ -7,6 +7,7 @@ import {
   type Address,
   type Hex,
 } from 'viem';
+import { StorageNetwork } from '../storage/storage-network';
 
 const BASE32_ALPHABET = 'abcdefghijklmnopqrstuvwxyz234567';
 const CID_VERSION = 1;
@@ -20,7 +21,7 @@ export interface CanonicalMetadataInput {
   byteLength: number;
   documentType?: string;
   mimeType: string;
-  storageNetwork: 'private' | 'public';
+  storageNetwork: StorageNetwork;
 }
 
 export interface CanonicalMetadata {
@@ -31,7 +32,7 @@ export interface CanonicalMetadata {
       byteLength: number;
       documentType?: string;
       mimeType: string;
-      storageNetwork: 'private' | 'public';
+      storageNetwork: StorageNetwork;
     };
     schema: 'etherdoc.metadata.v1';
   };

@@ -142,7 +142,8 @@ Intent states are `PREPARED`, `SIGNED`, `SOURCE_PENDING`, `SOURCE_CONFIRMED`,
 
 ### `POST /documents/intents/:intentId/signature`
 
-Authentication required.
+Authentication required. `intentId` must be a UUID v4; malformed values return `400` before any
+database query.
 
 ```json
 {
@@ -236,6 +237,16 @@ These protected endpoints manage storage metadata only and do not change protoco
 - `GET /documents?network=public|private&groupId=<optional>`
 - `GET /documents/groups?network=public|private`
 - `POST /documents/groups` with `{ "network": "public", "groupName": "..." }`
+
+`groupName` and `groupId` are limited to 128 characters.
+
+### Pinata workspace authorization decision
+
+The product decision for Phase 3 is **shared workspace**. Every authenticated wallet can list files
+and groups and create groups in the same configured Pinata account. These endpoints are not
+wallet-owned or tenant-isolated, and callers must not use a successful JWT as evidence that a group
+or file belongs to its subject. Moving to wallet ownership requires a forward-only ownership
+migration and authorization checks on every list/create/read path.
 
 ## Error semantics
 

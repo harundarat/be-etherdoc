@@ -7,6 +7,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { StorageNetwork } from '../../storage/storage-network';
 
 const bytes32Pattern = /^0x[0-9a-fA-F]{64}$/;
 
@@ -21,8 +22,8 @@ export class BaseIntentDto {
 }
 
 export class RegisterIntentDto extends BaseIntentDto {
-  @IsIn(['public', 'private'])
-  storageNetwork: 'public' | 'private';
+  @IsIn(Object.values(StorageNetwork))
+  storageNetwork: StorageNetwork;
 
   @IsOptional()
   @IsString()

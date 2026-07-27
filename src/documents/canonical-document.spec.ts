@@ -8,6 +8,7 @@ import {
   parseCanonicalCid,
   sha256Digest,
 } from './canonical-document';
+import { StorageNetwork } from '../storage/storage-network';
 
 describe('canonical document primitives', () => {
   const helloDigest =
@@ -46,10 +47,10 @@ describe('canonical document primitives', () => {
       byteLength: 5,
       documentType: 'certificate',
       mimeType: 'APPLICATION/PDF',
-      storageNetwork: 'private',
+      storageNetwork: StorageNetwork.PRIVATE,
     });
     const second = canonicalizeMetadata({
-      storageNetwork: 'private',
+      storageNetwork: StorageNetwork.PRIVATE,
       mimeType: 'APPLICATION/PDF',
       documentType: 'certificate',
       byteLength: 5,

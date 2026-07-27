@@ -74,6 +74,12 @@ trusted reverse-proxy hops, and prevent clients from connecting directly to the 
 Leave it at `0` when there is no trusted proxy. This keeps untrusted `X-Forwarded-For` values from
 becoming limiter identities.
 
+The Pinata groups/files API is intentionally a shared authenticated workspace. Any authenticated
+wallet can list files/groups and create groups in the configured Pinata account. Do not describe
+this deployment as tenant-isolated or place mutually untrusted tenants in one instance. A
+wallet-owned model requires a schema migration and endpoint-level ownership enforcement before it
+can be advertised or relied upon.
+
 ## Upload memory budget
 
 Document uploads use Multer memory storage with a hard 5 MiB per-file parser limit, one file per

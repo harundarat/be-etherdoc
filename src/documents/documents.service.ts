@@ -23,6 +23,7 @@ import {
 } from '../storage/bounded-response';
 import { computeDocumentId, sha256Digest } from './canonical-document';
 import type { SearchDocumentDto } from './dto';
+import { StorageNetwork } from '../storage/storage-network';
 
 const zeroHash = `0x${'0'.repeat(64)}` as const;
 
@@ -111,7 +112,7 @@ export class DocumentsService {
     this.runtime = configService.getOrThrow<RuntimeConfig>('runtime');
   }
 
-  createGroup(network: string, groupName: string): Promise<unknown> {
+  createGroup(network: StorageNetwork, groupName: string): Promise<unknown> {
     return this.pinataRequest(`/groups/${network}`, {
       body: JSON.stringify({ name: groupName }),
       headers: { 'Content-Type': 'application/json' },
@@ -119,7 +120,7 @@ export class DocumentsService {
     });
   }
 
-  getListFiles(network: string, groupId?: string): Promise<unknown> {
+  getListFiles(network: StorageNetwork, groupId?: string): Promise<unknown> {
     const url = new URL(`${this.runtime.pinata.apiUrl}/files/${network}`);
     if (groupId) {
       url.searchParams.set('group', groupId);
@@ -127,7 +128,7 @@ export class DocumentsService {
     return this.pinataRequest(url);
   }
 
-  getListGroups(network: string): Promise<unknown> {
+  getListGroups(network: StorageNetwork): Promise<unknown> {
     return this.pinataRequest(`/groups/${network}`);
   }
 
