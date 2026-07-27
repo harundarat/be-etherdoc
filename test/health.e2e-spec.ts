@@ -7,6 +7,8 @@ import type { RuntimeConfig } from '../src/config/runtime-config';
 import { DatabaseService } from '../src/database/database.service';
 import { HealthController } from '../src/health/health.controller';
 import { HealthService } from '../src/health/health.service';
+import { OperationalStatusService } from '../src/health/operational-status.service';
+import { OperationsAuthGuard } from '../src/health/operations-auth.guard';
 import { OperationalStateService } from '../src/observability/operational-state.service';
 
 interface TestContext {
@@ -20,11 +22,21 @@ async function application(): Promise<TestContext> {
   const state = new OperationalStateService();
   const runtime = {
     health: { readinessCacheMs: 5_000 },
+    operations: {
+      token: 'an-operations-token-with-more-than-32-characters',
+    },
   } as RuntimeConfig;
   const module = await Test.createTestingModule({
     controllers: [HealthController],
     providers: [
       HealthService,
+      OperationsAuthGuard,
+      {
+        provide: OperationalStatusService,
+        useValue: {
+          status: jest.fn().mockResolvedValue({ status: 'operational' }),
+        },
+      },
       { provide: ConfigService, useValue: new ConfigService({ runtime }) },
       {
         provide: DatabaseService,
@@ -123,5 +135,20 @@ describe('Health API (e2e)', () => {
       });
 
     expect(context.databaseReadiness).not.toHaveBeenCalled();
+  });
+
+  it('protects detailed operational status with a separate bearer token', async () => {
+    const context = await application();
+    applications.push(context.app);
+
+    await request(server(context.app)).get('/health/status').expect(401);
+    await request(server(context.app))
+      .get('/health/status')
+      .set(
+        'Authorization',
+        'Bearer an-operations-token-with-more-than-32-characters',
+      )
+      .expect(200)
+      .expect({ status: 'operational' });
   });
 });

@@ -64,6 +64,7 @@ function runtime(): RuntimeConfig {
     },
     health: { readinessCacheMs: 5_000 },
     jwt: { secret: 'x'.repeat(32) },
+    operations: { token: 'x'.repeat(32) },
     pinata: {
       apiUrl: 'https://pinata.example',
       gatewayUrl: 'https://gateway.example',

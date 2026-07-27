@@ -1,14 +1,19 @@
-import { Controller, Get, Res } from '@nestjs/common';
+import { Controller, Get, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import {
   HealthService,
   type LivenessReport,
   type ReadinessReport,
 } from './health.service';
+import { OperationalStatusService } from './operational-status.service';
+import { OperationsAuthGuard } from './operations-auth.guard';
 
 @Controller('health')
 export class HealthController {
-  constructor(private readonly health: HealthService) {}
+  constructor(
+    private readonly health: HealthService,
+    private readonly operationalStatus: OperationalStatusService,
+  ) {}
 
   @Get('live')
   live(): LivenessReport {
@@ -24,5 +29,11 @@ export class HealthController {
       response.status(503);
     }
     return report;
+  }
+
+  @Get('status')
+  @UseGuards(OperationsAuthGuard)
+  status() {
+    return this.operationalStatus.status();
   }
 }

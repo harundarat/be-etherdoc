@@ -12,6 +12,7 @@ function validEnvironment(): Record<string, string> {
     ETHEREUM_SEPOLIA_RPC_URL: 'https://ethereum.example/rpc',
     JWT_SECRET: 'a-secure-test-secret-with-more-than-32-characters',
     MANTLE_SEPOLIA_RPC_URL: 'https://mantle.example/rpc',
+    OPERATIONS_TOKEN: 'an-operations-token-with-more-than-32-characters',
     PINATA_API_URL: 'https://api.pinata.example',
     PINATA_GATEWAY_URL: 'https://gateway.pinata.example',
     PINATA_JWT_TOKEN: 'pinata-token',
@@ -55,6 +56,7 @@ describe('buildRuntimeConfig', () => {
     'SIWE_URI',
     'JWT_SECRET',
     'COOKIE_SECURE',
+    'OPERATIONS_TOKEN',
   ])('rejects missing %s', (name) => {
     const environment = validEnvironment();
     delete environment[name];
@@ -89,6 +91,12 @@ describe('buildRuntimeConfig', () => {
         JWT_SECRET: 'short',
       }),
     ).toThrow('JWT_SECRET');
+    expect(() =>
+      buildRuntimeConfig({
+        ...validEnvironment(),
+        OPERATIONS_TOKEN: 'short',
+      }),
+    ).toThrow('OPERATIONS_TOKEN');
     expect(() =>
       buildRuntimeConfig({
         ...validEnvironment(),

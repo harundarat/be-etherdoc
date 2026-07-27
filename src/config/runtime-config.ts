@@ -45,6 +45,9 @@ export interface RuntimeConfig {
   jwt: {
     secret: string;
   };
+  operations: {
+    token: string;
+  };
   intent: {
     signatureTtlSeconds: number;
   };
@@ -253,6 +256,10 @@ export function buildRuntimeConfig(
   if (jwtSecret.length < 32) {
     throw new Error('JWT_SECRET must contain at least 32 characters');
   }
+  const operationsToken = required(environment, 'OPERATIONS_TOKEN');
+  if (operationsToken.length < 32) {
+    throw new Error('OPERATIONS_TOKEN must contain at least 32 characters');
+  }
 
   const siweDomain = required(environment, 'SIWE_DOMAIN');
   if (
@@ -388,6 +395,9 @@ export function buildRuntimeConfig(
     },
     jwt: {
       secret: jwtSecret,
+    },
+    operations: {
+      token: operationsToken,
     },
     intent: {
       signatureTtlSeconds: integer(
