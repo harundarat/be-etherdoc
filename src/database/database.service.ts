@@ -11,18 +11,31 @@ import {
   type QueryResult,
   type QueryResultRow,
 } from 'pg';
-import type { RuntimeConfig } from '../config/runtime-config';
+import type { OutboxJobType, RuntimeConfig } from '../config/runtime-config';
 
 export interface OutboxJob {
   attemptCount: number;
   id: string;
-  jobType: string;
+  jobType: OutboxJobType;
+  leaseToken: string;
   payload: Record<string, unknown>;
 }
 
-export function boundedBackoffMilliseconds(attempt: number): number {
+export class OutboxLeaseLostError extends Error {
+  constructor(jobId: string, operation: string) {
+    super(`Outbox job ${jobId} lost its lease before ${operation}`);
+    this.name = OutboxLeaseLostError.name;
+  }
+}
+
+export function boundedBackoffMilliseconds(
+  attempt: number,
+  random: () => number = Math.random,
+): number {
   const safeAttempt = Math.max(0, Math.min(attempt, 10));
-  return Math.min(5 * 60_000, 1_000 * 2 ** safeAttempt);
+  const base = Math.min(5 * 60_000, 1_000 * 2 ** safeAttempt);
+  const jitter = Math.floor(base * 0.25 * Math.max(0, Math.min(random(), 1)));
+  return Math.min(5 * 60_000, base + jitter);
 }
 
 @Injectable()
@@ -31,10 +44,12 @@ export class DatabaseService
 {
   private readonly lockTimeoutMs: number;
   private readonly pool: Pool;
+  private readonly reclaimBatchSize: number;
 
   constructor(configService: ConfigService) {
     const runtime = configService.getOrThrow<RuntimeConfig>('runtime');
     this.lockTimeoutMs = runtime.worker.lockTimeoutMs;
+    this.reclaimBatchSize = runtime.worker.batchSize;
     this.pool = new Pool({
       connectionString: runtime.databaseUrl,
       max: 20,
@@ -51,22 +66,7 @@ export class DatabaseService
         'Database schema is missing; run `pnpm db:migrate`',
       );
     }
-    await this.pool.query(
-      `
-        UPDATE outbox_job
-        SET
-          state = 'READY',
-          available_at = now(),
-          locked_at = NULL,
-          locked_by = NULL,
-          last_error = COALESCE(last_error, 'Worker lease expired during restart'),
-          updated_at = now()
-        WHERE
-          state = 'RUNNING'
-          AND locked_at < now() - ($1::text || ' milliseconds')::interval
-      `,
-      [this.lockTimeoutMs],
-    );
+    await this.reclaimExpiredOutboxJobs(this.reclaimBatchSize);
   }
 
   async beforeApplicationShutdown(): Promise<void> {
@@ -151,7 +151,8 @@ export class DatabaseService
       const result = await client.query<{
         attempt_count: number;
         id: string;
-        job_type: string;
+        job_type: OutboxJobType;
+        lease_token: string;
         payload: Record<string, unknown>;
       }>(
         `
@@ -168,11 +169,14 @@ export class DatabaseService
             state = 'RUNNING',
             locked_at = now(),
             locked_by = $2,
+            lease_token = gen_random_uuid(),
             attempt_count = attempt_count + 1,
             updated_at = now()
           FROM claimable
           WHERE job.id = claimable.id
-          RETURNING job.id, job.job_type, job.payload, job.attempt_count
+          RETURNING
+            job.id, job.job_type, job.payload, job.attempt_count,
+            job.lease_token
         `,
         [limit, workerId],
       );
@@ -180,53 +184,129 @@ export class DatabaseService
         attemptCount: row.attempt_count,
         id: row.id,
         jobType: row.job_type,
+        leaseToken: row.lease_token,
         payload: row.payload,
       }));
     });
   }
 
-  async retryOutboxJob(jobId: string, attempt: number, error: string) {
+  async reclaimExpiredOutboxJobs(limit: number): Promise<number> {
+    const result = await this.query<{ id: string }>(
+      `
+        WITH expired AS (
+          SELECT id
+          FROM outbox_job
+          WHERE
+            state = 'RUNNING'
+            AND locked_at < now() - ($1::text || ' milliseconds')::interval
+          ORDER BY locked_at, created_at
+          FOR UPDATE SKIP LOCKED
+          LIMIT $2
+        )
+        UPDATE outbox_job AS job
+        SET
+          state = 'READY',
+          available_at = now(),
+          locked_at = NULL,
+          locked_by = NULL,
+          lease_token = NULL,
+          last_error = COALESCE(
+            last_error,
+            'Worker lease expired and was reclaimed'
+          ),
+          updated_at = now()
+        FROM expired
+        WHERE job.id = expired.id
+        RETURNING job.id
+      `,
+      [this.lockTimeoutMs, limit],
+    );
+    return result.rowCount ?? 0;
+  }
+
+  async heartbeatOutboxJob(jobId: string, leaseToken: string): Promise<void> {
+    const result = await this.query(
+      `
+        UPDATE outbox_job
+        SET locked_at = now(), updated_at = now()
+        WHERE id = $1 AND state = 'RUNNING' AND lease_token = $2
+      `,
+      [jobId, leaseToken],
+    );
+    this.assertLease(result.rowCount, jobId, 'heartbeat');
+  }
+
+  async retryOutboxJob(
+    jobId: string,
+    leaseToken: string,
+    attempt: number,
+    error: string,
+  ): Promise<void> {
     const backoff = boundedBackoffMilliseconds(attempt);
-    await this.query(
+    const result = await this.query(
       `
         UPDATE outbox_job
         SET
           state = 'READY',
-          available_at = now() + ($2::text || ' milliseconds')::interval,
+          available_at = now() + ($3::text || ' milliseconds')::interval,
           locked_at = NULL,
           locked_by = NULL,
-          last_error = $3,
+          lease_token = NULL,
+          last_error = $4,
           updated_at = now()
-        WHERE id = $1 AND state = 'RUNNING'
+        WHERE id = $1 AND state = 'RUNNING' AND lease_token = $2
       `,
-      [jobId, backoff, error],
+      [jobId, leaseToken, backoff, error],
     );
+    this.assertLease(result.rowCount, jobId, 'retry');
   }
 
-  async completeOutboxJob(jobId: string): Promise<void> {
-    await this.query(
+  async completeOutboxJob(jobId: string, leaseToken: string): Promise<void> {
+    const result = await this.query(
       `
         UPDATE outbox_job
-        SET state = 'COMPLETED', locked_at = NULL, locked_by = NULL, updated_at = now()
-        WHERE id = $1 AND state = 'RUNNING'
+        SET
+          state = 'COMPLETED',
+          locked_at = NULL,
+          locked_by = NULL,
+          lease_token = NULL,
+          updated_at = now()
+        WHERE id = $1 AND state = 'RUNNING' AND lease_token = $2
       `,
-      [jobId],
+      [jobId, leaseToken],
     );
+    this.assertLease(result.rowCount, jobId, 'completion');
   }
 
-  async failOutboxJob(jobId: string, error: string): Promise<void> {
-    await this.query(
+  async failOutboxJob(
+    jobId: string,
+    leaseToken: string,
+    error: string,
+  ): Promise<void> {
+    const result = await this.query(
       `
         UPDATE outbox_job
         SET
           state = 'FAILED',
           locked_at = NULL,
           locked_by = NULL,
-          last_error = $2,
+          lease_token = NULL,
+          last_error = $3,
           updated_at = now()
-        WHERE id = $1 AND state = 'RUNNING'
+        WHERE id = $1 AND state = 'RUNNING' AND lease_token = $2
       `,
-      [jobId, error],
+      [jobId, leaseToken, error],
     );
+    this.assertLease(result.rowCount, jobId, 'failure');
+  }
+
+  private assertLease(
+    rowCount: number | null,
+    jobId: string,
+    operation: string,
+  ): void {
+    if (rowCount !== 1) {
+      throw new OutboxLeaseLostError(jobId, operation);
+    }
   }
 }

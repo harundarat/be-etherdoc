@@ -7,7 +7,11 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { hostname } from 'node:os';
 import type { RuntimeConfig } from '../config/runtime-config';
-import { DatabaseService, type OutboxJob } from '../database/database.service';
+import {
+  DatabaseService,
+  type OutboxJob,
+  OutboxLeaseLostError,
+} from '../database/database.service';
 import { DestinationWorker } from './destination.worker';
 import { DispatchWorker } from './dispatch.worker';
 import { ReconciliationWorker } from './reconciliation.worker';
@@ -69,11 +73,21 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
 
   private async runTick(): Promise<void> {
     try {
-      const jobs = await this.database.claimOutboxJobs(
-        this.workerId,
+      const reclaimed = await this.database.reclaimExpiredOutboxJobs(
         this.runtime.worker.batchSize,
       );
-      for (const job of jobs) {
+      if (reclaimed > 0) {
+        this.logger.warn(`Reclaimed ${reclaimed} expired outbox lease(s)`);
+      }
+      for (
+        let claimed = 0;
+        claimed < this.runtime.worker.batchSize && !this.stopping;
+        claimed += 1
+      ) {
+        const [job] = await this.database.claimOutboxJobs(this.workerId, 1);
+        if (!job) {
+          break;
+        }
         await this.process(job);
       }
     } catch (error) {
@@ -109,28 +123,127 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async process(job: OutboxJob): Promise<void> {
-    try {
-      if (job.jobType === 'SUBMIT_SOURCE') {
-        await this.sourceWorker.submit(this.payloadId(job, 'intentId'));
-      } else if (job.jobType === 'CONFIRM_SOURCE') {
-        await this.sourceWorker.confirm(this.payloadId(job, 'intentId'));
-      } else if (job.jobType === 'DISPATCH_DESTINATION') {
-        await this.dispatchWorker.dispatch(this.payloadId(job, 'dispatchId'));
-      } else if (job.jobType === 'TRACK_DESTINATION') {
-        await this.destinationWorker.track(this.payloadId(job, 'dispatchId'));
-      } else if (job.jobType === 'RECONCILE') {
-        await this.reconciliationWorker.reconcile(job.payload);
-      } else {
-        throw new TerminalJobError(`Unsupported outbox job ${job.jobType}`);
-      }
-      await this.database.completeOutboxJob(job.id);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (error instanceof TerminalJobError) {
-        await this.database.failOutboxJob(job.id, message);
+    const heartbeatState: { promise: Promise<void> | null } = {
+      promise: null,
+    };
+    let leaseLost = false;
+    const heartbeat = (): void => {
+      if (heartbeatState.promise || leaseLost) {
         return;
       }
-      await this.database.retryOutboxJob(job.id, job.attemptCount, message);
+      const operation = this.database
+        .heartbeatOutboxJob(job.id, job.leaseToken)
+        .catch((error: unknown) => {
+          if (error instanceof OutboxLeaseLostError) {
+            leaseLost = true;
+            this.logger.warn(error.message);
+            return;
+          }
+          const message =
+            error instanceof Error ? error.message : String(error);
+          this.logger.error(
+            `Outbox heartbeat failed for job ${job.id}: ${message}`,
+          );
+        })
+        .finally(() => {
+          if (heartbeatState.promise === operation) {
+            heartbeatState.promise = null;
+          }
+        });
+      heartbeatState.promise = operation;
+    };
+    const heartbeatInterval = setInterval(
+      heartbeat,
+      this.runtime.worker.heartbeatIntervalMs,
+    );
+    heartbeatInterval.unref();
+
+    try {
+      await this.execute(job);
+    } catch (error) {
+      clearInterval(heartbeatInterval);
+      await this.settleHeartbeat(heartbeatState);
+      if (leaseLost) {
+        return;
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      if (error instanceof TerminalJobError) {
+        await this.transitionWithLease(
+          job,
+          () => this.database.failOutboxJob(job.id, job.leaseToken, message),
+          `Outbox job ${job.id} failed terminally: ${message}`,
+        );
+        return;
+      }
+      const maxAttempts = this.runtime.worker.maxAttempts[job.jobType];
+      if (job.attemptCount >= maxAttempts) {
+        const exhausted = `Retry exhausted after ${job.attemptCount} attempt(s): ${message}`;
+        await this.transitionWithLease(
+          job,
+          () => this.database.failOutboxJob(job.id, job.leaseToken, exhausted),
+          `Outbox job ${job.id} exhausted retries: ${message}`,
+        );
+        return;
+      }
+      await this.transitionWithLease(job, () =>
+        this.database.retryOutboxJob(
+          job.id,
+          job.leaseToken,
+          job.attemptCount,
+          message,
+        ),
+      );
+      return;
+    }
+
+    clearInterval(heartbeatInterval);
+    await this.settleHeartbeat(heartbeatState);
+    if (leaseLost) {
+      return;
+    }
+    await this.transitionWithLease(job, () =>
+      this.database.completeOutboxJob(job.id, job.leaseToken),
+    );
+  }
+
+  private async settleHeartbeat(state: {
+    promise: Promise<void> | null;
+  }): Promise<void> {
+    if (state.promise) {
+      await state.promise;
+    }
+  }
+
+  private async execute(job: OutboxJob): Promise<void> {
+    if (job.jobType === 'SUBMIT_SOURCE') {
+      await this.sourceWorker.submit(this.payloadId(job, 'intentId'));
+    } else if (job.jobType === 'CONFIRM_SOURCE') {
+      await this.sourceWorker.confirm(this.payloadId(job, 'intentId'));
+    } else if (job.jobType === 'DISPATCH_DESTINATION') {
+      await this.dispatchWorker.dispatch(this.payloadId(job, 'dispatchId'));
+    } else if (job.jobType === 'TRACK_DESTINATION') {
+      await this.destinationWorker.track(this.payloadId(job, 'dispatchId'));
+    } else if (job.jobType === 'RECONCILE') {
+      await this.reconciliationWorker.reconcile(job.payload);
+    }
+  }
+
+  private async transitionWithLease(
+    job: OutboxJob,
+    transition: () => Promise<void>,
+    alert?: string,
+  ): Promise<void> {
+    try {
+      await transition();
+      if (alert) {
+        this.logger.error(alert);
+      }
+    } catch (error) {
+      if (error instanceof OutboxLeaseLostError) {
+        this.logger.warn(error.message);
+        return;
+      }
+      throw error;
     }
   }
 

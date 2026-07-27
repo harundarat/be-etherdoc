@@ -149,6 +149,32 @@ describe('buildRuntimeConfig', () => {
     ).toThrow('WORKER_SHUTDOWN_DRAIN_TIMEOUT_MS');
   });
 
+  it('configures heartbeat and retry limits below the lease timeout', () => {
+    const config = buildRuntimeConfig({
+      ...validEnvironment(),
+      OUTBOX_HEARTBEAT_INTERVAL_MS: '5000',
+      OUTBOX_LOCK_TIMEOUT_MS: '20000',
+      OUTBOX_MAX_ATTEMPTS: '6',
+      OUTBOX_MAX_ATTEMPTS_TRACK_DESTINATION: '20',
+    });
+
+    expect(config.worker.heartbeatIntervalMs).toBe(5_000);
+    expect(config.worker.maxAttempts).toEqual({
+      CONFIRM_SOURCE: 6,
+      DISPATCH_DESTINATION: 6,
+      RECONCILE: 6,
+      SUBMIT_SOURCE: 6,
+      TRACK_DESTINATION: 20,
+    });
+    expect(() =>
+      buildRuntimeConfig({
+        ...validEnvironment(),
+        OUTBOX_HEARTBEAT_INTERVAL_MS: '10000',
+        OUTBOX_LOCK_TIMEOUT_MS: '10000',
+      }),
+    ).toThrow('OUTBOX_HEARTBEAT_INTERVAL_MS');
+  });
+
   it('requires an explicit cookie security mode and one in-memory-limited replica', () => {
     expect(buildRuntimeConfig(validEnvironment()).http).toEqual({
       cookieSecure: true,

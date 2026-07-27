@@ -15,6 +15,13 @@ export interface ChainRuntimeConfig {
   router: Address;
 }
 
+export type OutboxJobType =
+  | 'CONFIRM_SOURCE'
+  | 'DISPATCH_DESTINATION'
+  | 'RECONCILE'
+  | 'SUBMIT_SOURCE'
+  | 'TRACK_DESTINATION';
+
 export interface RuntimeConfig {
   auth: {
     nonceCleanupBatchSize: number;
@@ -69,9 +76,11 @@ export interface RuntimeConfig {
   worker: {
     batchSize: number;
     drainTimeoutMs: number;
+    heartbeatIntervalMs: number;
     indexBlockRange: number;
     indexIntervalMs: number;
     lockTimeoutMs: number;
+    maxAttempts: Record<OutboxJobType, number>;
     pollIntervalMs: number;
   };
 }
@@ -256,6 +265,30 @@ export function buildRuntimeConfig(
       'API_REPLICA_COUNT must remain 1 while rate limiting uses in-memory storage',
     );
   }
+  const outboxLockTimeoutMs = integer(
+    environment,
+    'OUTBOX_LOCK_TIMEOUT_MS',
+    600_000,
+    10_000,
+  );
+  const outboxHeartbeatIntervalMs = integer(
+    environment,
+    'OUTBOX_HEARTBEAT_INTERVAL_MS',
+    30_000,
+    1_000,
+  );
+  if (outboxHeartbeatIntervalMs >= outboxLockTimeoutMs) {
+    throw new Error(
+      'OUTBOX_HEARTBEAT_INTERVAL_MS must be less than OUTBOX_LOCK_TIMEOUT_MS',
+    );
+  }
+  const defaultOutboxMaxAttempts = integer(
+    environment,
+    'OUTBOX_MAX_ATTEMPTS',
+    8,
+    1,
+    100,
+  );
 
   return {
     auth: {
@@ -393,14 +426,47 @@ export function buildRuntimeConfig(
         30_000,
         1_000,
       ),
+      heartbeatIntervalMs: outboxHeartbeatIntervalMs,
       indexBlockRange: integer(environment, 'CHAIN_INDEX_BLOCK_RANGE', 2_000),
       indexIntervalMs: integer(environment, 'CHAIN_INDEX_INTERVAL_MS', 15_000),
-      lockTimeoutMs: integer(
-        environment,
-        'OUTBOX_LOCK_TIMEOUT_MS',
-        600_000,
-        10_000,
-      ),
+      lockTimeoutMs: outboxLockTimeoutMs,
+      maxAttempts: {
+        CONFIRM_SOURCE: integer(
+          environment,
+          'OUTBOX_MAX_ATTEMPTS_CONFIRM_SOURCE',
+          defaultOutboxMaxAttempts,
+          1,
+          100,
+        ),
+        DISPATCH_DESTINATION: integer(
+          environment,
+          'OUTBOX_MAX_ATTEMPTS_DISPATCH_DESTINATION',
+          defaultOutboxMaxAttempts,
+          1,
+          100,
+        ),
+        RECONCILE: integer(
+          environment,
+          'OUTBOX_MAX_ATTEMPTS_RECONCILE',
+          defaultOutboxMaxAttempts,
+          1,
+          100,
+        ),
+        SUBMIT_SOURCE: integer(
+          environment,
+          'OUTBOX_MAX_ATTEMPTS_SUBMIT_SOURCE',
+          defaultOutboxMaxAttempts,
+          1,
+          100,
+        ),
+        TRACK_DESTINATION: integer(
+          environment,
+          'OUTBOX_MAX_ATTEMPTS_TRACK_DESTINATION',
+          defaultOutboxMaxAttempts,
+          1,
+          100,
+        ),
+      },
       pollIntervalMs: integer(environment, 'OUTBOX_POLL_INTERVAL_MS', 1_000),
     },
   };

@@ -177,8 +177,10 @@ export class ReconciliationWorker {
             available_at = now(),
             locked_at = NULL,
             locked_by = NULL,
+            lease_token = NULL,
             last_error = NULL,
             updated_at = now()
+          WHERE outbox_job.state IN ('COMPLETED', 'FAILED')
         `,
         [
           `intent:${intent.id}:confirm-source`,

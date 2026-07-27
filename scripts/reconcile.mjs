@@ -63,6 +63,7 @@ try {
           available_at = now(),
           locked_at = NULL,
           locked_by = NULL,
+          lease_token = NULL,
           last_error = NULL,
           updated_at = now()
         WHERE outbox_job.state IN ('COMPLETED', 'FAILED')
@@ -83,6 +84,7 @@ try {
           available_at = now(),
           locked_at = NULL,
           locked_by = NULL,
+          lease_token = NULL,
           last_error = NULL,
           updated_at = now()
         WHERE outbox_job.state IN ('COMPLETED', 'FAILED')
@@ -103,6 +105,7 @@ try {
           available_at = now(),
           locked_at = NULL,
           locked_by = NULL,
+          lease_token = NULL,
           last_error = NULL,
           updated_at = now()
         WHERE outbox_job.state IN ('COMPLETED', 'FAILED')

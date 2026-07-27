@@ -2,7 +2,15 @@ import { ConfigService } from '@nestjs/config';
 import { Pool } from 'pg';
 import { AuthNonceCleanupService } from '../src/auth/auth-nonce-cleanup.service';
 import type { RuntimeConfig } from '../src/config/runtime-config';
-import { DatabaseService } from '../src/database/database.service';
+import {
+  DatabaseService,
+  OutboxLeaseLostError,
+} from '../src/database/database.service';
+import type { DestinationWorker } from '../src/workers/destination.worker';
+import type { DispatchWorker } from '../src/workers/dispatch.worker';
+import { OutboxWorkerService } from '../src/workers/outbox-worker.service';
+import type { ReconciliationWorker } from '../src/workers/reconciliation.worker';
+import type { SourceTransactionWorker } from '../src/workers/source-transaction.worker';
 
 const issuer = '0x0000000000000000000000000000000000000001';
 const documentId = `0x${'11'.repeat(32)}`;
@@ -21,8 +29,31 @@ function runtime(url: string): RuntimeConfig {
   return {
     blockchain: { requestTimeoutMs: 5_000 },
     databaseUrl: url,
-    worker: { drainTimeoutMs: 30_000, lockTimeoutMs: 10_000 },
+    worker: {
+      batchSize: 10,
+      drainTimeoutMs: 5_000,
+      heartbeatIntervalMs: 1_000,
+      indexBlockRange: 2_000,
+      indexIntervalMs: 15_000,
+      lockTimeoutMs: 10_000,
+      maxAttempts: {
+        CONFIRM_SOURCE: 8,
+        DISPATCH_DESTINATION: 8,
+        RECONCILE: 8,
+        SUBMIT_SOURCE: 8,
+        TRACK_DESTINATION: 8,
+      },
+      pollIntervalMs: 60_000,
+    },
   } as RuntimeConfig;
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((complete) => {
+    resolve = complete;
+  });
+  return { promise, resolve };
 }
 
 async function insertIntent(pool: Pool, idempotencyKey: string, nonce: string) {
@@ -72,6 +103,7 @@ describe('PostgreSQL protocol state', () => {
       '003_dispatch_evidence.sql',
       '004_dispatch_canonical_snapshot.sql',
       '005_auth_nonce_retention.sql',
+      '006_outbox_lease.sql',
     ]);
   });
 
@@ -170,6 +202,10 @@ describe('PostgreSQL protocol state', () => {
     expect(firstClaim).toHaveLength(1);
     expect(secondClaim).toHaveLength(1);
     expect(firstClaim[0].id).not.toBe(secondClaim[0].id);
+    expect(firstClaim[0].leaseToken).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(secondClaim[0].leaseToken).not.toBe(firstClaim[0].leaseToken);
     await Promise.all([
       firstDatabase.beforeApplicationShutdown(),
       secondDatabase.beforeApplicationShutdown(),
@@ -198,13 +234,208 @@ describe('PostgreSQL protocol state', () => {
     await database.onModuleInit();
 
     const recovered = await pool.query<{
+      lease_token: string | null;
       locked_by: string | null;
       state: string;
     }>(
-      `SELECT state, locked_by FROM outbox_job WHERE deduplication_key = 'restart-job'`,
+      `
+        SELECT state, locked_by, lease_token
+        FROM outbox_job
+        WHERE deduplication_key = 'restart-job'
+      `,
     );
 
-    expect(recovered.rows[0]).toEqual({ locked_by: null, state: 'READY' });
+    expect(recovered.rows[0]).toEqual({
+      lease_token: null,
+      locked_by: null,
+      state: 'READY',
+    });
+    await database.beforeApplicationShutdown();
+  });
+
+  it('heartbeats a current lease and rejects a stale owner after reclaim', async () => {
+    const intentId = await insertIntent(pool, 'lease-intent', '1');
+    await pool.query(
+      `
+        INSERT INTO outbox_job(
+          deduplication_key, job_type, intent_id, payload
+        )
+        VALUES(
+          'leased-job','SUBMIT_SOURCE',$1::uuid,
+          jsonb_build_object('intentId',$1::text)
+        )
+      `,
+      [intentId],
+    );
+    const firstDatabase = new DatabaseService(
+      new ConfigService({ runtime: runtime(url) }),
+    );
+    const secondDatabase = new DatabaseService(
+      new ConfigService({ runtime: runtime(url) }),
+    );
+    await Promise.all([
+      firstDatabase.onModuleInit(),
+      secondDatabase.onModuleInit(),
+    ]);
+
+    const firstClaim = (
+      await firstDatabase.claimOutboxJobs('worker-one', 1)
+    )[0];
+    await pool.query(
+      `
+        UPDATE outbox_job
+        SET locked_at = now() - interval '1 hour'
+        WHERE id = $1
+      `,
+      [firstClaim.id],
+    );
+    await expect(secondDatabase.reclaimExpiredOutboxJobs(1)).resolves.toBe(1);
+    const secondClaim = (
+      await secondDatabase.claimOutboxJobs('worker-two', 1)
+    )[0];
+
+    expect(secondClaim.id).toBe(firstClaim.id);
+    expect(secondClaim.leaseToken).not.toBe(firstClaim.leaseToken);
+    await secondDatabase.heartbeatOutboxJob(
+      secondClaim.id,
+      secondClaim.leaseToken,
+    );
+    await expect(secondDatabase.reclaimExpiredOutboxJobs(1)).resolves.toBe(0);
+    await expect(
+      firstDatabase.heartbeatOutboxJob(firstClaim.id, firstClaim.leaseToken),
+    ).rejects.toBeInstanceOf(OutboxLeaseLostError);
+    await expect(
+      firstDatabase.retryOutboxJob(
+        firstClaim.id,
+        firstClaim.leaseToken,
+        firstClaim.attemptCount,
+        'stale retry',
+      ),
+    ).rejects.toBeInstanceOf(OutboxLeaseLostError);
+    await expect(
+      firstDatabase.failOutboxJob(
+        firstClaim.id,
+        firstClaim.leaseToken,
+        'stale failure',
+      ),
+    ).rejects.toBeInstanceOf(OutboxLeaseLostError);
+    await expect(
+      firstDatabase.completeOutboxJob(firstClaim.id, firstClaim.leaseToken),
+    ).rejects.toBeInstanceOf(OutboxLeaseLostError);
+
+    const stillOwned = await pool.query<{
+      lease_token: string;
+      state: string;
+    }>(`SELECT state, lease_token FROM outbox_job WHERE id = $1`, [
+      secondClaim.id,
+    ]);
+    expect(stillOwned.rows[0]).toEqual({
+      lease_token: secondClaim.leaseToken,
+      state: 'RUNNING',
+    });
+
+    await secondDatabase.completeOutboxJob(
+      secondClaim.id,
+      secondClaim.leaseToken,
+    );
+    const completed = await pool.query<{
+      lease_token: string | null;
+      state: string;
+    }>(`SELECT state, lease_token FROM outbox_job WHERE id = $1`, [
+      secondClaim.id,
+    ]);
+    expect(completed.rows[0]).toEqual({
+      lease_token: null,
+      state: 'COMPLETED',
+    });
+    await Promise.all([
+      firstDatabase.beforeApplicationShutdown(),
+      secondDatabase.beforeApplicationShutdown(),
+    ]);
+  });
+
+  it('skips a held periodic advisory lock without blocking', async () => {
+    const firstDatabase = new DatabaseService(
+      new ConfigService({ runtime: runtime(url) }),
+    );
+    const secondDatabase = new DatabaseService(
+      new ConfigService({ runtime: runtime(url) }),
+    );
+    await Promise.all([
+      firstDatabase.onModuleInit(),
+      secondDatabase.onModuleInit(),
+    ]);
+    const started = deferred<void>();
+    const release = deferred<void>();
+    const firstLock = firstDatabase.withTryAdvisoryLock(
+      836_483_699,
+      async () => {
+        started.resolve();
+        await release.promise;
+      },
+    );
+    await started.promise;
+
+    await expect(
+      secondDatabase.withTryAdvisoryLock(836_483_699, () => Promise.resolve()),
+    ).resolves.toBe(false);
+    release.resolve();
+    await expect(firstLock).resolves.toBe(true);
+    await Promise.all([
+      firstDatabase.beforeApplicationShutdown(),
+      secondDatabase.beforeApplicationShutdown(),
+    ]);
+  });
+
+  it('drains an active PostgreSQL outbox job before the pool closes', async () => {
+    const intentId = await insertIntent(pool, 'shutdown-intent', '1');
+    await pool.query(
+      `
+        INSERT INTO outbox_job(
+          deduplication_key, job_type, intent_id, payload
+        )
+        VALUES(
+          'shutdown-job','SUBMIT_SOURCE',$1::uuid,
+          jsonb_build_object('intentId',$1::text)
+        )
+      `,
+      [intentId],
+    );
+    const config = new ConfigService({ runtime: runtime(url) });
+    const database = new DatabaseService(config);
+    await database.onModuleInit();
+    const submission = deferred<void>();
+    const submit = jest.fn().mockReturnValue(submission.promise);
+    const worker = new OutboxWorkerService(
+      config,
+      database,
+      {} as DestinationWorker,
+      {} as DispatchWorker,
+      {} as ReconciliationWorker,
+      { submit } as unknown as SourceTransactionWorker,
+    );
+
+    const tick = worker.tick();
+    while (submit.mock.calls.length === 0) {
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+    let drained = false;
+    const shutdown = worker.onModuleDestroy().then(() => {
+      drained = true;
+    });
+    await Promise.resolve();
+    expect(drained).toBe(false);
+
+    submission.resolve();
+    await Promise.all([tick, shutdown]);
+    const completed = await pool.query<{ state: string }>(
+      `
+        SELECT state
+        FROM outbox_job
+        WHERE deduplication_key = 'shutdown-job'
+      `,
+    );
+    expect(completed.rows[0].state).toBe('COMPLETED');
     await database.beforeApplicationShutdown();
   });
 

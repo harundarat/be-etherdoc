@@ -86,9 +86,17 @@ function runtime(): RuntimeConfig {
     worker: {
       batchSize: 10,
       drainTimeoutMs: 30_000,
+      heartbeatIntervalMs: 30_000,
       indexBlockRange: 2_000,
       indexIntervalMs: 15_000,
       lockTimeoutMs: 600_000,
+      maxAttempts: {
+        CONFIRM_SOURCE: 8,
+        DISPATCH_DESTINATION: 8,
+        RECONCILE: 8,
+        SUBMIT_SOURCE: 8,
+        TRACK_DESTINATION: 8,
+      },
       pollIntervalMs: 1_000,
     },
   };
