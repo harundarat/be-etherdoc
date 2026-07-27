@@ -31,19 +31,20 @@ required before broadcasting lifecycle smoke-test transactions.
 
 ## Required environment
 
-| Area                | Variables                                                                                                                                 |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Database            | `DATABASE_URL`                                                                                                                            |
-| HTTP edge           | `CORS_ORIGIN`, `COOKIE_SECURE`, `TRUST_PROXY_HOPS`, `API_REPLICA_COUNT`                                                                   |
-| Rate limits         | `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_API_REQUESTS`, `RATE_LIMIT_AUTH_REQUESTS`, `RATE_LIMIT_SEARCH_REQUESTS`, `RATE_LIMIT_UPLOAD_REQUESTS` |
-| Source RPC          | `ETHEREUM_SEPOLIA_RPC_URL`, `ETHEREUM_CONFIRMATION_DEPTH`                                                                                 |
-| Destination RPC     | `MANTLE_SEPOLIA_RPC_URL`, `MANTLE_CONFIRMATION_DEPTH`                                                                                     |
-| Deployment override | `ETHERDOC_SENDER_ADDRESS`, `ETHERDOC_SENDER_DEPLOYMENT_BLOCK`, `ETHERDOC_RECEIVER_ADDRESS`, `ETHERDOC_RECEIVER_DEPLOYMENT_BLOCK`          |
-| Signer              | `BACKEND_PRIVATE_KEY`                                                                                                                     |
-| SIWE/JWT            | `SIWE_DOMAIN`, `SIWE_URI`, `SIWE_NONCE_TTL_SECONDS`, `SIWE_SESSION_TTL_SECONDS`, `JWT_SECRET`                                             |
-| Auth retention      | `AUTH_NONCE_RETENTION_SECONDS`, `AUTH_NONCE_CLEANUP_INTERVAL_SECONDS`, `AUTH_NONCE_CLEANUP_BATCH_SIZE`                                    |
-| Pinata              | `PINATA_API_URL`, `PINATA_UPLOAD_URL`, `PINATA_GATEWAY_URL`, `PINATA_JWT_TOKEN`                                                           |
-| Dispatch            | `DISPATCH_FEE_BUFFER_BPS`, `MAXIMUM_DISPATCH_FEE_WEI`, `CCIP_RECOVERY_AFTER_SECONDS`                                                      |
+| Area                | Variables                                                                                                                                                                                                                  |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Database            | `DATABASE_URL`                                                                                                                                                                                                             |
+| HTTP edge           | `CORS_ORIGIN`, `COOKIE_SECURE`, `TRUST_PROXY_HOPS`, `API_REPLICA_COUNT`, `HEALTH_READINESS_CACHE_MS`                                                                                                                       |
+| Operations          | `OPERATIONS_TOKEN`                                                                                                                                                                                                         |
+| Rate limits         | `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_API_REQUESTS`, `RATE_LIMIT_AUTH_REQUESTS`, `RATE_LIMIT_SEARCH_REQUESTS`, `RATE_LIMIT_UPLOAD_REQUESTS`                                                                                  |
+| Source RPC          | `ETHEREUM_SEPOLIA_RPC_URL`, `ETHEREUM_CONFIRMATION_DEPTH`                                                                                                                                                                  |
+| Destination RPC     | `MANTLE_SEPOLIA_RPC_URL`, `MANTLE_CONFIRMATION_DEPTH`                                                                                                                                                                      |
+| Deployment override | `ETHERDOC_SENDER_ADDRESS`, `ETHERDOC_SENDER_DEPLOYMENT_BLOCK`, `ETHERDOC_RECEIVER_ADDRESS`, `ETHERDOC_RECEIVER_DEPLOYMENT_BLOCK`                                                                                           |
+| Signer              | `BACKEND_PRIVATE_KEY`                                                                                                                                                                                                      |
+| SIWE/JWT            | `SIWE_DOMAIN`, `SIWE_URI`, `SIWE_NONCE_TTL_SECONDS`, `SIWE_SESSION_TTL_SECONDS`, `JWT_SECRET`                                                                                                                              |
+| Auth retention      | `AUTH_NONCE_RETENTION_SECONDS`, `AUTH_NONCE_CLEANUP_INTERVAL_SECONDS`, `AUTH_NONCE_CLEANUP_BATCH_SIZE`                                                                                                                     |
+| Pinata              | `PINATA_API_URL`, `PINATA_UPLOAD_URL`, `PINATA_GATEWAY_URL`, `PINATA_JWT_TOKEN`                                                                                                                                            |
+| Dispatch            | `DISPATCH_FEE_BUFFER_BPS`, `MAXIMUM_DISPATCH_FEE_WEI`, `CCIP_RECOVERY_AFTER_SECONDS`                                                                                                                                       |
 | Workers             | `OUTBOX_BATCH_SIZE`, `OUTBOX_POLL_INTERVAL_MS`, `OUTBOX_LOCK_TIMEOUT_MS`, `OUTBOX_HEARTBEAT_INTERVAL_MS`, `OUTBOX_MAX_ATTEMPTS*`, `WORKER_SHUTDOWN_DRAIN_TIMEOUT_MS`, `CHAIN_INDEX_BLOCK_RANGE`, `CHAIN_INDEX_INTERVAL_MS` |
 
 Inject secrets at runtime. Restrict `.env` to local development and keep it untracked.
@@ -79,6 +80,44 @@ wallet can list files/groups and create groups in the configured Pinata account.
 this deployment as tenant-isolated or place mutually untrusted tenants in one instance. A
 wallet-owned model requires a schema migration and endpoint-level ownership enforcement before it
 can be advertised or relied upon.
+
+## Health, diagnostics, and logging
+
+Use `/health/live` only for process liveness. It intentionally performs no dependency calls, so a
+database or RPC incident must not trigger an automatic restart loop. Use `/health/ready` for
+load-balancer membership. It returns `503` when PostgreSQL/schema is unavailable, blockchain
+startup readiness has not completed, or graceful shutdown has started. Keep
+`HEALTH_READINESS_CACHE_MS` short; the allowed range is 100–60,000 ms and the default is 5,000 ms.
+
+`/health/status` is an operator endpoint. Store its independently generated, minimum 32-character
+`OPERATIONS_TOKEN` in the runtime secret manager and send it only as a bearer token from trusted
+operator tooling. Do not reuse `JWT_SECRET`, a user JWT, or a Pinata token. Rotate it by updating
+the secret and restarting instances; never place it in URLs, dashboards, screenshots, or incident
+notes.
+
+The status response is the first diagnostic for delayed work:
+
+1. compare source/destination `lagBlocks` and `lastSuccessfulTickAt`;
+2. inspect READY/RUNNING/FAILED counts per job type and `oldestReadyAgeSeconds`;
+3. alert immediately on nonzero `expiredLeases`, new recent failed jobs, or recovery-required
+   dispatches;
+4. correlate the returned intent/dispatch/job ID with structured logs and canonical chain evidence.
+
+Each response carries `X-Request-ID`. Logs use `correlationId` and propagate the accepted signature
+request ID into the initial outbox job. Worker records include `jobId`, `jobType`, `attempt`,
+`intentId`/`dispatchId`, a one-way 12-character `leaseFingerprint`, duration, transition, and error
+classification. External request logs identify only `rpc`/`pinata`, logical operation/chain,
+duration, status, and failure classification; they deliberately omit URLs, headers, bodies, signed
+messages, signatures, JWTs, and provider tokens. Sanitized stack traces remain in error logs.
+
+Recommended alerts:
+
+- readiness remains `503` longer than one cache interval outside a deployment;
+- no successful indexer tick for two `CHAIN_INDEX_INTERVAL_MS` periods;
+- cursor lag increases across two consecutive observations;
+- any expired lease, FAILED job, retry exhaustion, or `RECOVERY_REQUIRED` transition;
+- sustained RPC/Pinata timeout, network, or HTTP failure classification;
+- shutdown drain timeout.
 
 ## Upload memory budget
 

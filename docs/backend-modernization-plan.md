@@ -2,7 +2,7 @@
 
 Plan date: 27 July 2026.
 
-Status: implementation in progress; Phases 1 through 4 completed on 27 July 2026.
+Status: implementation in progress; Phases 1 through 5 completed on 27 July 2026.
 
 This document is the execution plan for an AI Coding Agent modernizing `be-etherdoc`. The work is
 intended to improve dependency security, production safety, reliability, type safety, test depth,
@@ -419,9 +419,19 @@ Detailed status may require an operator-only endpoint; basic health endpoints mu
 
 ### Phase 5 acceptance
 
-- Health endpoints have deterministic tests for healthy, degraded, and shutting-down states.
-- Operators can determine why an intent/dispatch is delayed without direct ad hoc code inspection.
-- Logs contain correlation context and no secrets.
+- [x] Health endpoints have deterministic tests for healthy, degraded, and shutting-down states.
+- [x] Operators can determine why an intent/dispatch is delayed without direct ad hoc code
+      inspection.
+- [x] Logs contain correlation context and no secrets.
+
+Implementation record: commit `5543bfe` removes the placeholder root response and adds dependency-
+free liveness plus cached, lifecycle-aware readiness backed by the database schema probe and
+startup blockchain check. Commit `5c5b9f6` adds a separately authenticated operational endpoint
+with cursor lag, last successful indexer ticks, outbox state/lease age, failed-job context, recovery
+dispatches, and shutdown state; sensitive values are redacted. Commit `474eef6` adds request
+correlation, structured intent/outbox/recovery logging, lease-token fingerprints, job duration and
+attempt context, sanitized stack traces, and RPC/Pinata request timing and failure classification.
+No schema migration or synchronous provider call was added to the probe path.
 
 ## Phase 6: Type safety and focused refactoring
 

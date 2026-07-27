@@ -64,6 +64,37 @@ by client IP and wallet address. JSON searches with an issuer are also counted b
 multipart uploads are counted by client IP before their body is buffered. Exceeding a limit returns
 `429` with `message: "RATE_LIMIT_EXCEEDED"` and a limiter-specific `Retry-After` header.
 
+## Health and operational status
+
+### `GET /health/live`
+
+Public dependency-free liveness. It proves that the HTTP process/event loop can answer and returns
+`200` with `status: "live"`. It does not query PostgreSQL, RPC, or Pinata.
+
+### `GET /health/ready`
+
+Public load-balancer readiness. It returns `200` only when PostgreSQL is queryable, the
+`document_intent` schema is present, startup blockchain configuration/readiness completed, and
+graceful shutdown has not begun. Database/schema results are cached for
+`HEALTH_READINESS_CACHE_MS` (five seconds by default). A degraded, starting, or shutting-down
+service returns `503` with safe per-check states and no raw dependency error.
+
+### `GET /health/status`
+
+Operator-only diagnostics. Send `Authorization: Bearer <OPERATIONS_TOKEN>`; this credential is
+separate from user SIWE/JWT sessions. Missing or invalid credentials return `401
+OPERATIONS_AUTH_REQUIRED`.
+
+The response contains source/destination finalized cursor lag as last observed by each successful
+indexer tick, outbox counts and pending age, READY/RUNNING/FAILED counts per job type, expired
+leases, up to 20 recent failed jobs, up to 20 `RECOVERY_REQUIRED` dispatches, and shutdown state.
+Provider/database URLs and credential-shaped text are redacted. The endpoint does not synchronously
+probe RPC or Pinata.
+
+Every response includes `X-Request-ID`. A syntactically valid inbound UUID is preserved; invalid or
+missing values are replaced. Do not put JWTs, signatures, wallet messages, or other secrets in this
+header.
+
 ## Signed intent flow
 
 An accepted signature is not final success. Prepare endpoints return exact EIP-712 typed data;

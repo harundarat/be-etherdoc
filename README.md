@@ -65,6 +65,9 @@ ETHERDOC_RECEIVER_DEPLOYMENT_BLOCK
 Use `COOKIE_SECURE=false` only for local HTTP development. Deployed HTTPS environments must set it
 to `true`.
 
+Generate `OPERATIONS_TOKEN` independently from `JWT_SECRET`. It protects detailed runtime status
+and must be injected through the secret manager rather than sent to browser clients.
+
 Startup validates configuration, RPC chain IDs, deployed bytecode, Router/LINK bindings, trusted
 remote configuration, and backend signer roles. A mismatch stops the application.
 
@@ -136,6 +139,18 @@ The server accepts an `etherdoc-auth` HTTP-only cookie or bearer JWT for protect
 `SIWE_SESSION_TTL_SECONDS` is the single lifetime used by the JWT, cookie, and authentication
 response. Cookie-authenticated mutations require the configured frontend `Origin`; explicit bearer
 authentication is CSRF-exempt.
+
+Health and diagnostics:
+
+- `GET /health/live` is dependency-free liveness;
+- `GET /health/ready` verifies database/schema availability, completed startup blockchain checks,
+  and shutdown state;
+- `GET /health/status` requires `Authorization: Bearer <OPERATIONS_TOKEN>` and reports safe cursor,
+  outbox, recovery, and shutdown diagnostics.
+
+Every HTTP response includes `X-Request-ID`. A valid inbound UUID is preserved; otherwise the
+backend generates one. Use it to correlate an accepted intent with subsequent structured outbox
+logs. Health endpoints never return secrets, RPC URLs, database URLs, or provider credentials.
 
 ## License
 
