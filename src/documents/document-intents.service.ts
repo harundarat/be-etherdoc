@@ -14,6 +14,7 @@ import type { PoolClient } from 'pg';
 import type { RuntimeConfig } from '../config/runtime-config';
 import { BlockchainService } from '../blockchain/blockchain.service';
 import { DatabaseService } from '../database/database.service';
+import { requireQueryRow } from '../database/query-result';
 import { etherdocContractArtifacts } from '../contracts/generated';
 import { PinataStorageService } from '../storage/pinata-storage.service';
 import {
@@ -23,6 +24,7 @@ import {
 } from './canonical-document';
 import {
   jsonTypedData,
+  parseIntentAuthorization,
   registerTypedData,
   revokeTypedData,
   supersedeTypedData,
@@ -498,7 +500,7 @@ export class DocumentIntentsService {
           this.correlatedPayload('intentId', intentId),
         ],
       );
-      return result.rows[0];
+      return requireQueryRow(result.rows, 'intent signature update');
     });
     this.logger.log({
       correlationId: this.correlation?.currentId() ?? null,
@@ -708,7 +710,7 @@ export class DocumentIntentsService {
           input.typedDataDigest,
         ],
       );
-      return result.rows[0];
+      return requireQueryRow(result.rows, 'intent insert');
     } catch (error) {
       const errorCode = (error as { code?: unknown } | null)?.code;
       if (typeof errorCode === 'string' && errorCode === '23505') {
@@ -720,44 +722,40 @@ export class DocumentIntentsService {
     }
   }
 
-  private hydrateTypedData(intent: IntentRow) {
-    const message = intent.typed_data.message as Record<
-      string,
-      string | number
-    >;
+  private hydrateTypedData(
+    intent: IntentRow,
+  ):
+    | ReturnType<typeof registerTypedData>
+    | ReturnType<typeof revokeTypedData>
+    | ReturnType<typeof supersedeTypedData> {
     if (intent.operation === 'REGISTER') {
-      return registerTypedData(this.domain(), {
-        cidCodec: Number(message.cidCodec),
-        cidDigest: message.cidDigest as Hex,
-        contentDigest: message.contentDigest as Hex,
-        deadline: BigInt(message.deadline),
-        documentId: message.documentId as Hex,
-        issuer: intent.issuer,
-        metadataCommitment: message.metadataCommitment as Hex,
-        nonce: BigInt(message.nonce),
-      });
+      return registerTypedData(
+        this.domain(),
+        parseIntentAuthorization(
+          intent.operation,
+          intent.typed_data,
+          intent.issuer,
+        ),
+      );
     }
     if (intent.operation === 'REVOKE') {
-      return revokeTypedData(this.domain(), {
-        currentVersion: BigInt(message.currentVersion),
-        deadline: BigInt(message.deadline),
-        documentId: message.documentId as Hex,
-        issuer: intent.issuer,
-        nonce: BigInt(message.nonce),
-      });
+      return revokeTypedData(
+        this.domain(),
+        parseIntentAuthorization(
+          intent.operation,
+          intent.typed_data,
+          intent.issuer,
+        ),
+      );
     }
-    return supersedeTypedData(this.domain(), {
-      currentVersion: BigInt(message.currentVersion),
-      deadline: BigInt(message.deadline),
-      issuer: intent.issuer,
-      metadataCommitment: message.metadataCommitment as Hex,
-      newCidCodec: Number(message.newCidCodec),
-      newCidDigest: message.newCidDigest as Hex,
-      newContentDigest: message.newContentDigest as Hex,
-      newDocumentId: message.newDocumentId as Hex,
-      nonce: BigInt(message.nonce),
-      oldDocumentId: message.oldDocumentId as Hex,
-    });
+    return supersedeTypedData(
+      this.domain(),
+      parseIntentAuthorization(
+        intent.operation,
+        intent.typed_data,
+        intent.issuer,
+      ),
+    );
   }
 
   private view(row: IntentRow): IntentView {

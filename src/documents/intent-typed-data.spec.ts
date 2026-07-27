@@ -1,5 +1,6 @@
 import {
   jsonTypedData,
+  parseIntentAuthorization,
   registerTypedData,
   revokeTypedData,
   supersedeTypedData,
@@ -75,5 +76,71 @@ describe('intent typed data', () => {
       newCidDigest: digest,
     });
     expect(typedDataDigest(base)).not.toBe(typedDataDigest(changed));
+  });
+
+  it('parses persisted register authorization fields', () => {
+    const typedData = registerTypedData(domain, {
+      cidCodec: 112,
+      cidDigest: digest,
+      contentDigest: digest,
+      deadline: 123n,
+      documentId: otherDigest,
+      issuer,
+      metadataCommitment: otherDigest,
+      nonce: 7n,
+    });
+    const persisted: unknown = JSON.parse(
+      JSON.stringify(typedData, (_key, value: unknown) =>
+        typeof value === 'bigint' ? value.toString() : value,
+      ),
+    );
+
+    expect(parseIntentAuthorization('REGISTER', persisted, issuer)).toEqual({
+      cidCodec: 112,
+      cidDigest: digest,
+      contentDigest: digest,
+      deadline: 123n,
+      documentId: otherDigest,
+      issuer,
+      metadataCommitment: otherDigest,
+      nonce: 7n,
+    });
+  });
+
+  it('rejects a mismatched operation and malformed message fields', () => {
+    expect(() =>
+      parseIntentAuthorization(
+        'REVOKE',
+        {
+          message: {
+            currentVersion: '1',
+            deadline: '123',
+            documentId: digest,
+            nonce: '7',
+          },
+          primaryType: 'RegisterDocument',
+        },
+        issuer,
+      ),
+    ).toThrow('typed_data.primaryType must be RevokeDocument');
+
+    expect(() =>
+      parseIntentAuthorization(
+        'REGISTER',
+        {
+          message: {
+            cidCodec: 256,
+            cidDigest: digest,
+            contentDigest: digest,
+            deadline: '123',
+            documentId: otherDigest,
+            metadataCommitment: otherDigest,
+            nonce: '7',
+          },
+          primaryType: 'RegisterDocument',
+        },
+        issuer,
+      ),
+    ).toThrow('typed_data.message.cidCodec must be a uint8');
   });
 });

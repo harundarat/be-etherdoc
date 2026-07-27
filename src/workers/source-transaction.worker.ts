@@ -16,6 +16,8 @@ import {
   classifyBlockchainError,
 } from '../blockchain/blockchain.errors';
 import { DatabaseService } from '../database/database.service';
+import { requireQueryRow } from '../database/query-result';
+import { requireDocumentLifecycleStatus } from '../documents/document-status';
 import { RetryableJobError, TerminalJobError } from './worker-errors';
 
 const SIGNER_ADVISORY_LOCK = 836_483_622;
@@ -60,6 +62,12 @@ interface ChainDocumentRecord {
   supersedes: Hex;
   updatedAt: bigint;
   version: bigint;
+}
+
+interface PreparedSubmission {
+  intent: SubmissionIntent;
+  nonce: number;
+  sourceTransaction: SourceTransactionRow;
 }
 
 export type SourceFailureDisposition = 'RETRYABLE' | 'TERMINAL';
@@ -251,7 +259,10 @@ export class SourceTransactionWorker {
     });
   }
 
-  private async prepareSubmission(client: PoolClient, intentId: string) {
+  private async prepareSubmission(
+    client: PoolClient,
+    intentId: string,
+  ): Promise<PreparedSubmission | null> {
     await client.query('BEGIN');
     try {
       const intentResult = await client.query<SubmissionIntent>(
@@ -316,7 +327,10 @@ export class SourceTransactionWorker {
       return {
         intent,
         nonce,
-        sourceTransaction: inserted.rows[0],
+        sourceTransaction: requireQueryRow(
+          inserted.rows,
+          'source transaction insert',
+        ),
       };
     } catch (error) {
       await client.query('ROLLBACK');
@@ -679,11 +693,11 @@ export class SourceTransactionWorker {
         destination.contractAddress,
         etherdocContractArtifacts.networks.mantleSepolia.gasLimit,
         document.contentDigest,
-        ['UNKNOWN', 'ACTIVE', 'REVOKED', 'SUPERSEDED'][document.status],
+        requireDocumentLifecycleStatus(document.status),
         document.issuer,
       ],
     );
-    const dispatchId = result.rows[0].id;
+    const dispatchId = requireQueryRow(result.rows, 'dispatch upsert').id;
     await client.query(
       `
         INSERT INTO outbox_job(

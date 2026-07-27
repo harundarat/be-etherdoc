@@ -13,17 +13,17 @@ const bytes32Pattern = /^0x[0-9a-fA-F]{64}$/;
 
 export class BaseIntentDto {
   @IsEthereumAddress()
-  issuer: string;
+  issuer!: string;
 
   @IsString()
   @MinLength(8)
   @MaxLength(128)
-  idempotencyKey: string;
+  idempotencyKey!: string;
 }
 
 export class RegisterIntentDto extends BaseIntentDto {
   @IsIn(Object.values(StorageNetwork))
-  storageNetwork: StorageNetwork;
+  storageNetwork!: StorageNetwork;
 
   @IsOptional()
   @IsString()
@@ -33,17 +33,17 @@ export class RegisterIntentDto extends BaseIntentDto {
 
 export class RevokeIntentDto extends BaseIntentDto {
   @Matches(bytes32Pattern)
-  documentId: string;
+  documentId!: string;
 }
 
 export class SupersedeIntentDto extends RegisterIntentDto {
   @Matches(bytes32Pattern)
-  oldDocumentId: string;
+  oldDocumentId!: string;
 }
 
 export class SubmitIntentSignatureDto {
   @IsString()
   @Matches(/^0x[0-9a-fA-F]+$/)
   @MaxLength(132_000)
-  signature: string;
+  signature!: string;
 }

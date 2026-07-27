@@ -1,20 +1,28 @@
 import { Injectable } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import type { Request } from 'express';
 import { getAddress } from 'viem';
 import { parseSiweMessage } from 'viem/siwe';
 
 type RequestBody = Record<string, unknown> | undefined;
 
-function requestBody(request: Request): RequestBody {
-  return request.body &&
-    typeof request.body === 'object' &&
-    !Array.isArray(request.body)
-    ? (request.body as Record<string, unknown>)
+function record(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? Object.fromEntries(Object.entries(value))
     : undefined;
 }
 
-export function walletFromRequest(request: Request): string | undefined {
+function requestBody(request: Record<string, unknown>): RequestBody {
+  const body = request.body;
+  return body && typeof body === 'object' && !Array.isArray(body)
+    ? Object.fromEntries(Object.entries(body))
+    : undefined;
+}
+
+export function walletFromRequest(requestValue: unknown): string | undefined {
+  const request = record(requestValue);
+  if (!request) {
+    return undefined;
+  }
   const body = requestBody(request);
   const candidate =
     typeof body?.address === 'string'
@@ -42,11 +50,20 @@ export function walletFromRequest(request: Request): string | undefined {
   return undefined;
 }
 
-export function clientTracker(request: Request): string {
-  return request.ip || request.socket.remoteAddress || 'unknown-client';
+export function clientTracker(requestValue: unknown): string {
+  const request = record(requestValue);
+  if (!request) {
+    return 'unknown-client';
+  }
+  const socket = record(request.socket);
+  return typeof request.ip === 'string' && request.ip
+    ? request.ip
+    : typeof socket?.remoteAddress === 'string' && socket.remoteAddress
+      ? socket.remoteAddress
+      : 'unknown-client';
 }
 
-export function walletTracker(request: Request): string {
+export function walletTracker(request: unknown): string {
   return walletFromRequest(request) ?? `anonymous:${clientTracker(request)}`;
 }
 

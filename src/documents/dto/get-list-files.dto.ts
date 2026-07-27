@@ -5,7 +5,7 @@ export class GetListFilesDto {
   @IsEnum(StorageNetwork, {
     message: 'Network must be either public or private',
   })
-  network: StorageNetwork;
+  network!: StorageNetwork;
 
   @IsOptional()
   @IsString()

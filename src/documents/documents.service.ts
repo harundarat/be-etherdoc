@@ -22,6 +22,7 @@ import {
   ResponseBodyTooLargeError,
 } from '../storage/bounded-response';
 import { computeDocumentId, sha256Digest } from './canonical-document';
+import { documentLifecycleStatus } from './document-status';
 import type { SearchDocumentDto } from './dto';
 import { StorageNetwork } from '../storage/storage-network';
 
@@ -230,10 +231,8 @@ export class DocumentsService {
         ),
       ),
     ]);
-    const status = ['UNKNOWN', 'ACTIVE', 'REVOKED', 'SUPERSEDED'][
-      document.status
-    ];
-    if (!status || status === 'UNKNOWN') {
+    const status = documentLifecycleStatus(document.status);
+    if (!status) {
       throw new ServiceUnavailableException({
         error: 'SOURCE_STATE_INVALID',
         message: 'Canonical source returned an invalid lifecycle state',
@@ -375,9 +374,7 @@ export class DocumentsService {
       ]);
       const confirmations = head >= blockNumber ? head - blockNumber + 1n : 0n;
       const canonical = block.hash === projection.source_block_hash;
-      const lifecycle = ['UNKNOWN', 'ACTIVE', 'REVOKED', 'SUPERSEDED'][
-        document.status
-      ];
+      const lifecycle = documentLifecycleStatus(document.status);
       const projectionMatches =
         projection.content_digest === document.contentDigest &&
         projection.document_version === document.version.toString() &&

@@ -220,8 +220,10 @@ describe('DestinationWorker', () => {
     await context.worker.track('dispatch-id');
 
     expect(context.clientQuery).toHaveBeenCalledTimes(2);
-    expect(context.clientQuery.mock.calls[1][0]).toContain('status = $2');
-    expect(context.clientQuery.mock.calls[1][1]).toEqual([
+    const updateCall = context.clientQuery.mock.calls[1];
+    expect(updateCall).toBeDefined();
+    expect(updateCall?.[0]).toContain('status = $2');
+    expect(updateCall?.[1]).toEqual([
       'dispatch-id',
       'DESTINATION_CONFIRMED',
       transactionHash,

@@ -1,5 +1,5 @@
 export class LoginResponseDto {
-  accessToken: string;
-  address: string;
-  expiresInSeconds: number;
+  accessToken!: string;
+  address!: string;
+  expiresInSeconds!: number;
 }

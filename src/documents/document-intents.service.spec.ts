@@ -310,6 +310,7 @@ describe('DocumentIntentsService', () => {
                 documentId: contentDigest,
                 nonce: '4',
               },
+              primaryType: 'RevokeDocument',
             },
             typed_data_digest: cidDigest,
             updated_at: new Date(),

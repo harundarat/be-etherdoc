@@ -13,6 +13,7 @@ import type {
 } from '../config/runtime-config';
 import { etherdocContractArtifacts } from '../contracts/generated';
 import { DatabaseService } from '../database/database.service';
+import { requireQueryRow } from '../database/query-result';
 import { OperationalStateService } from '../observability/operational-state.service';
 
 const SOURCE_INDEXER_LOCK = 836_483_623;
@@ -603,7 +604,7 @@ export class ChainIndexerService implements OnModuleInit, OnModuleDestroy {
       `,
       [chain.chainId, chain.contractAddress, chain.deploymentBlock.toString()],
     );
-    return result.rows[0];
+    return requireQueryRow(result.rows, 'chain cursor upsert');
   }
 
   private async cursorWasReorganized(

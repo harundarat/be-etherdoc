@@ -13,7 +13,9 @@ import {
 } from './rate-limit.guard';
 
 function requestPath(request: Request): string {
-  return request.path || request.originalUrl.split('?')[0];
+  return (
+    request.path || request.originalUrl.split('?')[0] || request.originalUrl
+  );
 }
 
 function isAuthRequest(request: Request): boolean {

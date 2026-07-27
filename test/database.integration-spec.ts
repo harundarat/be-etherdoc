@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { Pool } from 'pg';
+import { requireQueryRow } from '../src/database/query-result';
 import { AuthNonceCleanupService } from '../src/auth/auth-nonce-cleanup.service';
 import type { RuntimeConfig } from '../src/config/runtime-config';
 import {
@@ -83,7 +84,7 @@ async function insertIntent(pool: Pool, idempotencyKey: string, nonce: string) {
     `,
     [idempotencyKey, issuer, nonce, documentId, `0x${'0'.repeat(64)}`],
   );
-  return result.rows[0].id;
+  return requireQueryRow(result.rows, 'integration intent insert').id;
 }
 
 describe('PostgreSQL protocol state', () => {
@@ -268,11 +269,13 @@ describe('PostgreSQL protocol state', () => {
 
     expect(firstClaim).toHaveLength(1);
     expect(secondClaim).toHaveLength(1);
-    expect(firstClaim[0].id).not.toBe(secondClaim[0].id);
-    expect(firstClaim[0].leaseToken).toMatch(
+    const firstJob = requireQueryRow(firstClaim, 'first concurrent claim');
+    const secondJob = requireQueryRow(secondClaim, 'second concurrent claim');
+    expect(firstJob.id).not.toBe(secondJob.id);
+    expect(firstJob.leaseToken).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
     );
-    expect(secondClaim[0].leaseToken).not.toBe(firstClaim[0].leaseToken);
+    expect(secondJob.leaseToken).not.toBe(firstJob.leaseToken);
     await Promise.all([
       firstDatabase.beforeApplicationShutdown(),
       secondDatabase.beforeApplicationShutdown(),
@@ -345,9 +348,10 @@ describe('PostgreSQL protocol state', () => {
       secondDatabase.onModuleInit(),
     ]);
 
-    const firstClaim = (
-      await firstDatabase.claimOutboxJobs('worker-one', 1)
-    )[0];
+    const firstClaim = requireQueryRow(
+      await firstDatabase.claimOutboxJobs('worker-one', 1),
+      'first reclaimed lease claim',
+    );
     await pool.query(
       `
         UPDATE outbox_job
@@ -357,9 +361,10 @@ describe('PostgreSQL protocol state', () => {
       [firstClaim.id],
     );
     await expect(secondDatabase.reclaimExpiredOutboxJobs(1)).resolves.toBe(1);
-    const secondClaim = (
-      await secondDatabase.claimOutboxJobs('worker-two', 1)
-    )[0];
+    const secondClaim = requireQueryRow(
+      await secondDatabase.claimOutboxJobs('worker-two', 1),
+      'second reclaimed lease claim',
+    );
 
     expect(secondClaim.id).toBe(firstClaim.id);
     expect(secondClaim.leaseToken).not.toBe(firstClaim.leaseToken);
@@ -502,7 +507,9 @@ describe('PostgreSQL protocol state', () => {
         WHERE deduplication_key = 'shutdown-job'
       `,
     );
-    expect(completed.rows[0].state).toBe('COMPLETED');
+    expect(
+      requireQueryRow(completed.rows, 'completed shutdown job').state,
+    ).toBe('COMPLETED');
     await database.beforeApplicationShutdown();
   });
 
@@ -557,7 +564,10 @@ describe('PostgreSQL protocol state', () => {
         )
         ON CONFLICT (deduplication_key) DO NOTHING
       `,
-      [intentId, transaction.rows[0].id],
+      [
+        intentId,
+        requireQueryRow(transaction.rows, 'source transaction insert').id,
+      ],
     );
     await pool.query(
       `
@@ -573,13 +583,18 @@ describe('PostgreSQL protocol state', () => {
         )
         ON CONFLICT (deduplication_key) DO NOTHING
       `,
-      [intentId, transaction.rows[0].id],
+      [
+        intentId,
+        requireQueryRow(transaction.rows, 'source transaction insert').id,
+      ],
     );
     const reconciliation = await pool.query<{ count: string }>(
       `SELECT count(*) FROM outbox_job WHERE deduplication_key = 'reconcile-once'`,
     );
 
-    expect(evidence.rows[0].count).toBe('1');
-    expect(reconciliation.rows[0].count).toBe('1');
+    expect(requireQueryRow(evidence.rows, 'evidence count').count).toBe('1');
+    expect(
+      requireQueryRow(reconciliation.rows, 'reconciliation count').count,
+    ).toBe('1');
   });
 });
