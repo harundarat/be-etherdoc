@@ -106,6 +106,7 @@ resent.
 
 - [API reference](docs/api-doc.md)
 - [Operations and recovery runbook](docs/operations-runbook.md)
+- [Backend modernization implementation plan](docs/backend-modernization-plan.md)
 - [Local readiness audit](docs/local-readiness-audit.md)
 - [Smart-contract compatibility baseline](docs/smart-contract-compatibility.md)
 - [Synchronization checklist](docs/TODO-smart-contract-sync.md)
