@@ -34,7 +34,7 @@ backlog.
 
 ## Requirements
 
-- Node.js 22 or 24 LTS
+- Node.js 24 LTS (`.nvmrc` and CI pin 24.14.1)
 - pnpm 10.34.5 (pinned by `packageManager`)
 - PostgreSQL 16
 - access to Ethereum Sepolia and Mantle Sepolia RPC endpoints
@@ -81,6 +81,7 @@ pnpm lint:check            # read-only lint gate
 pnpm audit:prod            # production dependency vulnerability gate
 pnpm check                 # deterministic local quality sequence
 pnpm test --runInBand      # unit tests
+pnpm test:coverage         # unit tests plus global and critical-scope thresholds
 pnpm test:e2e              # deterministic in-memory HTTP tests
 pnpm test:integration      # requires DATABASE_URL pointing at a test database
 pnpm build
@@ -90,6 +91,11 @@ pnpm reconcile --enqueue   # idempotently enqueue recovery work
 
 `pnpm reconcile` is dry-run by default. Review the candidate counts and the recovery runbook before
 using `--enqueue`.
+
+The committed runtime metadata selects Node 24: `.nvmrc` pins the exact local/CI version,
+`engines.node` rejects older production majors, and `packageManager` pins pnpm. CI provisions a
+clean PostgreSQL 16 service, applies migrations twice, enforces coverage and the production audit,
+builds the artifact, and validates a frozen production-only install.
 
 ## Architecture
 
@@ -140,6 +146,9 @@ The server accepts an `etherdoc-auth` HTTP-only cookie or bearer JWT for protect
 `SIWE_SESSION_TTL_SECONDS` is the single lifetime used by the JWT, cookie, and authentication
 response. Cookie-authenticated mutations require the configured frontend `Origin`; explicit bearer
 authentication is CSRF-exempt.
+
+`DATABASE_STATEMENT_TIMEOUT_MS` controls PostgreSQL statements independently from
+`RPC_REQUEST_TIMEOUT_MS`; tune one only for the dependency it names.
 
 Health and diagnostics:
 

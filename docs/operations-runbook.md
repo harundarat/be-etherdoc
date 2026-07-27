@@ -33,7 +33,7 @@ required before broadcasting lifecycle smoke-test transactions.
 
 | Area                | Variables                                                                                                                                                                                                                  |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Database            | `DATABASE_URL`                                                                                                                                                                                                             |
+| Database            | `DATABASE_URL`, `DATABASE_STATEMENT_TIMEOUT_MS`                                                                                                                                                                            |
 | HTTP edge           | `CORS_ORIGIN`, `COOKIE_SECURE`, `TRUST_PROXY_HOPS`, `API_REPLICA_COUNT`, `HEALTH_READINESS_CACHE_MS`                                                                                                                       |
 | Operations          | `OPERATIONS_TOKEN`                                                                                                                                                                                                         |
 | Rate limits         | `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_API_REQUESTS`, `RATE_LIMIT_AUTH_REQUESTS`, `RATE_LIMIT_SEARCH_REQUESTS`, `RATE_LIMIT_UPLOAD_REQUESTS`                                                                                  |
@@ -50,6 +50,15 @@ required before broadcasting lifecycle smoke-test transactions.
 Inject secrets at runtime. Restrict `.env` to local development and keep it untracked.
 `SIWE_SESSION_TTL_SECONDS` is the only session lifetime: changing it changes the JWT expiry, cookie
 `Max-Age`, and API response together.
+
+Production and CI use Node 24 LTS; `.nvmrc` pins 24.14.1, `package.json` requires the Node 24 major,
+and pnpm is fixed at 10.34.5. Build and install the deployment artifact with those committed
+versions. PostgreSQL 16 is the supported database baseline.
+
+`DATABASE_STATEMENT_TIMEOUT_MS` defaults to 15 seconds and applies only to PostgreSQL statements.
+`RPC_REQUEST_TIMEOUT_MS` defaults to 15 seconds and applies only to blockchain requests. Keep them
+separate when tuning an incident so a slow provider cannot silently lengthen database lock/query
+exposure, or vice versa.
 
 Consumed and expired SIWE nonces are retained for `AUTH_NONCE_RETENTION_SECONDS` (seven days by
 default) and then removed in bounded, lock-skipping batches. One cleanup runs per configured
@@ -314,11 +323,13 @@ unavoidable, stop every instance first and treat it as a separate compatibility 
 
 ```bash
 pnpm contracts:check
+pnpm typecheck
 pnpm lint:check
-pnpm test --runInBand
+pnpm test:coverage
 pnpm test:e2e
 pnpm test:integration
 pnpm build
+pnpm audit:prod
 pnpm reconcile
 ```
 

@@ -15,21 +15,32 @@ The backend and contract worktrees are clean. The old untracked `soljson-latest.
 
 ## Backend gates
 
-| Gate                                                   | Result                           |
-| ------------------------------------------------------ | -------------------------------- |
-| `pnpm contracts:check`                                 | pass                             |
-| `pnpm lint:check`                                      | pass, no write                   |
-| `pnpm test --runInBand`                                | pass: 15 suites, 66 tests        |
-| `pnpm test:e2e`                                        | pass: 4 deterministic HTTP tests |
-| `pnpm test:integration`                                | pass: 5 PostgreSQL 16 tests      |
-| migrations applied twice to clean PostgreSQL 16        | pass, 4 migrations               |
-| `pnpm build`                                           | pass                             |
-| `pnpm reconcile`                                       | pass in dry-run mode             |
-| repeated `pnpm reconcile --enqueue` on an empty schema | pass, no duplicate work          |
+| Gate                                             | Result                                                        |
+| ------------------------------------------------ | ------------------------------------------------------------- |
+| frozen install on Node 24.14.1 / pnpm 10.34.5    | pass                                                          |
+| `pnpm contracts:check`                           | pass                                                          |
+| `pnpm typecheck`                                 | pass                                                          |
+| `pnpm lint:check`                                | pass, no write                                                |
+| `pnpm test --runInBand`                          | pass: 26 suites, 124 tests                                    |
+| `pnpm test:coverage`                             | pass: 55.49% statements, 54.93% lines, thresholds enforced    |
+| `pnpm test:e2e`                                  | pass: 3 suites, 20 deterministic HTTP tests                   |
+| `pnpm test:integration`                          | pass: 1 suite, 10 PostgreSQL 16 tests                         |
+| migrations applied twice to clean PostgreSQL 16  | pass: migrations 001–006, second execution no-op              |
+| `pnpm build`                                     | pass                                                          |
+| `pnpm audit --prod --audit-level high`           | pass: no known vulnerabilities                                |
+| production-only frozen install and artifact load | pass: dev dependencies omitted; compiled `AppModule` resolved |
+| `pnpm reconcile`                                 | pass: dry run, zero candidates after test-fixture cleanup     |
 
 The PostgreSQL integration suite covers migration inventory, idempotency/nonce uniqueness,
-concurrent `SKIP LOCKED` claims, expired worker-lease recovery, chain-event replay, and
-reconciliation-job deduplication.
+concurrent `SKIP LOCKED` claims, expired worker-lease recovery, heartbeat and stale-owner rejection,
+nonblocking advisory locks, shutdown drain ordering, operational status, bounded nonce cleanup,
+chain-evidence replay, and reconciliation-job deduplication. The one `UNKNOWN` source transaction
+created deliberately by the reconciliation fixture was removed only from the disposable test
+database before the final zero-candidate dry run.
+
+The CI workflow selects Node 24.14.1 and PostgreSQL 16, pins pnpm 10.34.5, retains least-privilege
+read permissions, runs every gate above, and validates the production-only artifact. These results
+are local CI-parity evidence; GitHub Actions for the Phase 7 commits will run after they are pushed.
 
 ## Contract gates
 

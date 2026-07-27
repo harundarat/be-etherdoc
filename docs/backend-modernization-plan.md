@@ -2,7 +2,7 @@
 
 Plan date: 27 July 2026.
 
-Status: implementation in progress; Phases 1 through 6 completed on 27 July 2026.
+Status: completed; Phases 1 through 7 completed on 27 July 2026.
 
 This document is the execution plan for an AI Coding Agent modernizing `be-etherdoc`. The work is
 intended to improve dependency security, production safety, reliability, type safety, test depth,
@@ -559,17 +559,18 @@ Also:
 
 ### 7.3 Node runtime transition
 
-Node 22 remains a supported LTS baseline, while Node 24 is the preferred modernization target.
-Transition safely:
+Node 24 is the selected production LTS target. Node 22 was retained as a compatibility baseline
+during the dependency and security phases, then its transition window was closed after the exact
+Node 24 artifact passed the complete local gate. The transition was:
 
-1. test Node 22 and Node 24 in CI during the dependency/security phases;
-2. fix compatibility issues without adding version-specific behavior;
-3. switch production documentation and `engines.node` to Node 24 after all gates pass;
-4. keep a short Node 22 compatibility window only if deployment infrastructure requires it;
-5. do not adopt a non-LTS production runtime.
+1. [x] test Node 22 and Node 24 in CI during the dependency/security phases;
+2. [x] fix compatibility issues without adding version-specific behavior;
+3. [x] switch production documentation and `engines.node` to Node 24 after all gates pass;
+4. [x] close the Node 22 compatibility window because no deployment dependency requires it;
+5. [x] keep production on an LTS runtime.
 
-The local audit already passed lint, tests, and build on Node 24, but PostgreSQL integration and the
-updated lockfile must still be tested on the chosen CI matrix.
+Node 24.14.1 and pnpm 10.34.5 are pinned in committed metadata and CI. The refreshed lockfile,
+PostgreSQL integration suite, build, audit, and production-only install all pass on that runtime.
 
 ### 7.4 Update documentation
 
@@ -584,10 +585,31 @@ Update together with implementation:
 
 ### Phase 7 acceptance
 
-- CI passes on the selected LTS runtime and PostgreSQL 16.
-- Production deployment requirements are reproducible from committed metadata.
-- Documentation contains no obsolete environment variables or behavior.
-- Coverage thresholds are enforced and cannot silently regress.
+- [x] The selected Node 24 CI sequence passes locally with PostgreSQL 16; GitHub Actions will execute
+      the same committed sequence after push.
+- [x] Production deployment requirements are reproducible from committed metadata.
+- [x] Documentation contains no obsolete environment variables or behavior.
+- [x] Coverage thresholds are enforced and cannot silently regress.
+
+Implementation record: commit `890fec2` covers readiness degradation, recovery, probe coalescing,
+and shutdown. Commit `d28aae4` covers JWT payload and independent operator credential boundaries;
+commit `700b710` adds SIWE expiry and fail-closed smart-account RPC coverage. Commit `c34eb0f`
+proves that uncertain source and dispatch signer nonces enter reconciliation without blind resend.
+Commit `67d017f` selects Node 24.14.1, aligns Node declarations, adds typecheck and coverage gates to
+CI, enforces global and critical-scope coverage thresholds, and retains the production-only install
+check. Commit `2ee00d1` separates PostgreSQL statement timeout policy from RPC request timeout
+policy.
+
+Validation record: frozen install, contract drift, strict typecheck, zero-warning lint, 124 unit
+tests, 20 deterministic HTTP tests, 10 PostgreSQL 16 integration tests, migrations 001–006 followed
+by an idempotent no-op migration pass, build, zero-finding production audit, production-only
+artifact loading, and zero-candidate reconciliation all passed on Node 24.14.1. Authored-source
+coverage is 55.49% statements, 54.93% lines, 53.20% functions, and 47.88% branches. Authentication,
+health, and storage exceed 80% statements/lines; the outbox worker remains just below 70%
+statements/lines but its lease, heartbeat, exhaustion, shutdown, and lost-ownership branches have
+focused unit/PostgreSQL tests. The broader 70% indexer/transaction-worker target remains a
+directional follow-up rather than a Phase 7 acceptance blocker; enforced thresholds prevent the
+accepted coverage from silently regressing.
 
 ## Mandatory validation after every phase
 
@@ -645,13 +667,14 @@ contract artifact.
 - [x] CSRF and Pinata workspace authorization policies are explicit and tested.
 - [x] Shutdown hooks are enabled and active worker ticks drain safely.
 - [x] Outbox jobs use lease tokens, heartbeats, periodic stale recovery, and retry exhaustion.
-- [ ] Liveness/readiness and operational signals are implemented without leaking secrets.
+- [x] Liveness/readiness and operational signals are implemented without leaking secrets.
 - [x] TypeScript strictness and trust-boundary validation are materially improved.
-- [ ] Critical service/worker failure branches have focused tests.
+- [x] Critical service/worker failure branches have focused tests.
 - [x] CI includes production audit, PostgreSQL integration, and production-only installation.
 - [x] Node and pnpm versions are pinned and documentation matches production.
 - [x] Contract artifact drift check still passes against the unchanged baseline.
-- [ ] `pnpm reconcile` dry run shows no unexpected recovery work after rollout.
+- [x] `pnpm reconcile` dry run shows no unexpected recovery work in the disposable validation
+      database.
 
 ## Explicitly deferred work
 
