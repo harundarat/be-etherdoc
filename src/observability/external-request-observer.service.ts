@@ -42,6 +42,7 @@ export class ExternalRequestObserver {
     try {
       const response = await fetch(input, init);
       const record = {
+        chain: dependency === 'rpc' ? operation : null,
         correlationId: this.correlation.currentId(),
         dependency,
         durationMs: Math.round(performance.now() - startedAt),
@@ -60,6 +61,7 @@ export class ExternalRequestObserver {
     } catch (error) {
       this.logger.error(
         {
+          chain: dependency === 'rpc' ? operation : null,
           correlationId: this.correlation.currentId(),
           dependency,
           durationMs: Math.round(performance.now() - startedAt),

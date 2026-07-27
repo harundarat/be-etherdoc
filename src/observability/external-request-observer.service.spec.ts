@@ -40,6 +40,7 @@ describe('ExternalRequestObserver', () => {
 
     expect(logger).toHaveBeenCalledWith(
       expect.objectContaining({
+        chain: 'source',
         correlationId: 'request-id',
         dependency: 'rpc',
         event: 'external_request_completed',

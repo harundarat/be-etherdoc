@@ -335,6 +335,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
         typeof job.payload.intentId === 'string' ? job.payload.intentId : null,
       jobId: job.id,
       jobType: job.jobType,
+      leaseOwner: this.workerId,
       leaseFingerprint: createHash('sha256')
         .update(job.leaseToken)
         .digest('hex')
