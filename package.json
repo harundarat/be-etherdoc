@@ -13,7 +13,7 @@
   "scripts": {
     "audit:prod": "pnpm audit --prod",
     "build": "nest build",
-    "check": "pnpm contracts:check && pnpm lint:check && pnpm test --runInBand && pnpm test:e2e && pnpm build",
+    "check": "pnpm contracts:check && pnpm typecheck && pnpm lint:check && pnpm test --runInBand && pnpm test:e2e && pnpm build",
     "contracts:check": "node scripts/sync-contract-artifacts.mjs --check",
     "contracts:sync": "node scripts/sync-contract-artifacts.mjs",
     "db:migrate": "node scripts/migrate.mjs",
@@ -30,7 +30,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "test:integration": "jest --config ./test/jest-integration.json --runInBand"
+    "test:integration": "jest --config ./test/jest-integration.json --runInBand",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.28",
