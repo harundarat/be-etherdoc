@@ -2,7 +2,7 @@
 
 Plan date: 27 July 2026.
 
-Status: implementation pending.
+Status: implementation in progress; Phases 1 and 2 completed on 27 July 2026.
 
 This document is the execution plan for an AI Coding Agent modernizing `be-etherdoc`. The work is
 intended to improve dependency security, production safety, reliability, type safety, test depth,
@@ -200,6 +200,12 @@ Add tests proving:
 - No upload or Pinata retrieval path can allocate an unbounded body.
 - Existing register, supersede, and public search behavior remains compatible.
 - New HTTP and storage tests pass.
+
+Implementation record: commit `207b952` applies shared inclusive 5 MiB multipart limits, bounded
+field/part counts, deterministic PDF magic-byte validation, and HTTP tests. Commit `3c49d5c`
+replaces unbounded Pinata artifact and JSON reads with a cancelling bounded reader and storage tests.
+The complete lint, unit, HTTP, PostgreSQL integration, build, contract-drift, production audit, and
+production-only installation gates passed.
 
 ## Phase 3: Authentication and HTTP hardening
 
@@ -582,10 +588,10 @@ contract artifact.
 
 ## Final definition of done
 
-- [ ] Production audit has no high or critical findings.
-- [ ] Runtime dependencies are correctly classified and production-only install is tested.
-- [ ] Unused direct dependencies are removed.
-- [ ] Multipart and Pinata response bounds are enforced before unbounded allocation.
+- [x] Production audit has no high or critical findings.
+- [x] Runtime dependencies are correctly classified and production-only install is tested.
+- [x] Unused direct dependencies are removed.
+- [x] Multipart and Pinata response bounds are enforced before unbounded allocation.
 - [ ] Authentication and upload/search rate limits are active and documented.
 - [ ] JWT, cookie, and response session lifetime use one value.
 - [ ] Nonce cleanup and concurrent replay tests are implemented.
@@ -595,9 +601,9 @@ contract artifact.
 - [ ] Liveness/readiness and operational signals are implemented without leaking secrets.
 - [ ] TypeScript strictness and trust-boundary validation are materially improved.
 - [ ] Critical service/worker failure branches have focused tests.
-- [ ] CI includes production audit, PostgreSQL integration, and production-only installation.
-- [ ] Node and pnpm versions are pinned and documentation matches production.
-- [ ] Contract artifact drift check still passes against the unchanged baseline.
+- [x] CI includes production audit, PostgreSQL integration, and production-only installation.
+- [x] Node and pnpm versions are pinned and documentation matches production.
+- [x] Contract artifact drift check still passes against the unchanged baseline.
 - [ ] `pnpm reconcile` dry run shows no unexpected recovery work after rollout.
 
 ## Explicitly deferred work
