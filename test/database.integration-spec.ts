@@ -70,6 +70,7 @@ describe('PostgreSQL protocol state', () => {
       '002_intent_digest.sql',
       '003_dispatch_evidence.sql',
       '004_dispatch_canonical_snapshot.sql',
+      '005_auth_nonce_retention.sql',
     ]);
   });
 

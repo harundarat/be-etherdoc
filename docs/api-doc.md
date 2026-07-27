@@ -46,6 +46,10 @@ or `Authorization: Bearer <JWT>`. The JWT subject must equal the intent issuer. 
 `Max-Age`, and `expiresInSeconds` all use the configured numeric `SIWE_SESSION_TTL_SECONDS`; there is
 no separate JWT duration setting.
 
+Nonce replay evidence is retained for a bounded operational window. Signature verification,
+including ERC-1271 RPC verification, happens without holding a database transaction; a final
+conditional update ensures concurrent valid submissions can create only one session.
+
 ## Signed intent flow
 
 An accepted signature is not final success. Prepare endpoints return exact EIP-712 typed data;
@@ -221,16 +225,16 @@ These protected endpoints manage storage metadata only and do not change protoco
 
 ## Error semantics
 
-|  HTTP | Example meaning                                                         |
-| ----: | ----------------------------------------------------------------------- |
-| `400` | malformed input or multipart field/part limits exceeded                  |
-| `401` | missing/invalid session or SIWE signature                               |
-| `403` | JWT subject differs from issuer or issuer not authorized                |
-| `404` | document/intent not found                                               |
-| `409` | stale nonce/version, inactive record, conflicting idempotency input     |
-| `413` | multipart PDF exceeds the 5 MiB parser limit (`File too large`)          |
-| `422` | invalid PDF magic bytes, signature, CID, digest, or commitment           |
-| `503` | source RPC, destination RPC, storage, or readiness unavailable          |
+|  HTTP | Example meaning                                                     |
+| ----: | ------------------------------------------------------------------- |
+| `400` | malformed input or multipart field/part limits exceeded             |
+| `401` | missing/invalid session or SIWE signature                           |
+| `403` | JWT subject differs from issuer or issuer not authorized            |
+| `404` | document/intent not found                                           |
+| `409` | stale nonce/version, inactive record, conflicting idempotency input |
+| `413` | multipart PDF exceeds the 5 MiB parser limit (`File too large`)     |
+| `422` | invalid PDF magic bytes, signature, CID, digest, or commitment      |
+| `503` | source RPC, destination RPC, storage, or readiness unavailable      |
 
 RPC failures are never converted to “document not found.” Storage failure is never converted to
 “inauthentic.” Pinata fetch-back bodies are limited to 5 MiB and Pinata JSON bodies to 1 MiB;

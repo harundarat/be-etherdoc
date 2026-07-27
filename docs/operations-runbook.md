@@ -39,6 +39,7 @@ required before broadcasting lifecycle smoke-test transactions.
 | Deployment override | `ETHERDOC_SENDER_ADDRESS`, `ETHERDOC_SENDER_DEPLOYMENT_BLOCK`, `ETHERDOC_RECEIVER_ADDRESS`, `ETHERDOC_RECEIVER_DEPLOYMENT_BLOCK` |
 | Signer              | `BACKEND_PRIVATE_KEY`                                                                                                            |
 | SIWE/JWT            | `SIWE_DOMAIN`, `SIWE_URI`, `SIWE_NONCE_TTL_SECONDS`, `SIWE_SESSION_TTL_SECONDS`, `JWT_SECRET`                                    |
+| Auth retention      | `AUTH_NONCE_RETENTION_SECONDS`, `AUTH_NONCE_CLEANUP_INTERVAL_SECONDS`, `AUTH_NONCE_CLEANUP_BATCH_SIZE`                           |
 | Pinata              | `PINATA_API_URL`, `PINATA_UPLOAD_URL`, `PINATA_GATEWAY_URL`, `PINATA_JWT_TOKEN`                                                  |
 | Dispatch            | `DISPATCH_FEE_BUFFER_BPS`, `MAXIMUM_DISPATCH_FEE_WEI`, `CCIP_RECOVERY_AFTER_SECONDS`                                             |
 | Workers             | `OUTBOX_BATCH_SIZE`, `OUTBOX_POLL_INTERVAL_MS`, `OUTBOX_LOCK_TIMEOUT_MS`, `CHAIN_INDEX_BLOCK_RANGE`, `CHAIN_INDEX_INTERVAL_MS`   |
@@ -46,6 +47,12 @@ required before broadcasting lifecycle smoke-test transactions.
 Inject secrets at runtime. Restrict `.env` to local development and keep it untracked.
 `SIWE_SESSION_TTL_SECONDS` is the only session lifetime: changing it changes the JWT expiry, cookie
 `Max-Age`, and API response together.
+
+Consumed and expired SIWE nonces are retained for `AUTH_NONCE_RETENTION_SECONDS` (seven days by
+default) and then removed in bounded, lock-skipping batches. One cleanup runs per configured
+interval and overlapping runs are skipped. Keep the retention period long enough for incident
+review; monitor cleanup errors and table growth rather than manually truncating authentication
+evidence.
 
 ## Upload memory budget
 

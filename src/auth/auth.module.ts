@@ -6,6 +6,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './jwt.strategy';
 import type { RuntimeConfig } from '../config/runtime-config';
+import { AuthNonceCleanupService } from './auth-nonce-cleanup.service';
 
 @Module({
   imports: [
@@ -26,6 +27,6 @@ import type { RuntimeConfig } from '../config/runtime-config';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthNonceCleanupService, AuthService, JwtStrategy],
 })
 export class AuthModule {}

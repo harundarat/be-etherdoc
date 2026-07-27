@@ -107,4 +107,25 @@ describe('buildRuntimeConfig', () => {
       secret: 'a-secure-test-secret-with-more-than-32-characters',
     });
   });
+
+  it('bounds authentication nonce cleanup configuration', () => {
+    const config = buildRuntimeConfig({
+      ...validEnvironment(),
+      AUTH_NONCE_CLEANUP_BATCH_SIZE: '1000',
+      AUTH_NONCE_CLEANUP_INTERVAL_SECONDS: '300',
+      AUTH_NONCE_RETENTION_SECONDS: '86400',
+    });
+
+    expect(config.auth).toEqual({
+      nonceCleanupBatchSize: 1000,
+      nonceCleanupIntervalSeconds: 300,
+      nonceRetentionSeconds: 86400,
+    });
+    expect(() =>
+      buildRuntimeConfig({
+        ...validEnvironment(),
+        AUTH_NONCE_CLEANUP_BATCH_SIZE: '10001',
+      }),
+    ).toThrow('AUTH_NONCE_CLEANUP_BATCH_SIZE');
+  });
 });

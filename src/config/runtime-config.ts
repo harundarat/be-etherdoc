@@ -16,6 +16,11 @@ export interface ChainRuntimeConfig {
 }
 
 export interface RuntimeConfig {
+  auth: {
+    nonceCleanupBatchSize: number;
+    nonceCleanupIntervalSeconds: number;
+    nonceRetentionSeconds: number;
+  };
   blockchain: {
     destination: ChainRuntimeConfig;
     requestTimeoutMs: number;
@@ -198,6 +203,27 @@ export function buildRuntimeConfig(
   }
 
   return {
+    auth: {
+      nonceCleanupBatchSize: integer(
+        environment,
+        'AUTH_NONCE_CLEANUP_BATCH_SIZE',
+        500,
+        1,
+        10_000,
+      ),
+      nonceCleanupIntervalSeconds: integer(
+        environment,
+        'AUTH_NONCE_CLEANUP_INTERVAL_SECONDS',
+        3_600,
+        60,
+      ),
+      nonceRetentionSeconds: integer(
+        environment,
+        'AUTH_NONCE_RETENTION_SECONDS',
+        604_800,
+        3_600,
+      ),
+    },
     blockchain: {
       destination: {
         chainId: destinationNetwork.chainId,
