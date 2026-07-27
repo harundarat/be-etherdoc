@@ -11,21 +11,10 @@ permissions:
 
 jobs:
   quality:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: etherdoc_test
-          POSTGRES_PASSWORD: etherdoc_test
-          POSTGRES_USER: etherdoc
-        options: >-
-          --health-cmd "pg_isready -U etherdoc -d etherdoc_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-        ports:
-          - 5432:5432
+    # ubuntu-24.04 includes PostgreSQL 16 with its service disabled. Starting
+    # that local service avoids a pre-job Docker Hub pull that cannot be
+    # retried or diagnosed from workflow steps.
+    runs-on: ubuntu-24.04
     env:
       DATABASE_URL: postgresql://etherdoc:etherdoc_test@127.0.0.1:5432/etherdoc_test
     steps:
@@ -33,6 +22,29 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: be-etherdoc
+
+      - name: Start PostgreSQL 16
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo systemctl start postgresql.service
+          postgres_major="$(sudo -u postgres psql --tuples-only --no-align --command 'SHOW server_version_num' | cut -c1-2)"
+          if [ "$postgres_major" != "16" ]; then
+            echo "::error::Expected PostgreSQL 16, found major $postgres_major"
+            exit 1
+          fi
+          sudo -u postgres psql --set ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE etherdoc LOGIN PASSWORD 'etherdoc_test';
+          CREATE DATABASE etherdoc_test OWNER etherdoc;
+          SQL
+          PGPASSWORD=etherdoc_test pg_isready \
+            --host 127.0.0.1 \
+            --port 5432 \
+            --username etherdoc \
+            --dbname etherdoc_test
+          psql "$DATABASE_URL" \
+            --set ON_ERROR_STOP=1 \
+            --command 'SELECT current_database(), current_user;'
 
       - name: Check out contract baseline
         uses: actions/checkout@v4
