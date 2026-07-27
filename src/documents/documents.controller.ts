@@ -20,6 +20,11 @@ import type { Hex } from 'viem';
 import { DocumentsService } from './documents.service';
 import { DocumentIntentsService } from './document-intents.service';
 import {
+  PDF_UPLOAD_MAX_BYTES,
+  PDF_UPLOAD_MULTER_OPTIONS,
+  PdfMagicBytesValidator,
+} from './document-upload.config';
+import {
   CreateGroupDto,
   GetListFilesDto,
   GetListGroupsDto,
@@ -36,14 +41,16 @@ type AuthenticatedRequest = Request & { user: AuthenticatedUser };
 
 const filePipe = () =>
   new ParseFilePipeBuilder()
-    .addFileTypeValidator({ fileType: 'application/pdf' })
-    .addMaxSizeValidator({ maxSize: 5 * 1024 * 1024 })
+    .addValidator(new PdfMagicBytesValidator())
+    // MaxFileSizeValidator uses an exclusive comparison. Adding one keeps the
+    // public 5 MiB limit inclusive while Multer enforces it before buffering.
+    .addMaxSizeValidator({ maxSize: PDF_UPLOAD_MAX_BYTES + 1 })
     .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY });
 
 const optionalFilePipe = () =>
   new ParseFilePipeBuilder()
-    .addFileTypeValidator({ fileType: 'application/pdf' })
-    .addMaxSizeValidator({ maxSize: 5 * 1024 * 1024 })
+    .addValidator(new PdfMagicBytesValidator())
+    .addMaxSizeValidator({ maxSize: PDF_UPLOAD_MAX_BYTES + 1 })
     .build({
       errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
       fileIsRequired: false,
@@ -58,7 +65,7 @@ export class DocumentsController {
 
   @UseGuards(JwtAuthGuard)
   @Post('intents/register')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', PDF_UPLOAD_MULTER_OPTIONS))
   prepareRegister(
     @Req() request: AuthenticatedRequest,
     @UploadedFile(filePipe()) file: Express.Multer.File,
@@ -82,7 +89,7 @@ export class DocumentsController {
 
   @UseGuards(JwtAuthGuard)
   @Post('intents/supersede')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', PDF_UPLOAD_MULTER_OPTIONS))
   prepareSupersede(
     @Req() request: AuthenticatedRequest,
     @UploadedFile(filePipe()) file: Express.Multer.File,
@@ -138,7 +145,7 @@ export class DocumentsController {
   }
 
   @Post('search')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', PDF_UPLOAD_MULTER_OPTIONS))
   search(
     @UploadedFile(optionalFilePipe()) file: Express.Multer.File | undefined,
     @Body() body: SearchDocumentDto,

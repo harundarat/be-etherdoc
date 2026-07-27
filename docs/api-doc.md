@@ -52,7 +52,9 @@ version, or deadline.
 
 ### `POST /documents/intents/register`
 
-Authentication required. `multipart/form-data`, PDF only, maximum 5 MiB.
+Authentication required. `multipart/form-data`, PDF magic bytes required, maximum 5 MiB inclusive.
+The multipart parser accepts one file and rejects a body with more than eight text fields or nine
+total parts.
 
 | Field            | Required | Meaning                                        |
 | ---------------- | -------- | ---------------------------------------------- |
@@ -217,15 +219,16 @@ These protected endpoints manage storage metadata only and do not change protoco
 
 ## Error semantics
 
-|  HTTP | Example meaning                                                      |
-| ----: | -------------------------------------------------------------------- |
-| `400` | malformed document ID, missing search identity, invalid SIWE binding |
-| `401` | missing/invalid session or SIWE signature                            |
-| `403` | JWT subject differs from issuer or issuer not authorized             |
-| `404` | document/intent not found                                            |
-| `409` | stale nonce/version, inactive record, conflicting idempotency input  |
-| `422` | invalid PDF/signature/CID/digest/commitment                          |
-| `503` | source RPC, destination RPC, storage, or readiness unavailable       |
+|  HTTP | Example meaning                                                         |
+| ----: | ----------------------------------------------------------------------- |
+| `400` | malformed input or multipart field/part limits exceeded                  |
+| `401` | missing/invalid session or SIWE signature                               |
+| `403` | JWT subject differs from issuer or issuer not authorized                |
+| `404` | document/intent not found                                               |
+| `409` | stale nonce/version, inactive record, conflicting idempotency input     |
+| `413` | multipart PDF exceeds the 5 MiB parser limit (`File too large`)          |
+| `422` | invalid PDF magic bytes, signature, CID, digest, or commitment           |
+| `503` | source RPC, destination RPC, storage, or readiness unavailable          |
 
 RPC failures are never converted to “document not found.” Storage failure is never converted to
 “inauthentic.” Destination failure never changes canonical source lifecycle.

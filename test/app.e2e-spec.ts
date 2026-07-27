@@ -8,11 +8,19 @@ import * as request from 'supertest';
 import type { App } from 'supertest/types';
 import { JwtAuthGuard } from '../src/auth/jwt-auth.guard';
 import { DocumentIntentsService } from '../src/documents/document-intents.service';
+import { PDF_UPLOAD_MAX_BYTES } from '../src/documents/document-upload.config';
 import { DocumentsController } from '../src/documents/documents.controller';
 import { DocumentsService } from '../src/documents/documents.service';
 
 const documentId = `0x${'11'.repeat(32)}`;
 const issuer = '0x0000000000000000000000000000000000000001';
+
+function pdf(byteLength: number): Buffer {
+  const bytes = Buffer.alloc(byteLength);
+  bytes.write('%PDF-1.7\n');
+  bytes.write('\n%%EOF', byteLength - 6);
+  return bytes;
+}
 
 describe('Documents API (e2e)', () => {
   let app: INestApplication<App>;
@@ -114,6 +122,74 @@ describe('Documents API (e2e)', () => {
       .post('/documents/search')
       .send({})
       .expect(400);
+
+    expect(documents.search).not.toHaveBeenCalled();
+  });
+
+  it('accepts a PDF exactly at the 5 MiB upload limit', async () => {
+    intents.prepareRegister.mockResolvedValue({ status: 'PREPARED' });
+
+    await request(app.getHttpServer())
+      .post('/documents/intents/register')
+      .field('issuer', issuer)
+      .field('idempotencyKey', 'register-exact-limit')
+      .field('storageNetwork', 'private')
+      .attach('file', pdf(PDF_UPLOAD_MAX_BYTES), {
+        contentType: 'application/pdf',
+        filename: 'document.pdf',
+      })
+      .expect(201)
+      .expect({ status: 'PREPARED' });
+
+    expect(intents.prepareRegister).toHaveBeenCalledWith(
+      issuer,
+      expect.objectContaining({ size: PDF_UPLOAD_MAX_BYTES }),
+      expect.objectContaining({ idempotencyKey: 'register-exact-limit' }),
+    );
+  });
+
+  it('rejects an oversized upload before the intent service receives it', async () => {
+    await request(app.getHttpServer())
+      .post('/documents/intents/register')
+      .field('issuer', issuer)
+      .field('idempotencyKey', 'register-over-limit')
+      .field('storageNetwork', 'private')
+      .attach('file', pdf(PDF_UPLOAD_MAX_BYTES + 1), {
+        contentType: 'application/pdf',
+        filename: 'document.pdf',
+      })
+      .expect(413)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          error: 'Payload Too Large',
+          message: 'File too large',
+          statusCode: 413,
+        });
+      });
+
+    expect(intents.prepareRegister).not.toHaveBeenCalled();
+  });
+
+  it('rejects multipart requests with too many fields or parts', async () => {
+    let upload = request(app.getHttpServer()).post('/documents/search');
+    for (let index = 0; index < 9; index += 1) {
+      upload = upload.field(`field${index}`, 'value');
+    }
+
+    await upload.expect(400);
+
+    expect(documents.search).not.toHaveBeenCalled();
+  });
+
+  it('rejects content that claims to be a PDF without PDF magic bytes', async () => {
+    await request(app.getHttpServer())
+      .post('/documents/search')
+      .field('issuer', issuer)
+      .attach('file', Buffer.from('not a PDF'), {
+        contentType: 'application/pdf',
+        filename: 'document.pdf',
+      })
+      .expect(422);
 
     expect(documents.search).not.toHaveBeenCalled();
   });

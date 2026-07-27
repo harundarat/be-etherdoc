@@ -45,6 +45,16 @@ required before broadcasting lifecycle smoke-test transactions.
 
 Inject secrets at runtime. Restrict `.env` to local development and keep it untracked.
 
+## Upload memory budget
+
+Document uploads use Multer memory storage with a hard 5 MiB per-file parser limit, one file per
+request, and bounded multipart fields/parts. Pinata upload construction and fetch-back verification
+can temporarily hold roughly three document-sized buffers per active preparation (about 15 MiB plus
+runtime overhead). The current single-replica operating target is at most eight concurrent document
+preparations, or about 120 MiB of document-body residency within a container sized to at least
+512 MiB. Enforce that concurrency at the ingress. Before raising either the file limit or
+concurrency, move the flow to streaming or disk-backed temporary storage and remeasure peak RSS.
+
 ## State machines
 
 Intent:
