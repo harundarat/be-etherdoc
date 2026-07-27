@@ -11,6 +11,8 @@ import type { DispatchWorker } from '../src/workers/dispatch.worker';
 import { OutboxWorkerService } from '../src/workers/outbox-worker.service';
 import type { ReconciliationWorker } from '../src/workers/reconciliation.worker';
 import type { SourceTransactionWorker } from '../src/workers/source-transaction.worker';
+import { OperationalStatusService } from '../src/health/operational-status.service';
+import { OperationalStateService } from '../src/observability/operational-state.service';
 
 const issuer = '0x0000000000000000000000000000000000000001';
 const documentId = `0x${'11'.repeat(32)}`;
@@ -27,7 +29,17 @@ function databaseUrl(): string {
 
 function runtime(url: string): RuntimeConfig {
   return {
-    blockchain: { requestTimeoutMs: 5_000 },
+    blockchain: {
+      destination: {
+        chainId: 2,
+        contractAddress: '0x0000000000000000000000000000000000000002',
+      },
+      requestTimeoutMs: 5_000,
+      source: {
+        chainId: 1,
+        contractAddress: '0x0000000000000000000000000000000000000001',
+      },
+    },
     databaseUrl: url,
     worker: {
       batchSize: 10,
@@ -45,7 +57,7 @@ function runtime(url: string): RuntimeConfig {
       },
       pollIntervalMs: 60_000,
     },
-  } as RuntimeConfig;
+  } as unknown as RuntimeConfig;
 }
 
 function deferred<T>() {
@@ -116,6 +128,61 @@ describe('PostgreSQL protocol state', () => {
     await expect(
       insertIntent(pool, 'idempotency-two', '1'),
     ).rejects.toMatchObject({ code: '23505' });
+  });
+
+  it('reports operational cursor lag and outbox failures from PostgreSQL', async () => {
+    const intentId = await insertIntent(pool, 'status-intent', '1');
+    await pool.query(
+      `
+        INSERT INTO chain_cursor(
+          chain_id, contract_address, next_block, last_finalized_block
+        )
+        VALUES
+          (1, '0x0000000000000000000000000000000000000001', 99, 98),
+          (2, '0x0000000000000000000000000000000000000002', 50, 49)
+      `,
+    );
+    await pool.query(
+      `
+        INSERT INTO outbox_job(
+          deduplication_key, job_type, intent_id, state, payload,
+          attempt_count, last_error
+        )
+        VALUES(
+          'status-failed', 'SUBMIT_SOURCE', $1::uuid, 'FAILED',
+          jsonb_build_object('intentId', $1::uuid::text), 8,
+          'request to https://user:password@rpc.example failed'
+        );
+      `,
+      [intentId],
+    );
+    const config = new ConfigService({ runtime: runtime(databaseUrl()) });
+    const database = new DatabaseService(config);
+    await database.onModuleInit();
+    const state = new OperationalStateService();
+    state.markIndexerSuccess('source', 100n);
+    state.markIndexerSuccess('destination', 50n);
+    const statusService = new OperationalStatusService(config, database, state);
+
+    try {
+      await expect(statusService.status()).resolves.toMatchObject({
+        indexers: {
+          destination: { cursorBlock: '49', lagBlocks: 1 },
+          source: { cursorBlock: '98', lagBlocks: 2 },
+        },
+        outbox: {
+          counts: { failed: 1 },
+          recentFailures: [
+            {
+              error: 'request to [redacted-url] failed',
+              intentId,
+            },
+          ],
+        },
+      });
+    } finally {
+      await database.beforeApplicationShutdown();
+    }
   });
 
   it('deletes retained authentication nonces in bounded batches', async () => {
