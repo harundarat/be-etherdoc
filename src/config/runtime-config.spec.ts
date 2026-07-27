@@ -131,6 +131,24 @@ describe('buildRuntimeConfig', () => {
     ).toThrow('AUTH_NONCE_CLEANUP_BATCH_SIZE');
   });
 
+  it('bounds worker shutdown drain configuration', () => {
+    expect(buildRuntimeConfig(validEnvironment()).worker.drainTimeoutMs).toBe(
+      30_000,
+    );
+    expect(
+      buildRuntimeConfig({
+        ...validEnvironment(),
+        WORKER_SHUTDOWN_DRAIN_TIMEOUT_MS: '45000',
+      }).worker.drainTimeoutMs,
+    ).toBe(45_000);
+    expect(() =>
+      buildRuntimeConfig({
+        ...validEnvironment(),
+        WORKER_SHUTDOWN_DRAIN_TIMEOUT_MS: '999',
+      }),
+    ).toThrow('WORKER_SHUTDOWN_DRAIN_TIMEOUT_MS');
+  });
+
   it('requires an explicit cookie security mode and one in-memory-limited replica', () => {
     expect(buildRuntimeConfig(validEnvironment()).http).toEqual({
       cookieSecure: true,

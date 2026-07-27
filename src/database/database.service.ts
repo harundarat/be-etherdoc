@@ -1,6 +1,6 @@
 import {
+  BeforeApplicationShutdown,
   Injectable,
-  OnModuleDestroy,
   OnModuleInit,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -26,7 +26,9 @@ export function boundedBackoffMilliseconds(attempt: number): number {
 }
 
 @Injectable()
-export class DatabaseService implements OnModuleInit, OnModuleDestroy {
+export class DatabaseService
+  implements OnModuleInit, BeforeApplicationShutdown
+{
   private readonly lockTimeoutMs: number;
   private readonly pool: Pool;
 
@@ -67,7 +69,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  async onModuleDestroy(): Promise<void> {
+  async beforeApplicationShutdown(): Promise<void> {
     await this.pool.end();
   }
 
@@ -100,12 +102,47 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     operation: (client: PoolClient) => Promise<T>,
   ): Promise<T> {
     const client = await this.pool.connect();
+    let acquired = false;
     try {
       await client.query('SELECT pg_advisory_lock($1)', [lockId]);
+      acquired = true;
       return await operation(client);
     } finally {
-      await client.query('SELECT pg_advisory_unlock($1)', [lockId]);
-      client.release();
+      try {
+        if (acquired) {
+          await client.query('SELECT pg_advisory_unlock($1)', [lockId]);
+        }
+      } finally {
+        client.release();
+      }
+    }
+  }
+
+  async withTryAdvisoryLock<T>(
+    lockId: number,
+    operation: (client: PoolClient) => Promise<T>,
+  ): Promise<boolean> {
+    const client = await this.pool.connect();
+    let acquired = false;
+    try {
+      const result = await client.query<{ acquired: boolean }>(
+        'SELECT pg_try_advisory_lock($1) AS acquired',
+        [lockId],
+      );
+      acquired = result.rows[0]?.acquired === true;
+      if (!acquired) {
+        return false;
+      }
+      await operation(client);
+      return true;
+    } finally {
+      try {
+        if (acquired) {
+          await client.query('SELECT pg_advisory_unlock($1)', [lockId]);
+        }
+      } finally {
+        client.release();
+      }
     }
   }
 

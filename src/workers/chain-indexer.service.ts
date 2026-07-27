@@ -144,8 +144,9 @@ export class ChainIndexerService implements OnModuleInit, OnModuleDestroy {
     etherdocContractArtifacts.contracts.receiver.abi;
   private readonly runtime: RuntimeConfig;
   private readonly senderAbi = etherdocContractArtifacts.contracts.sender.abi;
+  private activeTick: Promise<void> | null = null;
   private interval: NodeJS.Timeout | null = null;
-  private running = false;
+  private stopping = false;
 
   constructor(
     private readonly blockchain: BlockchainService,
@@ -163,30 +164,68 @@ export class ChainIndexerService implements OnModuleInit, OnModuleDestroy {
     void this.tick();
   }
 
-  onModuleDestroy(): void {
+  async onModuleDestroy(): Promise<void> {
+    this.stopping = true;
     if (this.interval) {
       clearInterval(this.interval);
       this.interval = null;
     }
+    await this.drainActiveTick();
   }
 
-  async tick(): Promise<void> {
-    if (this.running) {
-      return;
+  tick(): Promise<void> {
+    if (this.stopping) {
+      return Promise.resolve();
     }
-    this.running = true;
+    if (this.activeTick) {
+      return this.activeTick;
+    }
+    const tick = this.runTick().finally(() => {
+      if (this.activeTick === tick) {
+        this.activeTick = null;
+      }
+    });
+    this.activeTick = tick;
+    return tick;
+  }
+
+  private async runTick(): Promise<void> {
     try {
-      await this.database.withAdvisoryLock(SOURCE_INDEXER_LOCK, () =>
+      await this.database.withTryAdvisoryLock(SOURCE_INDEXER_LOCK, () =>
         this.indexSource(),
       );
-      await this.database.withAdvisoryLock(DESTINATION_INDEXER_LOCK, () =>
+      await this.database.withTryAdvisoryLock(DESTINATION_INDEXER_LOCK, () =>
         this.indexDestination(),
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Chain indexing failed: ${message}`);
-    } finally {
-      this.running = false;
+    }
+  }
+
+  private async drainActiveTick(): Promise<void> {
+    const activeTick = this.activeTick;
+    if (!activeTick) {
+      return;
+    }
+    let timeout: NodeJS.Timeout | undefined;
+    const timedOut = Symbol('timed-out');
+    const result = await Promise.race([
+      activeTick,
+      new Promise<typeof timedOut>((resolve) => {
+        timeout = setTimeout(
+          () => resolve(timedOut),
+          this.runtime.worker.drainTimeoutMs,
+        );
+      }),
+    ]);
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+    if (result === timedOut) {
+      this.logger.error(
+        `Shutdown drain timed out after ${this.runtime.worker.drainTimeoutMs}ms with an active indexer tick`,
+      );
     }
   }
 

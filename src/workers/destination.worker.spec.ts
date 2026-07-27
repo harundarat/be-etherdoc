@@ -85,6 +85,7 @@ function runtime(): RuntimeConfig {
     },
     worker: {
       batchSize: 10,
+      drainTimeoutMs: 30_000,
       indexBlockRange: 2_000,
       indexIntervalMs: 15_000,
       lockTimeoutMs: 600_000,

@@ -21,7 +21,7 @@ function runtime(url: string): RuntimeConfig {
   return {
     blockchain: { requestTimeoutMs: 5_000 },
     databaseUrl: url,
-    worker: { lockTimeoutMs: 10_000 },
+    worker: { drainTimeoutMs: 30_000, lockTimeoutMs: 10_000 },
   } as RuntimeConfig;
 }
 
@@ -171,8 +171,8 @@ describe('PostgreSQL protocol state', () => {
     expect(secondClaim).toHaveLength(1);
     expect(firstClaim[0].id).not.toBe(secondClaim[0].id);
     await Promise.all([
-      firstDatabase.onModuleDestroy(),
-      secondDatabase.onModuleDestroy(),
+      firstDatabase.beforeApplicationShutdown(),
+      secondDatabase.beforeApplicationShutdown(),
     ]);
   });
 
@@ -205,7 +205,7 @@ describe('PostgreSQL protocol state', () => {
     );
 
     expect(recovered.rows[0]).toEqual({ locked_by: null, state: 'READY' });
-    await database.onModuleDestroy();
+    await database.beforeApplicationShutdown();
   });
 
   it('deduplicates replayed chain evidence and reconciliation jobs', async () => {

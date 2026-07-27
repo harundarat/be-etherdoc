@@ -1,7 +1,19 @@
 import {
+  ChainIndexerService,
   cursorRequiresRebuild,
   normalizedIndexedLog,
 } from './chain-indexer.service';
+import { ConfigService } from '@nestjs/config';
+import type { BlockchainService } from '../blockchain/blockchain.service';
+import type { DatabaseService } from '../database/database.service';
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((complete) => {
+    resolve = complete;
+  });
+  return { promise, resolve };
+}
 
 describe('normalizedIndexedLog', () => {
   it('keeps lossless finalized log evidence', () => {
@@ -45,5 +57,42 @@ describe('cursorRequiresRebuild', () => {
       cursorRequiresRebuild(42n, storedHash, 50n, `0x${'22'.repeat(32)}`),
     ).toBe(true);
     expect(cursorRequiresRebuild(42n, storedHash, 41n, storedHash)).toBe(true);
+  });
+});
+
+describe('ChainIndexerService lifecycle', () => {
+  it('drains the active tick and refuses new work after shutdown starts', async () => {
+    const lock = deferred<boolean>();
+    const withTryAdvisoryLock = jest.fn().mockReturnValue(lock.promise);
+    const database = {
+      withTryAdvisoryLock,
+    } as unknown as DatabaseService;
+    const config = {
+      getOrThrow: jest.fn().mockReturnValue({
+        worker: {
+          drainTimeoutMs: 5_000,
+          indexIntervalMs: 60_000,
+        },
+      }),
+    } as unknown as ConfigService;
+    const service = new ChainIndexerService(
+      {} as BlockchainService,
+      config,
+      database,
+    );
+
+    const tick = service.tick();
+    let drained = false;
+    const shutdown = service.onModuleDestroy().then(() => {
+      drained = true;
+    });
+    await Promise.resolve();
+
+    expect(drained).toBe(false);
+    lock.resolve(false);
+    await Promise.all([tick, shutdown]);
+    await service.tick();
+
+    expect(withTryAdvisoryLock).toHaveBeenCalledTimes(2);
   });
 });

@@ -68,6 +68,7 @@ export interface RuntimeConfig {
   };
   worker: {
     batchSize: number;
+    drainTimeoutMs: number;
     indexBlockRange: number;
     indexIntervalMs: number;
     lockTimeoutMs: number;
@@ -386,6 +387,12 @@ export function buildRuntimeConfig(
     },
     worker: {
       batchSize: integer(environment, 'OUTBOX_BATCH_SIZE', 10),
+      drainTimeoutMs: integer(
+        environment,
+        'WORKER_SHUTDOWN_DRAIN_TIMEOUT_MS',
+        30_000,
+        1_000,
+      ),
       indexBlockRange: integer(environment, 'CHAIN_INDEX_BLOCK_RANGE', 2_000),
       indexIntervalMs: integer(environment, 'CHAIN_INDEX_INTERVAL_MS', 15_000),
       lockTimeoutMs: integer(

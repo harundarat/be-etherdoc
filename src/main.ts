@@ -7,6 +7,7 @@ import { configureHttpApplication } from './http/configure-http';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.enableShutdownHooks();
   const runtime = app.get(ConfigService).getOrThrow<RuntimeConfig>('runtime');
 
   configureHttpApplication(app, runtime);
