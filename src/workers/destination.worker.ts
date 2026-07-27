@@ -20,20 +20,6 @@ interface TrackedDispatch {
   status: string;
 }
 
-interface ReceiptRecord {
-  document: {
-    contentDigest: Hex;
-    documentId: Hex;
-    issuer: Address;
-    status: number;
-    version: bigint;
-  };
-  messageId: Hex;
-  sender: Address;
-  sourceChainSelector: bigint;
-  status: number;
-}
-
 const lifecycleStatus = {
   ACTIVE: 1,
   REVOKED: 2,
@@ -86,7 +72,7 @@ export class DestinationWorker {
       }),
     ]);
     const processed = processedRaw;
-    const receipt = receiptRaw as ReceiptRecord;
+    const receipt = receiptRaw;
 
     if (!processed.processed) {
       await this.deferOrRecover(dispatch);

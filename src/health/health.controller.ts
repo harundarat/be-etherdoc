@@ -5,7 +5,10 @@ import {
   type LivenessReport,
   type ReadinessReport,
 } from './health.service';
-import { OperationalStatusService } from './operational-status.service';
+import {
+  OperationalStatusService,
+  type OperationalStatusReport,
+} from './operational-status.service';
 import { OperationsAuthGuard } from './operations-auth.guard';
 
 @Controller('health')
@@ -33,7 +36,7 @@ export class HealthController {
 
   @Get('status')
   @UseGuards(OperationsAuthGuard)
-  status() {
+  status(): Promise<OperationalStatusReport> {
     return this.operationalStatus.status();
   }
 }

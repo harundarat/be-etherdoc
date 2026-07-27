@@ -19,7 +19,10 @@ import type { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Hex } from 'viem';
 import { DocumentsService } from './documents.service';
-import { DocumentIntentsService } from './document-intents.service';
+import {
+  DocumentIntentsService,
+  type IntentView,
+} from './document-intents.service';
 import {
   PDF_UPLOAD_MAX_BYTES,
   PDF_UPLOAD_MULTER_OPTIONS,
@@ -37,6 +40,8 @@ import {
 } from './dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
+import type { DocumentVerificationResponse } from './document-response';
+import type { PinataMetadataResponse } from '../storage/pinata-response';
 
 type AuthenticatedRequest = Request & { user: AuthenticatedUser };
 
@@ -71,7 +76,7 @@ export class DocumentsController {
     @Req() request: AuthenticatedRequest,
     @UploadedFile(filePipe()) file: Express.Multer.File,
     @Body() body: RegisterIntentDto,
-  ) {
+  ): Promise<IntentView> {
     return this.intentsService.prepareRegister(
       request.user.address,
       file,
@@ -84,7 +89,7 @@ export class DocumentsController {
   prepareRevoke(
     @Req() request: AuthenticatedRequest,
     @Body() body: RevokeIntentDto,
-  ) {
+  ): Promise<IntentView> {
     return this.intentsService.prepareRevoke(request.user.address, body);
   }
 
@@ -95,7 +100,7 @@ export class DocumentsController {
     @Req() request: AuthenticatedRequest,
     @UploadedFile(filePipe()) file: Express.Multer.File,
     @Body() body: SupersedeIntentDto,
-  ) {
+  ): Promise<IntentView> {
     return this.intentsService.prepareSupersede(
       request.user.address,
       file,
@@ -110,7 +115,7 @@ export class DocumentsController {
     @Req() request: AuthenticatedRequest,
     @Param('intentId', new ParseUUIDPipe({ version: '4' })) intentId: string,
     @Body() body: SubmitIntentSignatureDto,
-  ) {
+  ): Promise<IntentView> {
     return this.intentsService.submitSignature(
       request.user.address,
       intentId,
@@ -123,25 +128,29 @@ export class DocumentsController {
   getIntent(
     @Req() request: AuthenticatedRequest,
     @Param('intentId', new ParseUUIDPipe({ version: '4' })) intentId: string,
-  ) {
+  ): Promise<IntentView> {
     return this.intentsService.getIntent(request.user.address, intentId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('groups')
-  getListGroups(@Query() query: GetListGroupsDto) {
+  getListGroups(
+    @Query() query: GetListGroupsDto,
+  ): Promise<PinataMetadataResponse> {
     return this.documentsService.getListGroups(query.network);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('groups')
-  createGroup(@Body() body: CreateGroupDto) {
+  createGroup(@Body() body: CreateGroupDto): Promise<PinataMetadataResponse> {
     return this.documentsService.createGroup(body.network, body.groupName);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get()
-  getListFiles(@Query() query: GetListFilesDto) {
+  getListFiles(
+    @Query() query: GetListFilesDto,
+  ): Promise<PinataMetadataResponse> {
     return this.documentsService.getListFiles(query.network, query.groupId);
   }
 
@@ -150,7 +159,7 @@ export class DocumentsController {
   search(
     @UploadedFile(optionalFilePipe()) file: Express.Multer.File | undefined,
     @Body() body: SearchDocumentDto,
-  ) {
+  ): Promise<DocumentVerificationResponse> {
     if (!file && !body.documentId) {
       throw new BadRequestException(
         'Provide an explicit documentId or a PDF file with issuer',
@@ -160,7 +169,9 @@ export class DocumentsController {
   }
 
   @Get(':documentId')
-  getDocument(@Param('documentId') documentId: string) {
+  getDocument(
+    @Param('documentId') documentId: string,
+  ): Promise<DocumentVerificationResponse> {
     return this.documentsService.getDocument(documentId);
   }
 }

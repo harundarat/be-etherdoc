@@ -19,6 +19,12 @@ import { computeDocumentId, sha256Digest } from './canonical-document';
 import { documentLifecycleStatus } from './document-status';
 import type { SearchDocumentDto } from './dto';
 import { StorageNetwork } from '../storage/storage-network';
+import type {
+  DestinationEvidenceResponse,
+  DispatchStatus,
+  DocumentVerificationResponse,
+  SourceEvidenceResponse,
+} from './document-response';
 
 const zeroHash = `0x${'0'.repeat(64)}` as const;
 
@@ -57,12 +63,7 @@ interface DispatchEvidenceRow {
   source_block_hash: Hex | null;
   source_block_number: string | null;
   source_transaction_hash: Hex | null;
-  status:
-    | 'DESTINATION_CONFIRMED'
-    | 'DESTINATION_IGNORED'
-    | 'PENDING'
-    | 'RECOVERY_REQUIRED'
-    | 'SOURCE_ACCEPTED';
+  status: DispatchStatus;
 }
 
 interface ProjectionEvidenceRow {
@@ -73,22 +74,6 @@ interface ProjectionEvidenceRow {
   source_block_hash: Hex;
   source_block_number: string;
   source_tx_hash: Hex;
-}
-
-interface ReceiverDocumentRecord {
-  contentDigest: Hex;
-  documentId: Hex;
-  issuer: Address;
-  status: number;
-  version: bigint;
-}
-
-interface ReceiverReceipt {
-  document: ReceiverDocumentRecord;
-  messageId: Hex;
-  sender: Address;
-  sourceChainSelector: bigint;
-  status: number;
 }
 
 @Injectable()
@@ -129,7 +114,7 @@ export class DocumentsService {
   async search(
     request: SearchDocumentDto,
     file?: Express.Multer.File,
-  ): Promise<unknown> {
+  ): Promise<DocumentVerificationResponse> {
     let documentId = request.documentId
       ? this.parseDocumentId(request.documentId)
       : undefined;
@@ -168,7 +153,7 @@ export class DocumentsService {
     requestedDocumentId: string,
     requestedContentDigest?: Hex,
     requestedIssuer?: Address,
-  ): Promise<unknown> {
+  ): Promise<DocumentVerificationResponse> {
     const documentId = this.parseDocumentId(requestedDocumentId);
     let document: CanonicalDocumentRecord;
     try {
@@ -343,7 +328,7 @@ export class DocumentsService {
   private async sourceEvidence(
     document: CanonicalDocumentRecord,
     projection: ProjectionEvidenceRow | null,
-  ): Promise<Record<string, unknown>> {
+  ): Promise<SourceEvidenceResponse> {
     const base = {
       chainId: this.runtime.blockchain.source.chainId,
       chainSelector: this.runtime.blockchain.source.chainSelector.toString(),
@@ -404,7 +389,7 @@ export class DocumentsService {
   private async destinationEvidence(
     document: CanonicalDocumentRecord,
     dispatch: DispatchEvidenceRow,
-  ): Promise<Record<string, unknown>> {
+  ): Promise<DestinationEvidenceResponse> {
     const evidence = {
       blockHash: dispatch.destination_block_hash,
       blockNumber: dispatch.destination_block_number,
@@ -459,7 +444,7 @@ export class DocumentsService {
         }),
       ]);
       const processed = processedRaw;
-      const receipt = receiptRaw as ReceiverReceipt;
+      const receipt = receiptRaw;
       const [receiverDocument, integrityMatches, isActive] = verification;
       const dispatchVersion = BigInt(dispatch.document_version);
       const provenanceMatches =

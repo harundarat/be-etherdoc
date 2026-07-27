@@ -49,6 +49,27 @@ type IntentStatus =
   | 'FAILED_RETRYABLE'
   | 'FAILED_TERMINAL';
 
+const intentRowColumns = `
+  canonical_metadata,
+  chain_nonce,
+  content_digest,
+  created_at,
+  deadline,
+  document_id,
+  failure_code,
+  failure_detail,
+  id,
+  idempotency_key,
+  issuer,
+  metadata_commitment,
+  old_document_id,
+  operation,
+  status,
+  typed_data,
+  typed_data_digest,
+  updated_at
+`;
+
 interface IntentRow {
   canonical_metadata: Record<string, unknown>;
   chain_nonce: string;
@@ -457,7 +478,12 @@ export class DocumentIntentsService {
 
     const updated = await this.database.transaction(async (client) => {
       const locked = await client.query<IntentRow>(
-        `SELECT * FROM document_intent WHERE id = $1 FOR UPDATE`,
+        `
+          SELECT ${intentRowColumns}
+          FROM document_intent
+          WHERE id = $1
+          FOR UPDATE
+        `,
         [intentId],
       );
       if (locked.rows[0]?.status !== 'PREPARED') {
@@ -483,7 +509,7 @@ export class DocumentIntentsService {
           UPDATE document_intent
           SET status = 'SIGNED', signed_at = now(), updated_at = now()
           WHERE id = $1
-          RETURNING *
+          RETURNING ${intentRowColumns}
         `,
         [intentId],
       );
@@ -618,7 +644,11 @@ export class DocumentIntentsService {
     },
   ): Promise<IntentRow | null> {
     const result = await this.database.query<IntentRow>(
-      `SELECT * FROM document_intent WHERE idempotency_key = $1`,
+      `
+        SELECT ${intentRowColumns}
+        FROM document_intent
+        WHERE idempotency_key = $1
+      `,
       [idempotencyKey],
     );
     const existing = result.rows[0];
@@ -646,7 +676,11 @@ export class DocumentIntentsService {
 
   private async getIntentRow(intentId: string): Promise<IntentRow> {
     const result = await this.database.query<IntentRow>(
-      `SELECT * FROM document_intent WHERE id = $1`,
+      `
+        SELECT ${intentRowColumns}
+        FROM document_intent
+        WHERE id = $1
+      `,
       [intentId],
     );
     if (!result.rows[0]) {
@@ -689,7 +723,7 @@ export class DocumentIntentsService {
             $1,$2,'PREPARED',$3,$4,to_timestamp($5),$6,$7,$8,$9,$10,$11,$12,
             $13,$14,$15,$16
           )
-          RETURNING *
+          RETURNING ${intentRowColumns}
         `,
         [
           input.idempotencyKey,

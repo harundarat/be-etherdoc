@@ -48,6 +48,56 @@ interface RecoveryRow {
   updated_at: Date;
 }
 
+export interface IndexerOperationalStatus {
+  chainId: number;
+  cursorBlock: string | null;
+  finalizedHead: string | null;
+  lagBlocks: number | null;
+  lastSuccessfulTickAt: string | null;
+}
+
+export interface OperationalStatusReport {
+  generatedAt: string;
+  indexers: {
+    destination: IndexerOperationalStatus;
+    source: IndexerOperationalStatus;
+  };
+  outbox: {
+    byType: Array<{
+      count: number;
+      jobType: OutboxJobType;
+      state: OutboxState;
+    }>;
+    counts: {
+      completed: number;
+      expiredLeases: number;
+      failed: number;
+      ready: number;
+      running: number;
+    };
+    oldestReadyAgeSeconds: number | null;
+    recentFailures: Array<{
+      attemptCount: number;
+      dispatchId: string | null;
+      error: string | null;
+      id: string;
+      intentId: string | null;
+      jobType: OutboxJobType;
+      updatedAt: string;
+    }>;
+  };
+  recoveryRequiredDispatches: Array<{
+    failureCode: string | null;
+    failureDetail: string | null;
+    id: string;
+    updatedAt: string;
+  }>;
+  shutdown: {
+    inProgress: boolean;
+  };
+  status: 'operational';
+}
+
 export function sanitizedOperationalError(value: string | null): string | null {
   return redactSensitiveText(value, 512);
 }
@@ -64,7 +114,7 @@ export class OperationalStatusService {
     this.runtime = configService.getOrThrow<RuntimeConfig>('runtime');
   }
 
-  async status() {
+  async status(): Promise<OperationalStatusReport> {
     const [cursors, counts, byType, failedJobs, recoveryDispatches] =
       await Promise.all([
         this.database.query<CursorRow>(
@@ -191,7 +241,7 @@ export class OperationalStatusService {
     side: ChainSide,
     cursors: CursorRow[],
     tick: { finalizedHead: string | null; lastSuccessfulTickAt: string | null },
-  ) {
+  ): IndexerOperationalStatus {
     const chain = this.runtime.blockchain[side];
     const cursor = cursors.find(
       (row) =>

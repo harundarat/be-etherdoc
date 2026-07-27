@@ -172,14 +172,25 @@ export class SourceTransactionWorker {
     >(
       `
         SELECT
-          intent.*,
+          intent.chain_nonce,
+          intent.content_digest,
+          intent.current_version,
+          intent.deadline,
+          intent.document_cid,
+          intent.document_id,
+          intent.id,
+          intent.issuer,
+          intent.metadata_commitment,
+          intent.old_document_id,
+          intent.operation,
+          intent.status,
           signature.signature,
           tx.id AS source_transaction_id,
           tx.transaction_hash
         FROM document_intent intent
         JOIN document_signature signature ON signature.intent_id = intent.id
         JOIN LATERAL (
-          SELECT *
+          SELECT id, state, transaction_hash
           FROM source_transaction
           WHERE intent_id = intent.id
           ORDER BY attempt DESC
@@ -267,7 +278,20 @@ export class SourceTransactionWorker {
     try {
       const intentResult = await client.query<SubmissionIntent>(
         `
-          SELECT intent.*, signature.signature
+          SELECT
+            intent.chain_nonce,
+            intent.content_digest,
+            intent.current_version,
+            intent.deadline,
+            intent.document_cid,
+            intent.document_id,
+            intent.id,
+            intent.issuer,
+            intent.metadata_commitment,
+            intent.old_document_id,
+            intent.operation,
+            intent.status,
+            signature.signature
           FROM document_intent intent
           JOIN document_signature signature ON signature.intent_id = intent.id
           WHERE intent.id = $1
@@ -282,7 +306,7 @@ export class SourceTransactionWorker {
       }
       const transactionResult = await client.query<SourceTransactionRow>(
         `
-          SELECT *
+          SELECT attempt, id, nonce, state, transaction_hash
           FROM source_transaction
           WHERE intent_id = $1
           ORDER BY attempt DESC
@@ -319,7 +343,7 @@ export class SourceTransactionWorker {
         `
           INSERT INTO source_transaction(intent_id, attempt, state, nonce)
           VALUES ($1, $2, 'PREPARED', $3)
-          RETURNING *
+          RETURNING attempt, id, nonce, state, transaction_hash
         `,
         [intentId, attempt, nonce],
       );

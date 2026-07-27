@@ -209,7 +209,21 @@ export class DispatchWorker {
     await client.query('BEGIN');
     try {
       const result = await client.query<DispatchRow>(
-        `SELECT * FROM dispatch WHERE id = $1 FOR UPDATE`,
+        `
+          SELECT
+            document_id,
+            document_version,
+            failure_code,
+            id,
+            message_id,
+            receiver,
+            source_nonce,
+            source_transaction_hash,
+            status
+          FROM dispatch
+          WHERE id = $1
+          FOR UPDATE
+        `,
         [dispatchId],
       );
       const dispatch = result.rows[0];
