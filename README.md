@@ -76,6 +76,7 @@ remote configuration, and backend signer roles. A mismatch stops the application
 ```bash
 pnpm contracts:check       # reject drift from the exact contract baseline
 pnpm db:migrate            # checksum-protected, advisory-locked migrations
+pnpm typecheck             # strict TypeScript and dependency declaration check
 pnpm lint:check            # read-only lint gate
 pnpm audit:prod            # production dependency vulnerability gate
 pnpm check                 # deterministic local quality sequence

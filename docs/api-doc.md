@@ -69,7 +69,16 @@ multipart uploads are counted by client IP before their body is buffered. Exceed
 ### `GET /health/live`
 
 Public dependency-free liveness. It proves that the HTTP process/event loop can answer and returns
-`200` with `status: "live"`. It does not query PostgreSQL, RPC, or Pinata.
+`200`:
+
+```json
+{
+  "checkedAt": "2026-07-27T10:00:00.000Z",
+  "status": "live"
+}
+```
+
+It does not query PostgreSQL, RPC, or Pinata.
 
 ### `GET /health/ready`
 
@@ -78,6 +87,22 @@ Public load-balancer readiness. It returns `200` only when PostgreSQL is queryab
 graceful shutdown has not begun. Database/schema results are cached for
 `HEALTH_READINESS_CACHE_MS` (five seconds by default). A degraded, starting, or shutting-down
 service returns `503` with safe per-check states and no raw dependency error.
+
+```json
+{
+  "checkedAt": "2026-07-27T10:00:00.000Z",
+  "checks": {
+    "blockchainStartup": "ready",
+    "database": "ready",
+    "schema": "ready"
+  },
+  "status": "ready"
+}
+```
+
+`status` is `ready`, `degraded`, or `shutting_down`. A check that is deliberately skipped during
+shutdown is `not_checked`; startup is `starting`, and dependency failures use `unavailable`,
+`missing`, or `unknown` as applicable.
 
 ### `GET /health/status`
 
@@ -90,6 +115,45 @@ indexer tick, outbox counts and pending age, READY/RUNNING/FAILED counts per job
 leases, up to 20 recent failed jobs, up to 20 `RECOVERY_REQUIRED` dispatches, and shutdown state.
 Provider/database URLs and credential-shaped text are redacted. The endpoint does not synchronously
 probe RPC or Pinata.
+
+The top-level response is:
+
+```json
+{
+  "generatedAt": "2026-07-27T10:00:00.000Z",
+  "indexers": {
+    "source": {
+      "chainId": 11155111,
+      "cursorBlock": "123",
+      "finalizedHead": "125",
+      "lagBlocks": 2,
+      "lastSuccessfulTickAt": "2026-07-27T09:59:59.000Z"
+    },
+    "destination": {
+      "chainId": 5003,
+      "cursorBlock": null,
+      "finalizedHead": null,
+      "lagBlocks": null,
+      "lastSuccessfulTickAt": null
+    }
+  },
+  "outbox": {
+    "byType": [],
+    "counts": {
+      "completed": 0,
+      "expiredLeases": 0,
+      "failed": 0,
+      "ready": 0,
+      "running": 0
+    },
+    "oldestReadyAgeSeconds": null,
+    "recentFailures": []
+  },
+  "recoveryRequiredDispatches": [],
+  "shutdown": { "inProgress": false },
+  "status": "operational"
+}
+```
 
 Every response includes `X-Request-ID`. A syntactically valid inbound UUID is preserved; invalid or
 missing values are replaced. Do not put JWTs, signatures, wallet messages, or other secrets in this
@@ -223,7 +287,14 @@ Public canonical read. Returns the current source record even when it is revoked
     "issuerMatches": true
   },
   "source": {
+    "chainId": 11155111,
+    "chainSelector": "16015286601757825753",
+    "confirmationDepth": 2,
+    "contractAddress": "0x...",
     "confirmationStatus": "CONFIRMED",
+    "confirmations": "3",
+    "canonical": true,
+    "projectionMatches": true,
     "transactionHash": "0x...",
     "blockNumber": "123",
     "blockHash": "0x..."
@@ -231,6 +302,7 @@ Public canonical read. Returns the current source record even when it is revoked
   "storage": {
     "status": "AVAILABLE",
     "available": true,
+    "checkedAt": "2026-07-27T10:00:00.000Z",
     "authenticity": "NOT_INFERRED_FROM_AVAILABILITY"
   },
   "destinations": []
@@ -270,6 +342,10 @@ These protected endpoints manage storage metadata only and do not change protoco
 - `POST /documents/groups` with `{ "network": "public", "groupName": "..." }`
 
 `groupName` and `groupId` are limited to 128 characters.
+
+Successful responses preserve the Pinata provider's JSON object shape after bounded parsing. A
+non-object root, malformed JSON, non-JSON value, or field with an invalid upload-response type is
+rejected as a storage failure instead of being passed through as an untyped value.
 
 ### Pinata workspace authorization decision
 

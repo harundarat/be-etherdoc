@@ -2,7 +2,7 @@
 
 Plan date: 27 July 2026.
 
-Status: implementation in progress; Phases 1 through 5 completed on 27 July 2026.
+Status: implementation in progress; Phases 1 through 6 completed on 27 July 2026.
 
 This document is the execution plan for an AI Coding Agent modernizing `be-etherdoc`. The work is
 intended to improve dependency security, production safety, reliability, type safety, test depth,
@@ -486,10 +486,26 @@ reduce line count.
 
 ### Phase 6 acceptance
 
-- The approved strict compiler options pass without `@ts-ignore` or broad `any` suppression.
-- Typed-data/outbox/Pinata payloads are validated at trust boundaries.
-- Refactoring does not alter protocol state semantics or public JSON unintentionally.
-- API documentation matches response types.
+- [x] The approved strict compiler options pass without `@ts-ignore` or broad `any` suppression.
+- [x] Typed-data/outbox/Pinata payloads are validated at trust boundaries.
+- [x] Refactoring does not alter protocol state semantics or public JSON unintentionally.
+- [x] API documentation matches response types.
+
+Implementation record: commit `a13ef2b` enables full TypeScript strictness and unchecked-index
+handling, adds explicit query-row guards, validates persisted EIP-712 authorization fields, and
+replaces unchecked contract-status indexing. Commit `9c4e5c6` extracts the Pinata metadata client
+from `DocumentsService` and validates bounded provider JSON; commit `ecf11cc` normalizes and
+validates persisted outbox payloads before worker dispatch. Commit `d106dc1` adds stable response
+types for canonical documents, dispatch evidence, health diagnostics, intents, and Pinata metadata,
+removes runtime `SELECT *`/`RETURNING *`, and relies on generated ABI tuple types instead of broad
+contract casts. Commit `f60bcd7` promotes typed lint rules to errors and adds the explicit
+`typecheck` gate. Commit `b0bdf4b` removes `skipLibCheck`; the project and all dependency
+declarations pass without it. The refactor preserves transaction and protocol state boundaries and
+requires no schema migration.
+
+Validation record: contract drift, strict typecheck, zero-warning lint, 104 unit tests, 20
+deterministic HTTP tests, 10 PostgreSQL 16 integration tests, build, production audit,
+production-only installation, migration replay, and zero-candidate reconciliation all passed.
 
 ## Phase 7: Tests, CI, documentation, and runtime alignment
 
@@ -630,7 +646,7 @@ contract artifact.
 - [x] Shutdown hooks are enabled and active worker ticks drain safely.
 - [x] Outbox jobs use lease tokens, heartbeats, periodic stale recovery, and retry exhaustion.
 - [ ] Liveness/readiness and operational signals are implemented without leaking secrets.
-- [ ] TypeScript strictness and trust-boundary validation are materially improved.
+- [x] TypeScript strictness and trust-boundary validation are materially improved.
 - [ ] Critical service/worker failure branches have focused tests.
 - [x] CI includes production audit, PostgreSQL integration, and production-only installation.
 - [x] Node and pnpm versions are pinned and documentation matches production.
