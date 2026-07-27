@@ -12,12 +12,6 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version:
-          - 22
-          - 24
     services:
       postgres:
         image: postgres:16-alpine
@@ -68,7 +62,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 24.14.1
           cache: pnpm
           cache-dependency-path: be-etherdoc/pnpm-lock.yaml
 
@@ -86,6 +80,10 @@ jobs:
           ETHERDOC_CONTRACTS_DIR: ../sc-etherdoc
         run: pnpm contracts:check
 
+      - name: Check TypeScript
+        working-directory: be-etherdoc
+        run: pnpm typecheck
+
       - name: Lint without writing
         working-directory: be-etherdoc
         run: pnpm lint:check
@@ -93,6 +91,10 @@ jobs:
       - name: Test
         working-directory: be-etherdoc
         run: pnpm test --runInBand
+
+      - name: Enforce coverage thresholds
+        working-directory: be-etherdoc
+        run: pnpm test:coverage
 
       - name: Run migrations twice
         working-directory: be-etherdoc

@@ -7,13 +7,13 @@
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.34.5",
   "engines": {
-    "node": "^22.0.0 || ^24.0.0",
+    "node": "^24.0.0",
     "pnpm": "10.34.5"
   },
   "scripts": {
-    "audit:prod": "pnpm audit --prod",
+    "audit:prod": "pnpm audit --prod --audit-level high",
     "build": "nest build",
-    "check": "pnpm contracts:check && pnpm typecheck && pnpm lint:check && pnpm test --runInBand && pnpm test:e2e && pnpm build",
+    "check": "pnpm contracts:check && pnpm typecheck && pnpm lint:check && pnpm test:coverage && pnpm test:e2e && pnpm build",
     "contracts:check": "node scripts/sync-contract-artifacts.mjs --check",
     "contracts:sync": "node scripts/sync-contract-artifacts.mjs",
     "db:migrate": "node scripts/migrate.mjs",
@@ -26,8 +26,9 @@
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "lint:check": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "test": "jest",
+    "test:coverage": "jest --coverage --runInBand && node scripts/check-coverage.mjs",
     "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
+    "test:cov": "jest --coverage --runInBand && node scripts/check-coverage.mjs",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "test:integration": "jest --config ./test/jest-integration.json --runInBand",
@@ -62,7 +63,7 @@
     "@types/express": "^5.0.6",
     "@types/jest": "^29.5.14",
     "@types/multer": "^1.4.13",
-    "@types/node": "^22.20.1",
+    "@types/node": "^24.0.0",
     "@types/passport-jwt": "^4.0.1",
     "@types/pg": "^8.20.0",
     "@types/supertest": "^6.0.3",
@@ -91,9 +92,22 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "**/*.ts",
+      "!**/*.module.ts",
+      "!**/*.spec.ts",
+      "!**/dto/**",
+      "!contracts/generated/**",
+      "!main.ts"
     ],
     "coverageDirectory": "../coverage",
+    "coverageThreshold": {
+      "global": {
+        "branches": 45,
+        "functions": 50,
+        "lines": 50,
+        "statements": 50
+      }
+    },
     "testEnvironment": "node"
   }
 }
