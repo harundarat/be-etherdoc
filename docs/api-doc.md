@@ -42,7 +42,9 @@ Successful verification atomically consumes the nonce and returns:
 ```
 
 The response also sets the HTTP-only `etherdoc-auth` cookie. Protected endpoints accept that cookie
-or `Authorization: Bearer <JWT>`. The JWT subject must equal the intent issuer.
+or `Authorization: Bearer <JWT>`. The JWT subject must equal the intent issuer. JWT expiry, cookie
+`Max-Age`, and `expiresInSeconds` all use the configured numeric `SIWE_SESSION_TTL_SECONDS`; there is
+no separate JWT duration setting.
 
 ## Signed intent flow
 

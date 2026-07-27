@@ -125,6 +125,8 @@ The primary API flow is:
 7. poll the intent and canonical document read endpoints
 
 The server accepts an `etherdoc-auth` HTTP-only cookie or bearer JWT for protected endpoints.
+`SIWE_SESSION_TTL_SECONDS` is the single lifetime used by the JWT, cookie, and authentication
+response.
 
 ## License
 

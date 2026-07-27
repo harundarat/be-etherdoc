@@ -94,4 +94,17 @@ describe('buildRuntimeConfig', () => {
       }),
     ).toThrow('RPC_REQUEST_TIMEOUT_MS');
   });
+
+  it('uses the numeric SIWE session TTL regardless of a legacy JWT duration', () => {
+    const config = buildRuntimeConfig({
+      ...validEnvironment(),
+      JWT_EXPIRES_IN: '30d',
+      SIWE_SESSION_TTL_SECONDS: '1200',
+    });
+
+    expect(config.siwe.sessionTtlSeconds).toBe(1200);
+    expect(config.jwt).toEqual({
+      secret: 'a-secure-test-secret-with-more-than-32-characters',
+    });
+  });
 });

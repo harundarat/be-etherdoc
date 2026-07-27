@@ -31,7 +31,6 @@ export interface RuntimeConfig {
     recoveryAfterSeconds: number;
   };
   jwt: {
-    expiresIn: string;
     secret: string;
   };
   intent: {
@@ -271,7 +270,6 @@ export function buildRuntimeConfig(
       ),
     },
     jwt: {
-      expiresIn: environment.JWT_EXPIRES_IN?.trim() || '15m',
       secret: jwtSecret,
     },
     intent: {

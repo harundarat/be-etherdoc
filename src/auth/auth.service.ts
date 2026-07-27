@@ -93,61 +93,60 @@ export class AuthService {
     const address = this.parseAddress(parsed.address);
     this.assertMessageBinding(parsed);
 
-    await this.database.transaction(async (client) => {
-      const result = await client.query<NonceRow>(
-        `
-          SELECT id, wallet_address, siwe_message, expires_at
-          FROM authentication_nonce
-          WHERE
-            nonce = $1
-            AND lower(wallet_address) = lower($2)
-            AND consumed_at IS NULL
-          FOR UPDATE
-        `,
-        [parsed.nonce, address],
-      );
-      const challenge = result.rows[0];
-      if (!challenge) {
-        throw new UnauthorizedException(
-          'SIWE nonce is missing or already used',
-        );
-      }
-      if (
-        challenge.expires_at.getTime() <= Date.now() ||
-        challenge.siwe_message !== message
-      ) {
-        throw new UnauthorizedException('SIWE challenge expired or changed');
-      }
+    const result = await this.database.query<NonceRow>(
+      `
+        SELECT id, wallet_address, siwe_message, expires_at
+        FROM authentication_nonce
+        WHERE
+          nonce = $1
+          AND lower(wallet_address) = lower($2)
+          AND consumed_at IS NULL
+      `,
+      [parsed.nonce, address],
+    );
+    const challenge = result.rows[0];
+    if (!challenge) {
+      throw new UnauthorizedException('SIWE nonce is missing or already used');
+    }
+    if (
+      challenge.expires_at.getTime() <= Date.now() ||
+      challenge.siwe_message !== message
+    ) {
+      throw new UnauthorizedException('SIWE challenge expired or changed');
+    }
 
-      let valid: boolean;
-      try {
-        valid = await verifySiweMessage(this.blockchain.sourceReader, {
-          address,
-          domain: this.runtime.siwe.domain,
-          message,
-          nonce: parsed.nonce,
-          signature: signature as Hex,
-          time: new Date(),
-        });
-      } catch {
-        valid = false;
-      }
-      if (!valid) {
-        throw new UnauthorizedException('Invalid SIWE signature');
-      }
+    let valid: boolean;
+    try {
+      valid = await verifySiweMessage(this.blockchain.sourceReader, {
+        address,
+        domain: this.runtime.siwe.domain,
+        message,
+        nonce: parsed.nonce,
+        signature: signature as Hex,
+        time: new Date(),
+      });
+    } catch {
+      valid = false;
+    }
+    if (!valid) {
+      throw new UnauthorizedException('Invalid SIWE signature');
+    }
 
-      const consumed = await client.query(
-        `
-          UPDATE authentication_nonce
-          SET consumed_at = now()
-          WHERE id = $1 AND consumed_at IS NULL
-        `,
-        [challenge.id],
-      );
-      if (consumed.rowCount !== 1) {
-        throw new UnauthorizedException('SIWE nonce replay detected');
-      }
-    });
+    const consumed = await this.database.query(
+      `
+        UPDATE authentication_nonce
+        SET consumed_at = now()
+        WHERE
+          id = $1
+          AND siwe_message = $2
+          AND consumed_at IS NULL
+          AND expires_at > now()
+      `,
+      [challenge.id, message],
+    );
+    if (consumed.rowCount !== 1) {
+      throw new UnauthorizedException('SIWE nonce replay detected');
+    }
 
     try {
       const accessToken = await this.jwtService.signAsync({
