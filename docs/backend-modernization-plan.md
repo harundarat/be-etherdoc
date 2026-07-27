@@ -2,7 +2,7 @@
 
 Plan date: 27 July 2026.
 
-Status: implementation in progress; Phases 1, 2, and 3 completed on 27 July 2026.
+Status: implementation in progress; Phases 1 through 4 completed on 27 July 2026.
 
 This document is the execution plan for an AI Coding Agent modernizing `be-etherdoc`. The work is
 intended to improve dependency security, production safety, reliability, type safety, test depth,
@@ -370,6 +370,17 @@ or document a stop-the-world worker deployment if compatibility cannot be preser
 - Retry exhaustion becomes a visible terminal state.
 - Concurrent PostgreSQL integration tests cover claim, heartbeat, reclaim, lost lease, and shutdown.
 
+Implementation record: commit `164a63e` enables shutdown hooks, drains active outbox/indexer ticks
+before the database pool closes, makes advisory unlock cleanup release clients reliably, and uses
+non-blocking advisory locks for periodic indexers. Commit `abcb732` adds forward-only migration
+`006_outbox_lease.sql`, per-claim lease tokens, heartbeat, bounded runtime reclaim, token-guarded
+state transitions, jittered bounded retry, per-job attempt limits, and concurrent PostgreSQL
+coverage. Commit `2f8d68c` adds alertable logs for dispatch recovery-required transitions. The
+migration is deployed stop-the-world because a pre-lease worker is schema-compatible but cannot
+safely participate in mixed-version ownership. The complete lint, unit, HTTP, PostgreSQL 16
+migration/integration, build, contract-drift, production audit, and production-only installation
+gates passed.
+
 ## Phase 5: Health and observability
 
 ### 5.1 Replace the placeholder root response
@@ -606,8 +617,8 @@ contract artifact.
 - [x] JWT, cookie, and response session lifetime use one value.
 - [x] Nonce cleanup and concurrent replay tests are implemented.
 - [x] CSRF and Pinata workspace authorization policies are explicit and tested.
-- [ ] Shutdown hooks are enabled and active worker ticks drain safely.
-- [ ] Outbox jobs use lease tokens, heartbeats, periodic stale recovery, and retry exhaustion.
+- [x] Shutdown hooks are enabled and active worker ticks drain safely.
+- [x] Outbox jobs use lease tokens, heartbeats, periodic stale recovery, and retry exhaustion.
 - [ ] Liveness/readiness and operational signals are implemented without leaking secrets.
 - [ ] TypeScript strictness and trust-boundary validation are materially improved.
 - [ ] Critical service/worker failure branches have focused tests.

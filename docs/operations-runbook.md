@@ -44,7 +44,7 @@ required before broadcasting lifecycle smoke-test transactions.
 | Auth retention      | `AUTH_NONCE_RETENTION_SECONDS`, `AUTH_NONCE_CLEANUP_INTERVAL_SECONDS`, `AUTH_NONCE_CLEANUP_BATCH_SIZE`                                    |
 | Pinata              | `PINATA_API_URL`, `PINATA_UPLOAD_URL`, `PINATA_GATEWAY_URL`, `PINATA_JWT_TOKEN`                                                           |
 | Dispatch            | `DISPATCH_FEE_BUFFER_BPS`, `MAXIMUM_DISPATCH_FEE_WEI`, `CCIP_RECOVERY_AFTER_SECONDS`                                                      |
-| Workers             | `OUTBOX_BATCH_SIZE`, `OUTBOX_POLL_INTERVAL_MS`, `OUTBOX_LOCK_TIMEOUT_MS`, `CHAIN_INDEX_BLOCK_RANGE`, `CHAIN_INDEX_INTERVAL_MS`            |
+| Workers             | `OUTBOX_BATCH_SIZE`, `OUTBOX_POLL_INTERVAL_MS`, `OUTBOX_LOCK_TIMEOUT_MS`, `OUTBOX_HEARTBEAT_INTERVAL_MS`, `OUTBOX_MAX_ATTEMPTS*`, `WORKER_SHUTDOWN_DRAIN_TIMEOUT_MS`, `CHAIN_INDEX_BLOCK_RANGE`, `CHAIN_INDEX_INTERVAL_MS` |
 
 Inject secrets at runtime. Restrict `.env` to local development and keep it untracked.
 `SIWE_SESSION_TTL_SECONDS` is the only session lifetime: changing it changes the JWT expiry, cookie
@@ -93,6 +93,53 @@ Pinata artifact fetch-back is independently capped at 5 MiB and Pinata upload/me
 responses at 1 MiB. The backend checks `Content-Length` when present and still counts streamed bytes.
 Treat `STORAGE_*_TOO_LARGE` as a provider/policy mismatch; do not retry indefinitely before checking
 the configured limits and provider response.
+
+## Worker leases, retries, and shutdown
+
+Every outbox claim receives a fresh UUID lease token. Completion, retry, terminal failure, and
+heartbeat updates require both the job ID and current token. A stale owner therefore cannot change
+a job reclaimed by another worker. The worker claims one active job at a time, up to
+`OUTBOX_BATCH_SIZE` jobs per tick, so a claimed job is never left waiting without a heartbeat.
+
+`OUTBOX_HEARTBEAT_INTERVAL_MS` must be lower than `OUTBOX_LOCK_TIMEOUT_MS`; startup rejects an
+invalid pair. Expired leases are reclaimed in bounded, lock-skipping batches at startup and during
+normal polling. A healthy heartbeat prevents reclaim. Retry delay is exponential with up to 25%
+jitter and a five-minute ceiling.
+
+`OUTBOX_MAX_ATTEMPTS` defaults to eight. The following optional variables override it per job type:
+
+- `OUTBOX_MAX_ATTEMPTS_SUBMIT_SOURCE`;
+- `OUTBOX_MAX_ATTEMPTS_CONFIRM_SOURCE`;
+- `OUTBOX_MAX_ATTEMPTS_DISPATCH_DESTINATION`;
+- `OUTBOX_MAX_ATTEMPTS_TRACK_DESTINATION`;
+- `OUTBOX_MAX_ATTEMPTS_RECONCILE`.
+
+Exhaustion moves the job to `FAILED`, preserves an actionable `last_error`, and emits an error log.
+A dispatch entering `RECOVERY_REQUIRED` also emits an error log with its dispatch ID and failure
+code. Alert on either transition.
+
+On `SIGTERM`, the application stops scheduling and claiming work, then waits up to
+`WORKER_SHUTDOWN_DRAIN_TIMEOUT_MS` for the active outbox/indexer tick. The database pool closes only
+after module destroy hooks finish. Configure the orchestrator termination grace period above the
+drain timeout with enough margin for Nest shutdown. If draining times out, the service logs the
+active scheduler context and exits without marking the outbox job complete; its lease is reclaimed
+after `OUTBOX_LOCK_TIMEOUT_MS`.
+
+### Recovering a failed job
+
+1. Record the job ID, job type, attempt count, payload identifiers, `last_error`, and related
+   intent/source-transaction/dispatch state. Do not copy secrets into incident notes.
+2. For `SUBMIT_SOURCE` or `DISPATCH_DESTINATION`, first determine whether a signer nonce was
+   reserved or consumed and search canonical events/receipts. Never reset or resend an uncertain
+   broadcast merely because its outbox job is `FAILED`.
+3. Run `pnpm reconcile` in dry-run mode. Prefer `pnpm reconcile --enqueue` only after its candidates
+   match the reviewed canonical evidence.
+4. For read-only confirmation/tracking or a proven pre-broadcast failure, an operator may reset the
+   exact reviewed job to `READY` in a transaction. Clear `locked_at`, `locked_by`, `lease_token`,
+   and `last_error`, set `available_at = now()`, and reset `attempt_count` only when explicitly
+   authorizing a fresh retry budget. Never bulk-reset `FAILED` jobs.
+5. Monitor the job, related protocol state, signer nonce, canonical cursor, and error logs until it
+   reaches a justified terminal state.
 
 ## State machines
 
@@ -209,6 +256,20 @@ block replay finish.
 Contract rollback means deploying new audited contracts and updating a new manifest through the
 contract governance/deployment process. Do not overwrite a manifest or point the backend at an
 unverified address.
+
+Migration `006_outbox_lease.sql` adds a nullable column and is schema-readable by the prior
+application, but mixed old/new workers are not ownership-safe because the old binary does not match
+lease tokens on updates. Deploy this phase stop-the-world:
+
+1. send `SIGTERM` to every API/worker instance and allow the configured drain period;
+2. confirm no application instance remains, preserving timed-out `RUNNING` jobs for lease reclaim;
+3. apply `pnpm db:migrate`;
+4. deploy the new application to one instance and verify migration inventory, lease reclaim, and
+   error logs;
+5. add instances only after heartbeat and outbox state remain stable.
+
+Do not roll the application back to a pre-lease binary while workers are active. If rollback is
+unavoidable, stop every instance first and treat it as a separate compatibility incident.
 
 ## Cutover checks
 

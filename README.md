@@ -107,6 +107,11 @@ Source transaction confirmation and destination CCIP confirmation are separate s
 broadcast outcomes are reconciled by signer nonce plus canonical events and are never blindly
 resent.
 
+Outbox jobs use renewable ownership tokens. `SIGTERM` stops new indexer/outbox work, drains the
+active operation before the database pool closes, and leaves a timed-out lease for safe expiry and
+reclaim rather than reporting false completion. See the runbook before changing lease, heartbeat,
+retry, or shutdown timing.
+
 ## API and operations
 
 - [API reference](docs/api-doc.md)
