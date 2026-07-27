@@ -3,6 +3,7 @@ import type { BlockchainService } from '../blockchain/blockchain.service';
 import type { RuntimeConfig } from '../config/runtime-config';
 import type { DatabaseService } from '../database/database.service';
 import type { PinataStorageService } from '../storage/pinata-storage.service';
+import { PINATA_JSON_RESPONSE_MAX_BYTES } from '../storage/bounded-response';
 import { computeDocumentId, sha256Digest } from './canonical-document';
 import { DocumentsService } from './documents.service';
 
@@ -29,6 +30,7 @@ function runtime(): RuntimeConfig {
         confirmations: 2,
         contractAddress: sourceAddress,
       },
+      requestTimeoutMs: 1_000,
     },
     pinata: {
       apiUrl: 'https://api.pinata.example',
@@ -112,6 +114,10 @@ function createService() {
 }
 
 describe('DocumentsService read model', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('keeps revoked source truth separate from storage availability', async () => {
     const { service } = createService();
 
@@ -153,5 +159,32 @@ describe('DocumentsService read model', () => {
         functionName: 'getDocument',
       }),
     );
+  });
+
+  it('bounds and cancels Pinata metadata JSON responses', async () => {
+    const { service } = createService();
+    let cancelled = false;
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(Uint8Array.from([123]));
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+      new Response(body, {
+        headers: {
+          'Content-Length': String(PINATA_JSON_RESPONSE_MAX_BYTES + 1),
+        },
+        status: 200,
+      }),
+    );
+
+    await expect(service.getListGroups('private')).rejects.toMatchObject({
+      response: { error: 'STORAGE_METADATA_RESPONSE_TOO_LARGE' },
+      status: 503,
+    });
+    expect(cancelled).toBe(true);
   });
 });

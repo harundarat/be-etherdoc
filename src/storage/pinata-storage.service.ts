@@ -12,6 +12,15 @@ import {
   type CanonicalMetadata,
   type ParsedCanonicalCid,
 } from '../documents/canonical-document';
+import {
+  cancelResponseBody,
+  InvalidJsonResponseError,
+  PINATA_JSON_RESPONSE_MAX_BYTES,
+  PINATA_RETRIEVAL_MAX_BYTES,
+  readBoundedJsonResponse,
+  readBoundedResponseBody,
+  ResponseBodyTooLargeError,
+} from './bounded-response';
 
 interface PinataUploadResponse {
   data?: {
@@ -73,13 +82,34 @@ export class PinataStorageService {
       });
     }
     if (!response.ok) {
+      await cancelResponseBody(response);
       throw new ServiceUnavailableException({
         error: 'STORAGE_UPLOAD_FAILED',
         message: `Pinata upload failed with HTTP ${response.status}`,
       });
     }
 
-    const upload = (await response.json()) as PinataUploadResponse;
+    let upload: PinataUploadResponse;
+    try {
+      upload = (await readBoundedJsonResponse(
+        response,
+        PINATA_JSON_RESPONSE_MAX_BYTES,
+      )) as PinataUploadResponse;
+    } catch (error) {
+      if (error instanceof ResponseBodyTooLargeError) {
+        throw new ServiceUnavailableException({
+          error: 'STORAGE_UPLOAD_RESPONSE_TOO_LARGE',
+          message: 'Pinata upload response exceeded the JSON response limit',
+        });
+      }
+      throw new ServiceUnavailableException({
+        error:
+          error instanceof InvalidJsonResponseError
+            ? 'STORAGE_UPLOAD_RESPONSE_INVALID'
+            : 'STORAGE_UPLOAD_RESPONSE_FAILED',
+        message: 'Pinata upload response could not be parsed',
+      });
+    }
     const actualCid = upload.data?.cid;
     if (!actualCid) {
       throw new UnprocessableEntityException({
@@ -111,12 +141,30 @@ export class PinataStorageService {
       });
     }
     if (!retrieval.ok) {
+      await cancelResponseBody(retrieval);
       throw new ServiceUnavailableException({
         error: 'STORAGE_RETRIEVAL_FAILED',
         message: `Pinned bytes returned HTTP ${retrieval.status}`,
       });
     }
-    const retrievedBytes = new Uint8Array(await retrieval.arrayBuffer());
+    let retrievedBytes: Uint8Array;
+    try {
+      retrievedBytes = await readBoundedResponseBody(
+        retrieval,
+        PINATA_RETRIEVAL_MAX_BYTES,
+      );
+    } catch (error) {
+      if (error instanceof ResponseBodyTooLargeError) {
+        throw new ServiceUnavailableException({
+          error: 'STORAGE_RETRIEVAL_TOO_LARGE',
+          message: 'Retrieved Pinata bytes exceeded the verification limit',
+        });
+      }
+      throw new ServiceUnavailableException({
+        error: 'STORAGE_RETRIEVAL_FAILED',
+        message: 'Pinned bytes could not be read for verification',
+      });
+    }
     const retrievedDigest = sha256Digest(retrievedBytes);
     if (retrievedDigest !== contentDigest) {
       throw new UnprocessableEntityException({

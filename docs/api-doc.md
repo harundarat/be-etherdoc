@@ -231,4 +231,6 @@ These protected endpoints manage storage metadata only and do not change protoco
 | `503` | source RPC, destination RPC, storage, or readiness unavailable          |
 
 RPC failures are never converted to “document not found.” Storage failure is never converted to
-“inauthentic.” Destination failure never changes canonical source lifecycle.
+“inauthentic.” Pinata fetch-back bodies are limited to 5 MiB and Pinata JSON bodies to 1 MiB;
+oversized, invalid, timed-out, or interrupted provider responses return a stable storage `503` and
+are cancelled. Destination failure never changes canonical source lifecycle.

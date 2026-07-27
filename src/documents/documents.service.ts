@@ -14,6 +14,13 @@ import type { RuntimeConfig } from '../config/runtime-config';
 import { etherdocContractArtifacts } from '../contracts/generated';
 import { DatabaseService } from '../database/database.service';
 import { PinataStorageService } from '../storage/pinata-storage.service';
+import {
+  cancelResponseBody,
+  InvalidJsonResponseError,
+  PINATA_JSON_RESPONSE_MAX_BYTES,
+  readBoundedJsonResponse,
+  ResponseBodyTooLargeError,
+} from '../storage/bounded-response';
 import { computeDocumentId, sha256Digest } from './canonical-document';
 import type { SearchDocumentDto } from './dto';
 
@@ -551,6 +558,7 @@ export class DocumentsService {
       });
     }
     if (!response.ok) {
+      await cancelResponseBody(response);
       throw new HttpException(
         {
           error: 'STORAGE_METADATA_REQUEST_FAILED',
@@ -559,6 +567,25 @@ export class DocumentsService {
         response.status,
       );
     }
-    return response.json() as Promise<unknown>;
+    try {
+      return await readBoundedJsonResponse(
+        response,
+        PINATA_JSON_RESPONSE_MAX_BYTES,
+      );
+    } catch (error) {
+      if (error instanceof ResponseBodyTooLargeError) {
+        throw new ServiceUnavailableException({
+          error: 'STORAGE_METADATA_RESPONSE_TOO_LARGE',
+          message: 'Pinata metadata response exceeded the JSON response limit',
+        });
+      }
+      throw new ServiceUnavailableException({
+        error:
+          error instanceof InvalidJsonResponseError
+            ? 'STORAGE_METADATA_RESPONSE_INVALID'
+            : 'STORAGE_METADATA_RESPONSE_FAILED',
+        message: 'Pinata metadata response could not be parsed',
+      });
+    }
   }
 }

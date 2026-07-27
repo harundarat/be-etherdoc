@@ -54,6 +54,10 @@ runtime overhead). The current single-replica operating target is at most eight 
 preparations, or about 120 MiB of document-body residency within a container sized to at least
 512 MiB. Enforce that concurrency at the ingress. Before raising either the file limit or
 concurrency, move the flow to streaming or disk-backed temporary storage and remeasure peak RSS.
+Pinata artifact fetch-back is independently capped at 5 MiB and Pinata upload/metadata JSON
+responses at 1 MiB. The backend checks `Content-Length` when present and still counts streamed bytes.
+Treat `STORAGE_*_TOO_LARGE` as a provider/policy mismatch; do not retry indefinitely before checking
+the configured limits and provider response.
 
 ## State machines
 
