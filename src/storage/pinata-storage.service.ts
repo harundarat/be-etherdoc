@@ -52,7 +52,7 @@ export class PinataStorageService {
     const form = new FormData();
     form.append(
       'file',
-      new Blob([file.buffer], { type: file.mimetype }),
+      new Blob([Uint8Array.from(file.buffer)], { type: file.mimetype }),
       storageFilename,
     );
     form.append('network', storageNetwork);

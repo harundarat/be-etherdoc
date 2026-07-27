@@ -60,7 +60,9 @@ describe('PinataStorageService', () => {
           status: 200,
         }),
       )
-      .mockResolvedValueOnce(new Response(upload.buffer, { status: 200 }));
+      .mockResolvedValueOnce(
+        new Response(Uint8Array.from(upload.buffer), { status: 200 }),
+      );
 
     await expect(
       service().pinAndVerify(upload, 'private', metadata(upload.buffer.length)),

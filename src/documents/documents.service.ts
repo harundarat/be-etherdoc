@@ -80,12 +80,6 @@ interface ReceiverDocumentRecord {
   version: bigint;
 }
 
-interface ReceiverProcessedMessage {
-  documentId: Hex;
-  documentVersion: bigint;
-  processed: boolean;
-}
-
 interface ReceiverReceipt {
   document: ReceiverDocumentRecord;
   messageId: Hex;
@@ -176,12 +170,12 @@ export class DocumentsService {
     const documentId = this.parseDocumentId(requestedDocumentId);
     let document: CanonicalDocumentRecord;
     try {
-      document = (await this.blockchain.sourceReader.readContract({
+      document = await this.blockchain.sourceReader.readContract({
         abi: this.senderAbi,
         address: this.runtime.blockchain.source.contractAddress,
         args: [documentId],
         functionName: 'getDocument',
-      })) as CanonicalDocumentRecord;
+      });
     } catch (error) {
       const classified = classifyBlockchainError(
         error,
@@ -291,7 +285,7 @@ export class DocumentsService {
           functionName: 'verifyDocument',
         });
       return {
-        document: document as CanonicalDocumentRecord,
+        document,
         integrityMatches,
         isActive,
       };
@@ -466,7 +460,7 @@ export class DocumentsService {
           functionName: 'verifyDocument',
         }),
       ]);
-      const processed = processedRaw as ReceiverProcessedMessage;
+      const processed = processedRaw;
       const receipt = receiptRaw as ReceiverReceipt;
       const [receiverDocument, integrityMatches, isActive] = verification;
       const dispatchVersion = BigInt(dispatch.document_version);

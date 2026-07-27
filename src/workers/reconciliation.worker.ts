@@ -29,16 +29,6 @@ interface RecoverableDispatch {
   status: string;
 }
 
-interface DispatchRecord {
-  destinationChainSelector: bigint;
-  documentVersion: bigint;
-  gasLimit: number;
-  messageId: Hex;
-  receiver: `0x${string}`;
-  sentAt: bigint;
-  status: number;
-}
-
 export function missingNonceEvidenceDisposition(
   latestNonce: bigint,
   reservedNonce: bigint,
@@ -284,7 +274,7 @@ export class ReconciliationWorker {
       functionName: 'getDispatchAtVersion',
       blockNumber: finalizedBlock,
     });
-    const record = recordRaw as DispatchRecord;
+    const record = recordRaw;
     if (
       record.status !== 1 ||
       record.messageId !== event.args.messageId ||

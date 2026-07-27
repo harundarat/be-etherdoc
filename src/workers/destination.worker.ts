@@ -19,12 +19,6 @@ interface TrackedDispatch {
   status: string;
 }
 
-interface ProcessedMessage {
-  documentId: Hex;
-  documentVersion: bigint;
-  processed: boolean;
-}
-
 interface ReceiptRecord {
   document: {
     contentDigest: Hex;
@@ -88,7 +82,7 @@ export class DestinationWorker {
         blockNumber: finalizedBlock,
       }),
     ]);
-    const processed = processedRaw as ProcessedMessage;
+    const processed = processedRaw;
     const receipt = receiptRaw as ReceiptRecord;
 
     if (!processed.processed) {

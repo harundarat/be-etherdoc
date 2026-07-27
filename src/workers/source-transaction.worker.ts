@@ -588,7 +588,7 @@ export class SourceTransactionWorker {
       functionName: 'getDocument',
       args: [documentId],
     });
-    return document as ChainDocumentRecord;
+    return document;
   }
 
   private async upsertProjection(

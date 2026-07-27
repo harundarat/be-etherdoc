@@ -24,24 +24,6 @@ interface ChainCursor {
   next_block: string;
 }
 
-interface ChainDocumentRecord {
-  cidCodec: number;
-  cidDigest: Hex;
-  contentDigest: Hex;
-  documentCID: string;
-  documentId: Hex;
-  issuer: Address;
-  metadataCommitment: Hex;
-  registeredAt: bigint;
-  schemaVersion: number;
-  sourceChainId: bigint;
-  status: number;
-  supersededBy: Hex;
-  supersedes: Hex;
-  updatedAt: bigint;
-  version: bigint;
-}
-
 interface IndexedLog {
   args: Record<string, unknown>;
   blockHash: Hex;
@@ -382,7 +364,7 @@ export class ChainIndexerService implements OnModuleInit, OnModuleDestroy {
       blockNumber: log.blockNumber,
       functionName: 'getDocument',
     });
-    const document = documentRaw as ChainDocumentRecord;
+    const document = documentRaw;
     const lifecycle = ['UNKNOWN', 'ACTIVE', 'REVOKED', 'SUPERSEDED'][
       document.status
     ];
