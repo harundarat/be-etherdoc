@@ -12,13 +12,14 @@ import {
   type QueryResultRow,
 } from 'pg';
 import type { OutboxJobType, RuntimeConfig } from '../config/runtime-config';
+import { parseOutboxPayload, type OutboxPayload } from './outbox-payload';
 
 export interface OutboxJob {
   attemptCount: number;
   id: string;
   jobType: OutboxJobType;
   leaseToken: string;
-  payload: Record<string, unknown>;
+  payload: OutboxPayload;
 }
 
 export class OutboxLeaseLostError extends Error {
@@ -160,7 +161,7 @@ export class DatabaseService
         id: string;
         job_type: OutboxJobType;
         lease_token: string;
-        payload: Record<string, unknown>;
+        payload: unknown;
       }>(
         `
           WITH claimable AS (
@@ -192,7 +193,7 @@ export class DatabaseService
         id: row.id,
         jobType: row.job_type,
         leaseToken: row.lease_token,
-        payload: row.payload,
+        payload: parseOutboxPayload(row.job_type, row.payload),
       }));
     });
   }

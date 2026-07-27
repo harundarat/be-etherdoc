@@ -5,6 +5,7 @@ import { BlockchainService } from '../blockchain/blockchain.service';
 import type { RuntimeConfig } from '../config/runtime-config';
 import { etherdocContractArtifacts } from '../contracts/generated';
 import { DatabaseService } from '../database/database.service';
+import type { OutboxPayload } from '../database/outbox-payload';
 import { DestinationWorker } from './destination.worker';
 import { DispatchWorker } from './dispatch.worker';
 import { RetryableJobError, TerminalJobError } from './worker-errors';
@@ -51,7 +52,7 @@ export class ReconciliationWorker {
     this.runtime = configService.getOrThrow<RuntimeConfig>('runtime');
   }
 
-  async reconcile(payload: Record<string, unknown>): Promise<void> {
+  async reconcile(payload: OutboxPayload): Promise<void> {
     const intentId = payload.intentId;
     const transactionId = payload.transactionId;
     if (typeof intentId === 'string' && typeof transactionId === 'string') {

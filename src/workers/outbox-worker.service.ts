@@ -269,6 +269,11 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async execute(job: OutboxJob): Promise<void> {
+    if (job.payload.invalidReason) {
+      throw new TerminalJobError(
+        `Outbox job ${job.id} has invalid payload: ${job.payload.invalidReason}`,
+      );
+    }
     if (job.jobType === 'SUBMIT_SOURCE') {
       await this.sourceWorker.submit(this.payloadId(job, 'intentId'));
     } else if (job.jobType === 'CONFIRM_SOURCE') {
@@ -302,7 +307,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private payloadId(job: OutboxJob, key: string): string {
+  private payloadId(job: OutboxJob, key: 'dispatchId' | 'intentId'): string {
     const value = job.payload[key];
     if (typeof value !== 'string' || value.length === 0) {
       throw new TerminalJobError(
