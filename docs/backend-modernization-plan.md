@@ -2,7 +2,7 @@
 
 Plan date: 27 July 2026.
 
-Status: implementation in progress; Phases 1 and 2 completed on 27 July 2026.
+Status: implementation in progress; Phases 1, 2, and 3 completed on 27 July 2026.
 
 This document is the execution plan for an AI Coding Agent modernizing `be-etherdoc`. The work is
 intended to improve dependency security, production safety, reliability, type safety, test depth,
@@ -294,6 +294,16 @@ Do not claim tenant isolation unless ownership is implemented and tested.
 - Nonce storage growth is bounded.
 - Invalid intent UUIDs return `400`, not a PostgreSQL-derived `500`.
 - HTTP security headers and the chosen CSRF policy are covered by e2e tests.
+
+Implementation record: commit `a4551a9` unifies session lifetime and moves SIWE verification
+outside the nonce-consumption transaction while preserving an atomic conditional consume. Commit
+`930e562` adds scheduled batched nonce retention and migration `005_auth_nonce_retention.sql`.
+Commit `dd54b06` adds Helmet, explicit cookie/proxy configuration, Origin-based cookie CSRF
+protection, and independent general/auth/search/multipart limits. Commit `df64bf7` adds UUID and
+metadata length validation, consolidates `StorageNetwork`, and records the shared Pinata workspace
+decision. Commit `f3315a2` executes nonce cleanup against PostgreSQL. The complete lint, unit, HTTP,
+PostgreSQL 16 migration/integration, build, contract-drift, production audit, and production-only
+installation gates passed.
 
 ## Phase 4: Graceful shutdown and reliable outbox leases
 
@@ -592,10 +602,10 @@ contract artifact.
 - [x] Runtime dependencies are correctly classified and production-only install is tested.
 - [x] Unused direct dependencies are removed.
 - [x] Multipart and Pinata response bounds are enforced before unbounded allocation.
-- [ ] Authentication and upload/search rate limits are active and documented.
-- [ ] JWT, cookie, and response session lifetime use one value.
-- [ ] Nonce cleanup and concurrent replay tests are implemented.
-- [ ] CSRF and Pinata workspace authorization policies are explicit and tested.
+- [x] Authentication and upload/search rate limits are active and documented.
+- [x] JWT, cookie, and response session lifetime use one value.
+- [x] Nonce cleanup and concurrent replay tests are implemented.
+- [x] CSRF and Pinata workspace authorization policies are explicit and tested.
 - [ ] Shutdown hooks are enabled and active worker ticks drain safely.
 - [ ] Outbox jobs use lease tokens, heartbeats, periodic stale recovery, and retry exhaustion.
 - [ ] Liveness/readiness and operational signals are implemented without leaking secrets.
