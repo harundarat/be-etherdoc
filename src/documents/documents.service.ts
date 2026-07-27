@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  HttpException,
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
@@ -14,13 +13,8 @@ import type { RuntimeConfig } from '../config/runtime-config';
 import { etherdocContractArtifacts } from '../contracts/generated';
 import { DatabaseService } from '../database/database.service';
 import { PinataStorageService } from '../storage/pinata-storage.service';
-import {
-  cancelResponseBody,
-  InvalidJsonResponseError,
-  PINATA_JSON_RESPONSE_MAX_BYTES,
-  readBoundedJsonResponse,
-  ResponseBodyTooLargeError,
-} from '../storage/bounded-response';
+import { PinataMetadataService } from '../storage/pinata-metadata.service';
+import type { PinataMetadataResponse } from '../storage/pinata-response';
 import { computeDocumentId, sha256Digest } from './canonical-document';
 import { documentLifecycleStatus } from './document-status';
 import type { SearchDocumentDto } from './dto';
@@ -109,28 +103,27 @@ export class DocumentsService {
     configService: ConfigService,
     private readonly database: DatabaseService,
     private readonly storage: PinataStorageService,
+    private readonly metadata: PinataMetadataService,
   ) {
     this.runtime = configService.getOrThrow<RuntimeConfig>('runtime');
   }
 
-  createGroup(network: StorageNetwork, groupName: string): Promise<unknown> {
-    return this.pinataRequest(`/groups/${network}`, {
-      body: JSON.stringify({ name: groupName }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'POST',
-    });
+  createGroup(
+    network: StorageNetwork,
+    groupName: string,
+  ): Promise<PinataMetadataResponse> {
+    return this.metadata.createGroup(network, groupName);
   }
 
-  getListFiles(network: StorageNetwork, groupId?: string): Promise<unknown> {
-    const url = new URL(`${this.runtime.pinata.apiUrl}/files/${network}`);
-    if (groupId) {
-      url.searchParams.set('group', groupId);
-    }
-    return this.pinataRequest(url);
+  getListFiles(
+    network: StorageNetwork,
+    groupId?: string,
+  ): Promise<PinataMetadataResponse> {
+    return this.metadata.listFiles(network, groupId);
   }
 
-  getListGroups(network: StorageNetwork): Promise<unknown> {
-    return this.pinataRequest(`/groups/${network}`);
+  getListGroups(network: StorageNetwork): Promise<PinataMetadataResponse> {
+    return this.metadata.listGroups(network);
   }
 
   async search(
@@ -529,61 +522,5 @@ export class DocumentsService {
 
   private timestamp(value: bigint): string {
     return new Date(Number(value) * 1_000).toISOString();
-  }
-
-  private async pinataRequest(
-    pathOrUrl: string | URL,
-    init: RequestInit = {},
-  ): Promise<unknown> {
-    const url =
-      pathOrUrl instanceof URL
-        ? pathOrUrl
-        : new URL(pathOrUrl, `${this.runtime.pinata.apiUrl}/`);
-    let response: Response;
-    try {
-      response = await fetch(url, {
-        ...init,
-        headers: {
-          Authorization: `Bearer ${this.runtime.pinata.jwt}`,
-          ...init.headers,
-        },
-        signal: AbortSignal.timeout(this.runtime.blockchain.requestTimeoutMs),
-      });
-    } catch {
-      throw new ServiceUnavailableException({
-        error: 'STORAGE_UNAVAILABLE',
-        message: 'Pinata metadata API is unavailable',
-      });
-    }
-    if (!response.ok) {
-      await cancelResponseBody(response);
-      throw new HttpException(
-        {
-          error: 'STORAGE_METADATA_REQUEST_FAILED',
-          message: `Pinata metadata API returned HTTP ${response.status}`,
-        },
-        response.status,
-      );
-    }
-    try {
-      return await readBoundedJsonResponse(
-        response,
-        PINATA_JSON_RESPONSE_MAX_BYTES,
-      );
-    } catch (error) {
-      if (error instanceof ResponseBodyTooLargeError) {
-        throw new ServiceUnavailableException({
-          error: 'STORAGE_METADATA_RESPONSE_TOO_LARGE',
-          message: 'Pinata metadata response exceeded the JSON response limit',
-        });
-      }
-      throw new ServiceUnavailableException({
-        error:
-          error instanceof InvalidJsonResponseError
-            ? 'STORAGE_METADATA_RESPONSE_INVALID'
-            : 'STORAGE_METADATA_RESPONSE_FAILED',
-        message: 'Pinata metadata response could not be parsed',
-      });
-    }
   }
 }

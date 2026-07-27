@@ -4,6 +4,7 @@ import type { RuntimeConfig } from '../config/runtime-config';
 import type { DatabaseService } from '../database/database.service';
 import type { PinataStorageService } from '../storage/pinata-storage.service';
 import { PINATA_JSON_RESPONSE_MAX_BYTES } from '../storage/bounded-response';
+import { PinataMetadataService } from '../storage/pinata-metadata.service';
 import { computeDocumentId, sha256Digest } from './canonical-document';
 import { DocumentsService } from './documents.service';
 import { StorageNetwork } from '../storage/storage-network';
@@ -61,6 +62,7 @@ function canonicalDocument() {
 }
 
 function createService() {
+  const configService = new ConfigService({ runtime: runtime() });
   const document = canonicalDocument();
   const sourceReader = {
     getBlock: jest.fn().mockResolvedValue({ hash: blockHash }),
@@ -106,9 +108,10 @@ function createService() {
         destinationReader,
         sourceReader,
       } as unknown as BlockchainService,
-      new ConfigService({ runtime: runtime() }),
+      configService,
       database as unknown as DatabaseService,
       storage as unknown as PinataStorageService,
+      new PinataMetadataService(configService),
     ),
     sourceReader,
   };

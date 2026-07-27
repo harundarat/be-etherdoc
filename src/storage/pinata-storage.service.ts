@@ -24,13 +24,7 @@ import {
 } from './bounded-response';
 import { StorageNetwork } from './storage-network';
 import { ExternalRequestObserver } from '../observability/external-request-observer.service';
-
-interface PinataUploadResponse {
-  data?: {
-    cid?: string;
-    id?: string;
-  };
-}
+import { parsePinataUploadResponse } from './pinata-response';
 
 export interface VerifiedPinnedArtifact extends ParsedCanonicalCid {
   contentDigest: Hex;
@@ -99,12 +93,11 @@ export class PinataStorageService {
       });
     }
 
-    let upload: PinataUploadResponse;
+    let upload;
     try {
-      upload = (await readBoundedJsonResponse(
-        response,
-        PINATA_JSON_RESPONSE_MAX_BYTES,
-      )) as PinataUploadResponse;
+      upload = parsePinataUploadResponse(
+        await readBoundedJsonResponse(response, PINATA_JSON_RESPONSE_MAX_BYTES),
+      );
     } catch (error) {
       if (error instanceof ResponseBodyTooLargeError) {
         throw new ServiceUnavailableException({
