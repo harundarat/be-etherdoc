@@ -2,6 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createPublicClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+import { createSiweMessage } from 'viem/siwe';
 import type { RuntimeConfig } from '../config/runtime-config';
 import type { DatabaseService } from '../database/database.service';
 import type { BlockchainService } from '../blockchain/blockchain.service';
@@ -26,6 +27,22 @@ function runtime(): RuntimeConfig {
       uri: 'https://etherdoc.example',
     },
   } as RuntimeConfig;
+}
+
+function siweMessage(
+  issuedAt = new Date(),
+  expirationTime = new Date(issuedAt.getTime() + 300_000),
+): string {
+  return createSiweMessage({
+    address: account.address,
+    chainId: runtime().blockchain.source.chainId,
+    domain: runtime().siwe.domain,
+    expirationTime,
+    issuedAt,
+    nonce: 'abcdefgh',
+    uri: runtime().siwe.uri,
+    version: '1',
+  });
 }
 
 describe('AuthService', () => {
@@ -193,5 +210,68 @@ describe('AuthService', () => {
     expect(attempts.filter(({ status }) => status === 'rejected')).toHaveLength(
       1,
     );
+  });
+
+  it('rejects an expired stored challenge before signature verification', async () => {
+    const message = siweMessage();
+    const request = jest.fn();
+    const database = {
+      query: jest.fn().mockResolvedValue({
+        rowCount: 1,
+        rows: [
+          {
+            expires_at: new Date(Date.now() - 1),
+            id: 'nonce-id',
+            siwe_message: message,
+            wallet_address: account.address,
+          },
+        ],
+      }),
+    };
+    const service = new AuthService(
+      { sourceReader: { request } } as unknown as BlockchainService,
+      new ConfigService({ runtime: runtime() }),
+      database as unknown as DatabaseService,
+      new JwtService({ secret: runtime().jwt.secret }),
+    );
+
+    await expect(service.verify(message, '0x00')).rejects.toThrow(
+      'SIWE challenge expired or changed',
+    );
+    expect(request).not.toHaveBeenCalled();
+    expect(database.query).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails closed when smart-account signature verification loses RPC', async () => {
+    const message = siweMessage();
+    const request = jest
+      .fn()
+      .mockRejectedValue(new Error('ERC-1271 RPC unavailable'));
+    const database = {
+      query: jest.fn().mockResolvedValue({
+        rowCount: 1,
+        rows: [
+          {
+            expires_at: new Date(Date.now() + 300_000),
+            id: 'nonce-id',
+            siwe_message: message,
+            wallet_address: account.address,
+          },
+        ],
+      }),
+    };
+    const service = new AuthService(
+      { sourceReader: { request } } as unknown as BlockchainService,
+      new ConfigService({ runtime: runtime() }),
+      database as unknown as DatabaseService,
+      new JwtService({ secret: runtime().jwt.secret }),
+    );
+    const invalidContractSignature = `0x${'00'.repeat(65)}`;
+
+    await expect(
+      service.verify(message, invalidContractSignature),
+    ).rejects.toThrow('Invalid SIWE signature');
+    expect(request).toHaveBeenCalled();
+    expect(database.query).toHaveBeenCalledTimes(1);
   });
 });
