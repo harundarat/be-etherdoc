@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { getAddress, type Address, type Hex } from 'viem';
 import { BlockchainService } from '../blockchain/blockchain.service';
@@ -41,6 +41,7 @@ const lifecycleStatus = {
 
 @Injectable()
 export class DestinationWorker {
+  private readonly logger = new Logger(DestinationWorker.name);
   private readonly receiverAbi =
     etherdocContractArtifacts.contracts.receiver.abi;
   private readonly runtime: RuntimeConfig;
@@ -367,5 +368,8 @@ export class DestinationWorker {
         ],
       );
     });
+    this.logger.error(
+      `Dispatch ${dispatchId} entered RECOVERY_REQUIRED (${code}): ${detail}`,
+    );
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   decodeEventLog,
@@ -79,6 +79,7 @@ export function bufferedMaximumFee(
 
 @Injectable()
 export class DispatchWorker {
+  private readonly logger = new Logger(DispatchWorker.name);
   private readonly runtime: RuntimeConfig;
   private readonly senderAbi = etherdocContractArtifacts.contracts.sender.abi;
 
@@ -464,6 +465,9 @@ export class DispatchWorker {
       if (manageTransaction) {
         await client.query('COMMIT');
       }
+      this.logger.error(
+        `Dispatch ${dispatchId} entered RECOVERY_REQUIRED (${code}): ${detail}`,
+      );
     } catch (transactionError) {
       if (manageTransaction) {
         await client.query('ROLLBACK');
