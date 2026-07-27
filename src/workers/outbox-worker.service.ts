@@ -3,9 +3,11 @@ import {
   Logger,
   OnModuleDestroy,
   OnModuleInit,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { hostname } from 'node:os';
+import { createHash } from 'node:crypto';
 import type { RuntimeConfig } from '../config/runtime-config';
 import {
   DatabaseService,
@@ -17,6 +19,8 @@ import { DispatchWorker } from './dispatch.worker';
 import { ReconciliationWorker } from './reconciliation.worker';
 import { SourceTransactionWorker } from './source-transaction.worker';
 import { TerminalJobError } from './worker-errors';
+import { CorrelationContextService } from '../observability/correlation-context.service';
+import { redactSensitiveText } from '../observability/log-safety';
 
 @Injectable()
 export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
@@ -34,6 +38,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     private readonly dispatchWorker: DispatchWorker,
     private readonly reconciliationWorker: ReconciliationWorker,
     private readonly sourceWorker: SourceTransactionWorker,
+    @Optional() private readonly correlation?: CorrelationContextService,
   ) {
     this.runtime = configService.getOrThrow<RuntimeConfig>('runtime');
   }
@@ -77,7 +82,10 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
         this.runtime.worker.batchSize,
       );
       if (reclaimed > 0) {
-        this.logger.warn(`Reclaimed ${reclaimed} expired outbox lease(s)`);
+        this.logger.warn({
+          event: 'outbox_expired_leases_reclaimed',
+          reclaimed,
+        });
       }
       for (
         let claimed = 0;
@@ -88,11 +96,21 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
         if (!job) {
           break;
         }
-        await this.process(job);
+        const correlationId = this.jobCorrelationId(job);
+        if (this.correlation) {
+          await this.correlation.run(correlationId, () => this.process(job));
+        } else {
+          await this.process(job);
+        }
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Outbox polling failed: ${message}`);
+      this.logger.error(
+        {
+          errorClassification: this.errorClassification(error),
+          event: 'outbox_poll_failed',
+        },
+        redactSensitiveText(error instanceof Error ? error.stack : null),
+      );
     }
   }
 
@@ -116,13 +134,20 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       clearTimeout(timeout);
     }
     if (result === timedOut) {
-      this.logger.error(
-        `Shutdown drain timed out after ${this.runtime.worker.drainTimeoutMs}ms with an active outbox tick`,
-      );
+      this.logger.error({
+        drainTimeoutMs: this.runtime.worker.drainTimeoutMs,
+        event: 'outbox_shutdown_drain_timed_out',
+      });
     }
   }
 
   private async process(job: OutboxJob): Promise<void> {
+    const startedAt = performance.now();
+    const context = this.jobLogContext(job);
+    this.logger.log({
+      ...context,
+      event: 'outbox_job_started',
+    });
     const heartbeatState: { promise: Promise<void> | null } = {
       promise: null,
     };
@@ -136,13 +161,20 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
         .catch((error: unknown) => {
           if (error instanceof OutboxLeaseLostError) {
             leaseLost = true;
-            this.logger.warn(error.message);
+            this.logger.warn({
+              ...context,
+              event: 'outbox_lease_lost',
+              operation: 'heartbeat',
+            });
             return;
           }
-          const message =
-            error instanceof Error ? error.message : String(error);
           this.logger.error(
-            `Outbox heartbeat failed for job ${job.id}: ${message}`,
+            {
+              ...context,
+              errorClassification: this.errorClassification(error),
+              event: 'outbox_heartbeat_failed',
+            },
+            redactSensitiveText(error instanceof Error ? error.stack : null),
           );
         })
         .finally(() => {
@@ -168,24 +200,31 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       }
       const message = error instanceof Error ? error.message : String(error);
       if (error instanceof TerminalJobError) {
-        await this.transitionWithLease(
-          job,
-          () => this.database.failOutboxJob(job.id, job.leaseToken, message),
-          `Outbox job ${job.id} failed terminally: ${message}`,
+        const transitioned = await this.transitionWithLease(job, () =>
+          this.database.failOutboxJob(job.id, job.leaseToken, message),
         );
+        if (transitioned) {
+          this.logJobError(
+            'outbox_job_failed_terminally',
+            job,
+            error,
+            startedAt,
+          );
+        }
         return;
       }
       const maxAttempts = this.runtime.worker.maxAttempts[job.jobType];
       if (job.attemptCount >= maxAttempts) {
         const exhausted = `Retry exhausted after ${job.attemptCount} attempt(s): ${message}`;
-        await this.transitionWithLease(
-          job,
-          () => this.database.failOutboxJob(job.id, job.leaseToken, exhausted),
-          `Outbox job ${job.id} exhausted retries: ${message}`,
+        const transitioned = await this.transitionWithLease(job, () =>
+          this.database.failOutboxJob(job.id, job.leaseToken, exhausted),
         );
+        if (transitioned) {
+          this.logJobError('outbox_job_retry_exhausted', job, error, startedAt);
+        }
         return;
       }
-      await this.transitionWithLease(job, () =>
+      const transitioned = await this.transitionWithLease(job, () =>
         this.database.retryOutboxJob(
           job.id,
           job.leaseToken,
@@ -193,6 +232,14 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
           message,
         ),
       );
+      if (transitioned) {
+        this.logger.warn({
+          ...context,
+          durationMs: Math.round(performance.now() - startedAt),
+          errorClassification: this.errorClassification(error),
+          event: 'outbox_job_retry_scheduled',
+        });
+      }
       return;
     }
 
@@ -201,9 +248,16 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     if (leaseLost) {
       return;
     }
-    await this.transitionWithLease(job, () =>
+    const transitioned = await this.transitionWithLease(job, () =>
       this.database.completeOutboxJob(job.id, job.leaseToken),
     );
+    if (transitioned) {
+      this.logger.log({
+        ...context,
+        durationMs: Math.round(performance.now() - startedAt),
+        event: 'outbox_job_completed',
+      });
+    }
   }
 
   private async settleHeartbeat(state: {
@@ -231,17 +285,18 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
   private async transitionWithLease(
     job: OutboxJob,
     transition: () => Promise<void>,
-    alert?: string,
-  ): Promise<void> {
+  ): Promise<boolean> {
     try {
       await transition();
-      if (alert) {
-        this.logger.error(alert);
-      }
+      return true;
     } catch (error) {
       if (error instanceof OutboxLeaseLostError) {
-        this.logger.warn(error.message);
-        return;
+        this.logger.warn({
+          ...this.jobLogContext(job),
+          event: 'outbox_lease_lost',
+          operation: 'state_transition',
+        });
+        return false;
       }
       throw error;
     }
@@ -255,5 +310,52 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       );
     }
     return value;
+  }
+
+  private errorClassification(error: unknown): string {
+    return error instanceof Error ? error.name : 'UnknownError';
+  }
+
+  private jobCorrelationId(job: OutboxJob): string {
+    const correlationId = job.payload.correlationId;
+    return typeof correlationId === 'string' && correlationId.length <= 128
+      ? correlationId
+      : `outbox:${job.id}`;
+  }
+
+  private jobLogContext(job: OutboxJob) {
+    return {
+      attempt: job.attemptCount,
+      correlationId: this.jobCorrelationId(job),
+      dispatchId:
+        typeof job.payload.dispatchId === 'string'
+          ? job.payload.dispatchId
+          : null,
+      intentId:
+        typeof job.payload.intentId === 'string' ? job.payload.intentId : null,
+      jobId: job.id,
+      jobType: job.jobType,
+      leaseFingerprint: createHash('sha256')
+        .update(job.leaseToken)
+        .digest('hex')
+        .slice(0, 12),
+    };
+  }
+
+  private logJobError(
+    event: string,
+    job: OutboxJob,
+    error: unknown,
+    startedAt: number,
+  ): void {
+    this.logger.error(
+      {
+        ...this.jobLogContext(job),
+        durationMs: Math.round(performance.now() - startedAt),
+        errorClassification: this.errorClassification(error),
+        event,
+      },
+      redactSensitiveText(error instanceof Error ? error.stack : null),
+    );
   }
 }

@@ -6,6 +6,7 @@ import {
   type ChainSide,
   OperationalStateService,
 } from '../observability/operational-state.service';
+import { redactSensitiveText } from '../observability/log-safety';
 
 type OutboxState = 'COMPLETED' | 'FAILED' | 'READY' | 'RUNNING';
 
@@ -48,14 +49,7 @@ interface RecoveryRow {
 }
 
 export function sanitizedOperationalError(value: string | null): string | null {
-  if (!value) {
-    return null;
-  }
-  return value
-    .replace(/\b(?:postgres(?:ql)?|https?):\/\/\S+/gi, '[redacted-url]')
-    .replace(/\bBearer\s+\S+/gi, 'Bearer [redacted]')
-    .replace(/\b(token|secret|password)=\S+/gi, '$1=[redacted]')
-    .slice(0, 512);
+  return redactSensitiveText(value, 512);
 }
 
 @Injectable()

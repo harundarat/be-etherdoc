@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { getAddress, type Address, type Hex } from 'viem';
 import { BlockchainService } from '../blockchain/blockchain.service';
@@ -6,6 +6,7 @@ import type { RuntimeConfig } from '../config/runtime-config';
 import { etherdocContractArtifacts } from '../contracts/generated';
 import { DatabaseService } from '../database/database.service';
 import { RetryableJobError, TerminalJobError } from './worker-errors';
+import { CorrelationContextService } from '../observability/correlation-context.service';
 
 interface TrackedDispatch {
   content_digest: Hex;
@@ -50,6 +51,7 @@ export class DestinationWorker {
     private readonly blockchain: BlockchainService,
     configService: ConfigService,
     private readonly database: DatabaseService,
+    @Optional() private readonly correlation?: CorrelationContextService,
   ) {
     this.runtime = configService.getOrThrow<RuntimeConfig>('runtime');
   }
@@ -368,8 +370,11 @@ export class DestinationWorker {
         ],
       );
     });
-    this.logger.error(
-      `Dispatch ${dispatchId} entered RECOVERY_REQUIRED (${code}): ${detail}`,
-    );
+    this.logger.error({
+      correlationId: this.correlation?.currentId() ?? null,
+      dispatchId,
+      event: 'destination_recovery_required',
+      failureCode: code,
+    });
   }
 }

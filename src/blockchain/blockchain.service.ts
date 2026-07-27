@@ -23,6 +23,7 @@ import {
   classifyBlockchainError,
 } from './blockchain.errors';
 import { OperationalStateService } from '../observability/operational-state.service';
+import { ExternalRequestObserver } from '../observability/external-request-observer.service';
 
 type EtherdocPublicClient = ReturnType<typeof createPublicClient>;
 type EtherdocWalletClient = ReturnType<typeof createWalletClient>;
@@ -63,6 +64,7 @@ export class BlockchainService implements OnModuleInit {
 
   constructor(
     configService: ConfigService,
+    private readonly externalRequests: ExternalRequestObserver,
     private readonly operationalState: OperationalStateService,
   ) {
     this.runtime = configService.getOrThrow<RuntimeConfig>('runtime');
@@ -80,25 +82,37 @@ export class BlockchainService implements OnModuleInit {
       blockchain.destination.explorerUrl,
     );
     const account = privateKeyToAccount(blockchain.signerPrivateKey);
-    const transportOptions = { timeout: blockchain.requestTimeoutMs };
+    const sourceTransportOptions = {
+      fetchFn: (input: string | URL | Request, init?: RequestInit) =>
+        this.externalRequests.fetch('rpc', 'source', input, init),
+      timeout: blockchain.requestTimeoutMs,
+    };
+    const destinationTransportOptions = {
+      fetchFn: (input: string | URL | Request, init?: RequestInit) =>
+        this.externalRequests.fetch('rpc', 'destination', input, init),
+      timeout: blockchain.requestTimeoutMs,
+    };
 
     this.sourceReader = createPublicClient({
       chain: sourceChain,
-      transport: http(blockchain.source.rpcUrl, transportOptions),
+      transport: http(blockchain.source.rpcUrl, sourceTransportOptions),
     });
     this.destinationReader = createPublicClient({
       chain: destinationChain,
-      transport: http(blockchain.destination.rpcUrl, transportOptions),
+      transport: http(
+        blockchain.destination.rpcUrl,
+        destinationTransportOptions,
+      ),
     });
     this.relayerSubmission = createWalletClient({
       account,
       chain: sourceChain,
-      transport: http(blockchain.source.rpcUrl, transportOptions),
+      transport: http(blockchain.source.rpcUrl, sourceTransportOptions),
     });
     this.operatorDispatch = createWalletClient({
       account,
       chain: sourceChain,
-      transport: http(blockchain.source.rpcUrl, transportOptions),
+      transport: http(blockchain.source.rpcUrl, sourceTransportOptions),
     });
   }
 

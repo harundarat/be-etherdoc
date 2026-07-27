@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Optional,
   ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -22,6 +23,7 @@ import {
   ResponseBodyTooLargeError,
 } from './bounded-response';
 import { StorageNetwork } from './storage-network';
+import { ExternalRequestObserver } from '../observability/external-request-observer.service';
 
 interface PinataUploadResponse {
   data?: {
@@ -47,7 +49,10 @@ export interface StorageAvailability {
 export class PinataStorageService {
   private readonly runtime: RuntimeConfig;
 
-  constructor(configService: ConfigService) {
+  constructor(
+    configService: ConfigService,
+    @Optional() private readonly externalRequests?: ExternalRequestObserver,
+  ) {
     this.runtime = configService.getOrThrow<RuntimeConfig>('runtime');
   }
 
@@ -70,12 +75,16 @@ export class PinataStorageService {
 
     let response: Response;
     try {
-      response = await fetch(this.runtime.pinata.uploadUrl, {
-        body: form,
-        headers: { Authorization: `Bearer ${this.runtime.pinata.jwt}` },
-        method: 'POST',
-        signal: AbortSignal.timeout(this.runtime.blockchain.requestTimeoutMs),
-      });
+      response = await this.observedFetch(
+        'upload',
+        this.runtime.pinata.uploadUrl,
+        {
+          body: form,
+          headers: { Authorization: `Bearer ${this.runtime.pinata.jwt}` },
+          method: 'POST',
+          signal: AbortSignal.timeout(this.runtime.blockchain.requestTimeoutMs),
+        },
+      );
     } catch {
       throw new ServiceUnavailableException({
         error: 'STORAGE_UNAVAILABLE',
@@ -131,7 +140,7 @@ export class PinataStorageService {
     const retrievalUrl = `${this.runtime.pinata.gatewayUrl}/ipfs/${encodeURIComponent(actualCid)}`;
     let retrieval: Response;
     try {
-      retrieval = await fetch(retrievalUrl, {
+      retrieval = await this.observedFetch('retrieval', retrievalUrl, {
         headers: { Authorization: `Bearer ${this.runtime.pinata.jwt}` },
         signal: AbortSignal.timeout(this.runtime.blockchain.requestTimeoutMs),
       });
@@ -187,7 +196,8 @@ export class PinataStorageService {
     const checkedAt = new Date().toISOString();
     let response: Response;
     try {
-      response = await fetch(
+      response = await this.observedFetch(
+        'availability',
         `${this.runtime.pinata.gatewayUrl}/ipfs/${encodeURIComponent(cid)}`,
         {
           headers: { Authorization: `Bearer ${this.runtime.pinata.jwt}` },
@@ -206,5 +216,15 @@ export class PinataStorageService {
       checkedAt,
       status: response.status === 404 ? 'NOT_FOUND' : 'UNAVAILABLE',
     };
+  }
+
+  private observedFetch(
+    operation: string,
+    input: string,
+    init: RequestInit,
+  ): Promise<Response> {
+    return this.externalRequests
+      ? this.externalRequests.fetch('pinata', operation, input, init)
+      : fetch(input, init);
   }
 }

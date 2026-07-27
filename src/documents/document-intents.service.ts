@@ -2,7 +2,9 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
+  Optional,
   UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -34,6 +36,7 @@ import type {
   RevokeIntentDto,
   SupersedeIntentDto,
 } from './dto';
+import { CorrelationContextService } from '../observability/correlation-context.service';
 
 type IntentOperation = 'REGISTER' | 'REVOKE' | 'SUPERSEDE';
 type IntentStatus =
@@ -90,6 +93,7 @@ export interface IntentView {
 
 @Injectable()
 export class DocumentIntentsService {
+  private readonly logger = new Logger(DocumentIntentsService.name);
   private readonly runtime: RuntimeConfig;
   private readonly senderAbi = etherdocContractArtifacts.contracts.sender.abi;
 
@@ -98,6 +102,7 @@ export class DocumentIntentsService {
     configService: ConfigService,
     private readonly database: DatabaseService,
     private readonly storage: PinataStorageService,
+    @Optional() private readonly correlation?: CorrelationContextService,
   ) {
     this.runtime = configService.getOrThrow<RuntimeConfig>('runtime');
   }
@@ -487,9 +492,20 @@ export class DocumentIntentsService {
           )
           VALUES ($1, 'SUBMIT_SOURCE', $2, $3)
         `,
-        [`intent:${intentId}:submit-source`, intentId, { intentId }],
+        [
+          `intent:${intentId}:submit-source`,
+          intentId,
+          this.correlatedPayload('intentId', intentId),
+        ],
       );
       return result.rows[0];
+    });
+    this.logger.log({
+      correlationId: this.correlation?.currentId() ?? null,
+      event: 'intent_signature_accepted',
+      intentId,
+      operation: intent.operation,
+      status: updated.status,
     });
     return this.view(updated);
   }
@@ -511,6 +527,14 @@ export class DocumentIntentsService {
     return BigInt(
       Math.floor(Date.now() / 1_000) + this.runtime.intent.signatureTtlSeconds,
     );
+  }
+
+  private correlatedPayload(
+    key: 'dispatchId' | 'intentId',
+    value: string,
+  ): Record<string, string> {
+    const correlationId = this.correlation?.currentId();
+    return correlationId ? { [key]: value, correlationId } : { [key]: value };
   }
 
   private async authorizedIssuerNonce(issuer: Address): Promise<bigint> {

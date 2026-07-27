@@ -10,6 +10,7 @@ import { HealthService } from '../src/health/health.service';
 import { OperationalStatusService } from '../src/health/operational-status.service';
 import { OperationsAuthGuard } from '../src/health/operations-auth.guard';
 import { OperationalStateService } from '../src/observability/operational-state.service';
+import { ObservabilityModule } from '../src/observability/observability.module';
 
 interface TestContext {
   app: INestApplication;
@@ -27,6 +28,7 @@ async function application(): Promise<TestContext> {
     },
   } as RuntimeConfig;
   const module = await Test.createTestingModule({
+    imports: [ObservabilityModule],
     controllers: [HealthController],
     providers: [
       HealthService,
@@ -65,7 +67,7 @@ describe('Health API (e2e)', () => {
     const context = await application();
     applications.push(context.app);
 
-    await request(server(context.app))
+    const response = await request(server(context.app))
       .get('/health/live')
       .expect(200)
       .expect(({ body }) => {
@@ -73,6 +75,9 @@ describe('Health API (e2e)', () => {
         expect(body).toHaveProperty('checkedAt');
       });
 
+    expect(response.headers['x-request-id']).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f-]{27}$/i,
+    );
     expect(context.databaseReadiness).not.toHaveBeenCalled();
   });
 
@@ -150,5 +155,23 @@ describe('Health API (e2e)', () => {
       )
       .expect(200)
       .expect({ status: 'operational' });
+  });
+
+  it('propagates only a valid inbound request ID', async () => {
+    const context = await application();
+    applications.push(context.app);
+    const requestId = '123e4567-e89b-42d3-a456-426614174000';
+
+    const accepted = await request(server(context.app))
+      .get('/health/live')
+      .set('X-Request-ID', requestId)
+      .expect(200);
+    const replaced = await request(server(context.app))
+      .get('/health/live')
+      .set('X-Request-ID', 'Bearer secret-value')
+      .expect(200);
+
+    expect(accepted.headers['x-request-id']).toBe(requestId);
+    expect(replaced.headers['x-request-id']).not.toBe('Bearer secret-value');
   });
 });

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   decodeEventLog,
@@ -16,6 +16,8 @@ import {
   BlockchainErrorKind,
   classifyBlockchainError,
 } from '../blockchain/blockchain.errors';
+import { CorrelationContextService } from '../observability/correlation-context.service';
+import { redactSensitiveText } from '../observability/log-safety';
 
 const SIGNER_ADVISORY_LOCK = 836_483_622;
 
@@ -87,6 +89,7 @@ export class DispatchWorker {
     private readonly blockchain: BlockchainService,
     configService: ConfigService,
     private readonly database: DatabaseService,
+    @Optional() private readonly correlation?: CorrelationContextService,
   ) {
     this.runtime = configService.getOrThrow<RuntimeConfig>('runtime');
   }
@@ -466,7 +469,15 @@ export class DispatchWorker {
         await client.query('COMMIT');
       }
       this.logger.error(
-        `Dispatch ${dispatchId} entered RECOVERY_REQUIRED (${code}): ${detail}`,
+        {
+          correlationId: this.correlation?.currentId() ?? null,
+          dispatchId,
+          errorClassification:
+            error instanceof Error ? error.name : 'UnknownError',
+          event: 'dispatch_recovery_required',
+          failureCode: code,
+        },
+        redactSensitiveText(error instanceof Error ? error.stack : detail),
       );
     } catch (transactionError) {
       if (manageTransaction) {
