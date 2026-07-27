@@ -50,6 +50,7 @@ function runtime(): RuntimeConfig {
       },
     },
     corsOrigin: 'https://app.example',
+    database: { statementTimeoutMs: 15_000 },
     databaseUrl: 'postgresql://test',
     dispatch: {
       feeBufferBps: 1_000,

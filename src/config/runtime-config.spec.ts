@@ -105,6 +105,23 @@ describe('buildRuntimeConfig', () => {
     ).toThrow('RPC_REQUEST_TIMEOUT_MS');
   });
 
+  it('keeps database and blockchain request timeouts independent', () => {
+    const config = buildRuntimeConfig({
+      ...validEnvironment(),
+      DATABASE_STATEMENT_TIMEOUT_MS: '2500',
+      RPC_REQUEST_TIMEOUT_MS: '1000',
+    });
+
+    expect(config.database.statementTimeoutMs).toBe(2_500);
+    expect(config.blockchain.requestTimeoutMs).toBe(1_000);
+    expect(() =>
+      buildRuntimeConfig({
+        ...validEnvironment(),
+        DATABASE_STATEMENT_TIMEOUT_MS: '99',
+      }),
+    ).toThrow('DATABASE_STATEMENT_TIMEOUT_MS');
+  });
+
   it('uses the numeric SIWE session TTL regardless of a legacy JWT duration', () => {
     const config = buildRuntimeConfig({
       ...validEnvironment(),

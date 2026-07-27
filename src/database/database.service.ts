@@ -54,7 +54,7 @@ export class DatabaseService
     this.pool = new Pool({
       connectionString: runtime.databaseUrl,
       max: 20,
-      statement_timeout: runtime.blockchain.requestTimeoutMs,
+      statement_timeout: runtime.database.statementTimeoutMs,
     });
   }
 

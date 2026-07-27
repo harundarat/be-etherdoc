@@ -41,6 +41,7 @@ function runtime(url: string): RuntimeConfig {
         contractAddress: '0x0000000000000000000000000000000000000001',
       },
     },
+    database: { statementTimeoutMs: 5_000 },
     databaseUrl: url,
     worker: {
       batchSize: 10,

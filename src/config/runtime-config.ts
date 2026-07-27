@@ -36,6 +36,9 @@ export interface RuntimeConfig {
     source: ChainRuntimeConfig;
   };
   corsOrigin: string;
+  database: {
+    statementTimeoutMs: number;
+  };
   databaseUrl: string;
   dispatch: {
     feeBufferBps: number;
@@ -373,6 +376,14 @@ export function buildRuntimeConfig(
       },
     },
     corsOrigin: httpOrigin(environment, 'CORS_ORIGIN', 'http://localhost:3000'),
+    database: {
+      statementTimeoutMs: integer(
+        environment,
+        'DATABASE_STATEMENT_TIMEOUT_MS',
+        15_000,
+        100,
+      ),
+    },
     databaseUrl: postgresUrl(environment),
     dispatch: {
       feeBufferBps: integer(
