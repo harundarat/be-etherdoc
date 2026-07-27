@@ -80,6 +80,13 @@ export class DatabaseService
     return this.pool.query<T>(text, [...values]);
   }
 
+  async readiness(): Promise<boolean> {
+    const result = await this.pool.query<{ table_name: string | null }>(
+      `SELECT to_regclass('public.document_intent')::text AS table_name`,
+    );
+    return Boolean(result.rows[0]?.table_name);
+  }
+
   async transaction<T>(
     operation: (client: PoolClient) => Promise<T>,
   ): Promise<T> {

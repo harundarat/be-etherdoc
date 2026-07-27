@@ -149,6 +149,18 @@ describe('buildRuntimeConfig', () => {
     ).toThrow('WORKER_SHUTDOWN_DRAIN_TIMEOUT_MS');
   });
 
+  it('bounds the health readiness cache interval', () => {
+    expect(buildRuntimeConfig(validEnvironment()).health).toEqual({
+      readinessCacheMs: 5_000,
+    });
+    expect(() =>
+      buildRuntimeConfig({
+        ...validEnvironment(),
+        HEALTH_READINESS_CACHE_MS: '60001',
+      }),
+    ).toThrow('HEALTH_READINESS_CACHE_MS');
+  });
+
   it('configures heartbeat and retry limits below the lease timeout', () => {
     const config = buildRuntimeConfig({
       ...validEnvironment(),

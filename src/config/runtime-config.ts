@@ -53,6 +53,9 @@ export interface RuntimeConfig {
     replicaCount: number;
     trustProxyHops: number;
   };
+  health: {
+    readinessCacheMs: number;
+  };
   pinata: {
     apiUrl: string;
     gatewayUrl: string;
@@ -397,6 +400,15 @@ export function buildRuntimeConfig(
       cookieSecure: boolean(environment, 'COOKIE_SECURE'),
       replicaCount,
       trustProxyHops: integer(environment, 'TRUST_PROXY_HOPS', 0, 0, 10),
+    },
+    health: {
+      readinessCacheMs: integer(
+        environment,
+        'HEALTH_READINESS_CACHE_MS',
+        5_000,
+        100,
+        60_000,
+      ),
     },
     pinata: {
       apiUrl: url(environment, 'PINATA_API_URL'),

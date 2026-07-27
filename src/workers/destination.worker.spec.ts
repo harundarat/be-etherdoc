@@ -62,6 +62,7 @@ function runtime(): RuntimeConfig {
       replicaCount: 1,
       trustProxyHops: 0,
     },
+    health: { readinessCacheMs: 5_000 },
     jwt: { secret: 'x'.repeat(32) },
     pinata: {
       apiUrl: 'https://pinata.example',

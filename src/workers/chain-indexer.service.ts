@@ -13,6 +13,7 @@ import type {
 } from '../config/runtime-config';
 import { etherdocContractArtifacts } from '../contracts/generated';
 import { DatabaseService } from '../database/database.service';
+import { OperationalStateService } from '../observability/operational-state.service';
 
 const SOURCE_INDEXER_LOCK = 836_483_623;
 const DESTINATION_INDEXER_LOCK = 836_483_624;
@@ -152,6 +153,7 @@ export class ChainIndexerService implements OnModuleInit, OnModuleDestroy {
     private readonly blockchain: BlockchainService,
     configService: ConfigService,
     private readonly database: DatabaseService,
+    private readonly operationalState: OperationalStateService,
   ) {
     this.runtime = configService.getOrThrow<RuntimeConfig>('runtime');
   }
@@ -246,6 +248,7 @@ export class ChainIndexerService implements OnModuleInit, OnModuleDestroy {
     await this.enqueuePendingDispatches();
     await this.enqueueSourceAcceptedTracking();
     await this.enqueueRecoveryRequired();
+    this.operationalState.markIndexerSuccess('source', finalizedBlock);
   }
 
   private async indexDestination(): Promise<void> {
@@ -265,6 +268,7 @@ export class ChainIndexerService implements OnModuleInit, OnModuleDestroy {
       this.indexDestinationRange(fromBlock, toBlock),
     );
     await this.enqueueSourceAcceptedTracking();
+    this.operationalState.markIndexerSuccess('destination', finalizedBlock);
   }
 
   private async scanRanges(

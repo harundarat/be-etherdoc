@@ -22,6 +22,7 @@ import {
   BlockchainErrorKind,
   classifyBlockchainError,
 } from './blockchain.errors';
+import { OperationalStateService } from '../observability/operational-state.service';
 
 type EtherdocPublicClient = ReturnType<typeof createPublicClient>;
 type EtherdocWalletClient = ReturnType<typeof createWalletClient>;
@@ -60,7 +61,10 @@ export class BlockchainService implements OnModuleInit {
   readonly relayerSubmission: EtherdocWalletClient;
   readonly sourceReader: EtherdocPublicClient;
 
-  constructor(configService: ConfigService) {
+  constructor(
+    configService: ConfigService,
+    private readonly operationalState: OperationalStateService,
+  ) {
     this.runtime = configService.getOrThrow<RuntimeConfig>('runtime');
     const { blockchain } = this.runtime;
     const sourceChain = networkChain(
@@ -101,6 +105,7 @@ export class BlockchainService implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     try {
       await this.assertReady();
+      this.operationalState.markBlockchainReady();
     } catch (error) {
       const classified = classifyBlockchainError(
         error,

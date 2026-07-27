@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { BlockchainService } from '../blockchain/blockchain.service';
 import type { DatabaseService } from '../database/database.service';
+import { OperationalStateService } from '../observability/operational-state.service';
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -79,6 +80,7 @@ describe('ChainIndexerService lifecycle', () => {
       {} as BlockchainService,
       config,
       database,
+      new OperationalStateService(),
     );
 
     const tick = service.tick();
