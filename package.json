@@ -5,8 +5,15 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": "^22.0.0 || ^24.0.0",
+    "pnpm": "10.34.5"
+  },
   "scripts": {
+    "audit:prod": "pnpm audit --prod",
     "build": "nest build",
+    "check": "pnpm contracts:check && pnpm lint:check && pnpm test --runInBand && pnpm test:e2e && pnpm build",
     "contracts:check": "node scripts/sync-contract-artifacts.mjs --check",
     "contracts:sync": "node scripts/sync-contract-artifacts.mjs",
     "db:migrate": "node scripts/migrate.mjs",

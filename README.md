@@ -34,8 +34,8 @@ backlog.
 
 ## Requirements
 
-- Node.js 22
-- pnpm 10
+- Node.js 22 or 24 LTS
+- pnpm 10.34.5 (pinned by `packageManager`)
 - PostgreSQL 16
 - access to Ethereum Sepolia and Mantle Sepolia RPC endpoints
 - Pinata credentials
@@ -71,6 +71,8 @@ remote configuration, and backend signer roles. A mismatch stops the application
 pnpm contracts:check       # reject drift from the exact contract baseline
 pnpm db:migrate            # checksum-protected, advisory-locked migrations
 pnpm lint:check            # read-only lint gate
+pnpm audit:prod            # production dependency vulnerability gate
+pnpm check                 # deterministic local quality sequence
 pnpm test --runInBand      # unit tests
 pnpm test:e2e              # deterministic in-memory HTTP tests
 pnpm test:integration      # requires DATABASE_URL pointing at a test database
@@ -107,6 +109,7 @@ resent.
 - [API reference](docs/api-doc.md)
 - [Operations and recovery runbook](docs/operations-runbook.md)
 - [Backend modernization implementation plan](docs/backend-modernization-plan.md)
+- [Dependency risk register](docs/dependency-risk-register.md)
 - [Local readiness audit](docs/local-readiness-audit.md)
 - [Smart-contract compatibility baseline](docs/smart-contract-compatibility.md)
 - [Synchronization checklist](docs/TODO-smart-contract-sync.md)

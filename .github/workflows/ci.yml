@@ -12,6 +12,12 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version:
+          - 22
+          - 24
     services:
       postgres:
         image: postgres:16-alpine
@@ -57,18 +63,22 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 10.34.5
 
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ matrix.node-version }}
           cache: pnpm
           cache-dependency-path: be-etherdoc/pnpm-lock.yaml
 
       - name: Install backend dependencies
         working-directory: be-etherdoc
         run: pnpm install --frozen-lockfile
+
+      - name: Audit production dependencies
+        working-directory: be-etherdoc
+        run: pnpm audit:prod
 
       - name: Reject contract artifact drift
         working-directory: be-etherdoc
@@ -101,3 +111,14 @@ jobs:
       - name: Build
         working-directory: be-etherdoc
         run: pnpm build
+
+      - name: Verify production-only install
+        working-directory: be-etherdoc
+        shell: bash
+        run: |
+          production_dir="$(mktemp -d)"
+          cp package.json pnpm-lock.yaml pnpm-workspace.yaml "$production_dir/"
+          cp -R dist "$production_dir/dist"
+          cd "$production_dir"
+          pnpm install --prod --frozen-lockfile
+          node -e "const { AppModule } = require('./dist/app.module.js'); if (!AppModule) process.exit(1)"
