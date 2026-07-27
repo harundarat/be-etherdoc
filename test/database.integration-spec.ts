@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { Pool } from 'pg';
+import { AuthNonceCleanupService } from '../src/auth/auth-nonce-cleanup.service';
 import type { RuntimeConfig } from '../src/config/runtime-config';
 import { DatabaseService } from '../src/database/database.service';
 
@@ -83,6 +84,51 @@ describe('PostgreSQL protocol state', () => {
     await expect(
       insertIntent(pool, 'idempotency-two', '1'),
     ).rejects.toMatchObject({ code: '23505' });
+  });
+
+  it('deletes retained authentication nonces in bounded batches', async () => {
+    await pool.query(
+      `
+        INSERT INTO authentication_nonce(
+          wallet_address, nonce, siwe_message, issued_at, expires_at, consumed_at
+        )
+        VALUES
+          ($1, 'old-consumed', 'message', now() - interval '10 days',
+           now() - interval '9 days', now() - interval '8 days'),
+          ($1, 'old-expired', 'message', now() - interval '10 days',
+           now() - interval '8 days', NULL),
+          ($1, 'recent-consumed', 'message', now() - interval '2 days',
+           now() - interval '1 day', now() - interval '1 day'),
+          ($1, 'active', 'message', now(), now() + interval '5 minutes', NULL)
+      `,
+      [issuer],
+    );
+    const cleanup = new AuthNonceCleanupService(
+      new ConfigService({
+        runtime: {
+          auth: {
+            nonceCleanupBatchSize: 1,
+            nonceCleanupIntervalSeconds: 3_600,
+            nonceRetentionSeconds: 604_800,
+          },
+        } as RuntimeConfig,
+      }),
+      {
+        query: (text: string, values: readonly unknown[]) =>
+          pool.query(text, [...values]),
+      } as unknown as DatabaseService,
+    );
+
+    await expect(cleanup.cleanup()).resolves.toBe(1);
+    await expect(cleanup.cleanup()).resolves.toBe(1);
+    await expect(cleanup.cleanup()).resolves.toBe(0);
+    const remaining = await pool.query<{ nonce: string }>(
+      `SELECT nonce FROM authentication_nonce ORDER BY nonce`,
+    );
+    expect(remaining.rows.map(({ nonce }) => nonce)).toEqual([
+      'active',
+      'recent-consumed',
+    ]);
   });
 
   it('lets concurrent workers claim distinct jobs with SKIP LOCKED', async () => {
