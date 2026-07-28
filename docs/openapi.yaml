@@ -1,0 +1,1826 @@
+openapi: 3.0.3
+info:
+  title: Etherdoc Backend API
+  version: 1.0.0
+  license:
+    name: UNLICENSED
+  description: |
+    API for wallet authentication, signed document intents, canonical document
+    verification, cross-chain replication evidence, Pinata metadata, and
+    operational health.
+
+    The source-chain contract is canonical. PostgreSQL is a rebuildable
+    projection, the destination chain is a replica, and storage availability is
+    reported independently from document authenticity.
+
+    Protected user endpoints accept either an `Authorization: Bearer <JWT>`
+    header or the HTTP-only `etherdoc-auth` cookie set by the verification
+    endpoint. For a cookie-authenticated state-changing request, the `Origin`
+    header must exactly match the configured CORS origin. An explicit bearer
+    token takes precedence over the cookie and does not require this CSRF check.
+
+    Every response includes an `X-Request-ID` header. A valid UUID supplied in
+    the request header is preserved; otherwise the service creates a new value.
+    Rate-limited responses include `Retry-After`.
+servers:
+  - url: /
+    description: Server that hosts this API description
+tags:
+  - name: Authentication
+    description: Sign-In with Ethereum (SIWE) challenge and session endpoints.
+  - name: Document intents
+    description: Prepare, sign, submit, and inspect document lifecycle intents.
+  - name: Document verification
+    description: Read and verify canonical documents and replication evidence.
+  - name: Storage metadata
+    description: Manage shared Pinata workspace files and groups.
+  - name: Health
+    description: Public health checks and protected operational diagnostics.
+paths:
+  /auth/nonce:
+    post:
+      security: []
+      tags:
+        - Authentication
+      summary: Create SIWE challenge
+      description: |
+        Creates a single-use, expiring SIWE message for the supplied wallet.
+        The returned message is bound to the configured domain, URI, source
+        chain, wallet address, nonce, issued-at time, and expiration time. Sign
+        the exact message without modifying it.
+      operationId: createSiweChallenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestNonce'
+            example:
+              address: '0x1234567890123456789012345678901234567890'
+      responses:
+        '201':
+          description: The SIWE challenge was created.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NonceChallenge'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /auth/verify:
+    post:
+      security: []
+      tags:
+        - Authentication
+      summary: Verify SIWE signature
+      description: |
+        Verifies the signed SIWE message, atomically consumes its nonce, and
+        creates a JWT session. A successful response also sets the HTTP-only
+        `etherdoc-auth` cookie with `Path=/` and `SameSite=Lax`.
+      operationId: verifySiweSignature
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyAuth'
+            example:
+              message: 'app.etherdoc.example wants you to sign in with your Ethereum account: ...'
+              signature: '0x1234abcd'
+      responses:
+        '201':
+          description: The signature was verified and a session was created.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+            Set-Cookie:
+              schema:
+                type: string
+              description: HTTP-only `etherdoc-auth` session cookie.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /documents/intents/register:
+    post:
+      tags:
+        - Document intents
+      summary: Prepare document registration
+      description: |
+        Uploads and retrieves the PDF, verifies its digest and canonical CID,
+        derives the document identity, and returns EIP-712 typed data for the
+        issuer to sign. The PDF limit is 5 MiB inclusive. The authenticated
+        wallet must equal `issuer`, and the issuer must be authorized by the
+        source contract.
+      operationId: prepareDocumentRegistration
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Origin'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RegisterIntentRequest'
+            encoding:
+              file:
+                contentType: application/pdf
+      responses:
+        '201':
+          $ref: '#/components/responses/IntentPrepared'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /documents/intents/revoke:
+    post:
+      tags:
+        - Document intents
+      summary: Prepare document revocation
+      description: |
+        Creates EIP-712 typed data to revoke an active canonical document. The
+        document must exist, belong to the authenticated issuer, and currently
+        be active. The current source-chain version is included in the typed
+        data.
+      operationId: prepareDocumentRevocation
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Origin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevokeIntentRequest'
+      responses:
+        '201':
+          $ref: '#/components/responses/IntentPrepared'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /documents/intents/supersede:
+    post:
+      tags:
+        - Document intents
+      summary: Prepare document replacement
+      description: |
+        Uploads a replacement PDF and creates EIP-712 typed data that
+        supersedes an active document with a newly derived document identity.
+        The old document must belong to the authenticated issuer. The PDF limit
+        is 5 MiB inclusive.
+      operationId: prepareDocumentSupersession
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Origin'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SupersedeIntentRequest'
+            encoding:
+              file:
+                contentType: application/pdf
+      responses:
+        '201':
+          $ref: '#/components/responses/IntentPrepared'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /documents/intents/{intentId}/signature:
+    post:
+      tags:
+        - Document intents
+      summary: Submit intent signature
+      description: |
+        Verifies an EOA or ERC-1271 EIP-712 signature and durably enqueues the
+        source-chain submission. A `202` response means the signature was
+        accepted for asynchronous processing; it does not mean the transaction
+        is confirmed. Poll the intent endpoint for progress.
+      operationId: submitIntentSignature
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IntentId'
+        - $ref: '#/components/parameters/Origin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitIntentSignature'
+      responses:
+        '202':
+          description: The verified signature was accepted and queued.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Intent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /documents/intents/{intentId}:
+    get:
+      tags:
+        - Document intents
+      summary: Get intent
+      description: |
+        Returns the latest persisted intent state. Only the wallet identified
+        as the intent issuer can read it.
+      operationId: getDocumentIntent
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IntentId'
+      responses:
+        '200':
+          description: The current intent state.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Intent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /documents:
+    get:
+      tags:
+        - Storage metadata
+      summary: List stored files
+      description: |
+        Lists files in the configured shared Pinata workspace. `groupId` can
+        narrow the result to one group. The response preserves the provider's
+        JSON object shape and does not prove ownership or document authenticity.
+      operationId: listStoredFiles
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/StorageNetwork'
+        - in: query
+          name: groupId
+          required: false
+          description: Pinata group identifier used to filter files.
+          schema:
+            type: string
+            maxLength: 128
+      responses:
+        '200':
+          $ref: '#/components/responses/PinataMetadata'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /documents/groups:
+    get:
+      tags:
+        - Storage metadata
+      summary: List storage groups
+      description: |
+        Lists groups in the configured shared Pinata workspace. The response
+        preserves the provider's JSON object shape.
+      operationId: listStorageGroups
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/StorageNetwork'
+      responses:
+        '200':
+          $ref: '#/components/responses/PinataMetadata'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      tags:
+        - Storage metadata
+      summary: Create storage group
+      description: |
+        Creates a group in the configured shared Pinata workspace. This is a
+        storage metadata operation and does not change a document's canonical
+        lifecycle.
+      operationId: createStorageGroup
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Origin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGroupRequest'
+      responses:
+        '201':
+          $ref: '#/components/responses/PinataMetadata'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /documents/search:
+    post:
+      security: []
+      tags:
+        - Document verification
+      summary: Search and verify document
+      description: |
+        Verifies a document by an explicit 32-byte document ID, or by a PDF and
+        issuer. When a PDF is provided, the service hashes the exact bytes and
+        derives the document ID. If both forms are supplied, they must identify
+        the same document. Storage availability alone never establishes
+        authenticity.
+
+        This endpoint is public. However, if a client also sends the
+        `etherdoc-auth` cookie, the normal cookie-origin CSRF rule applies.
+      operationId: searchDocument
+      parameters:
+        - $ref: '#/components/parameters/Origin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchByDocumentId'
+          multipart/form-data:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/SearchByDocumentId'
+                - $ref: '#/components/schemas/SearchByFile'
+            encoding:
+              file:
+                contentType: application/pdf
+      responses:
+        '201':
+          description: Canonical document and verification evidence.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentVerification'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /documents/{documentId}:
+    get:
+      security: []
+      tags:
+        - Document verification
+      summary: Get verified document
+      description: |
+        Reads the canonical source-chain document and returns integrity,
+        source-confirmation, storage-availability, and destination-replication
+        evidence. Revoked and superseded documents are returned with their
+        current lifecycle state.
+      operationId: getVerifiedDocument
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          description: Canonical document and verification evidence.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentVerification'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /health/live:
+    get:
+      security: []
+      tags:
+        - Health
+      summary: Check liveness
+      description: |
+        Confirms that the HTTP process can respond. This dependency-free check
+        does not query PostgreSQL, RPC providers, or Pinata.
+      operationId: checkLiveness
+      responses:
+        '200':
+          description: The process is live.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LivenessReport'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /health/ready:
+    get:
+      security: []
+      tags:
+        - Health
+      summary: Check readiness
+      description: |
+        Reports whether startup completed, PostgreSQL is reachable, the
+        required schema exists, and graceful shutdown has not begun. Returns
+        `503` for degraded, starting, or shutting-down states.
+      operationId: checkReadiness
+      responses:
+        '200':
+          description: The service is ready to receive traffic.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessReport'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          description: The service is degraded, starting, or shutting down.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessReport'
+
+  /health/status:
+    get:
+      tags:
+        - Health
+      summary: Get operational status
+      description: |
+        Returns operator diagnostics for source and destination indexers,
+        outbox work, recent failures, recovery-required dispatches, and
+        shutdown state. This endpoint uses the dedicated operations token, not
+        a user SIWE session, and does not synchronously probe RPC or Pinata.
+      operationId: getOperationalStatus
+      security:
+        - operationsBearer: []
+      responses:
+        '200':
+          description: Current operational diagnostics.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationalStatus'
+        '401':
+          $ref: '#/components/responses/OperationsUnauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT returned by `POST /auth/verify`.
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: etherdoc-auth
+      description: HTTP-only JWT session cookie set by `POST /auth/verify`.
+    operationsBearer:
+      type: http
+      scheme: bearer
+      description: Dedicated `OPERATIONS_TOKEN`; user JWTs are not accepted.
+
+  headers:
+    RequestId:
+      description: Correlation UUID for the request.
+      schema:
+        type: string
+        format: uuid
+      example: 123e4567-e89b-42d3-a456-426614174000
+    RetryAfter:
+      description: Number of seconds to wait before retrying.
+      schema:
+        type: integer
+        minimum: 0
+
+  parameters:
+    IntentId:
+      in: path
+      name: intentId
+      required: true
+      description: Version 4 UUID of the signed document intent.
+      schema:
+        type: string
+        format: uuid
+        pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$'
+    DocumentId:
+      in: path
+      name: documentId
+      required: true
+      description: Canonical 32-byte document identity.
+      schema:
+        $ref: '#/components/schemas/Bytes32'
+    StorageNetwork:
+      in: query
+      name: network
+      required: true
+      description: Pinata storage network to query.
+      schema:
+        $ref: '#/components/schemas/StorageNetwork'
+    Origin:
+      in: header
+      name: Origin
+      required: false
+      description: |
+        Required for a state-changing request authenticated with the
+        `etherdoc-auth` cookie. It must exactly match the configured CORS
+        origin. It is not required when an explicit bearer token is used.
+      schema:
+        type: string
+        format: uri
+
+  responses:
+    IntentPrepared:
+      description: EIP-712 typed data was prepared for signing.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Intent'
+    PinataMetadata:
+      description: Provider metadata returned as a JSON object.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PinataMetadata'
+    BadRequest:
+      description: The request is malformed or fails validation.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            statusCode: 400
+            message:
+              - documentId must match regular expression /^0x[0-9a-fA-F]{64}$/
+            error: Bad Request
+    Unauthorized:
+      description: Authentication is missing, invalid, expired, or failed.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            statusCode: 401
+            message: Unauthorized
+    OperationsUnauthorized:
+      description: The dedicated operations bearer token is missing or invalid.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: OPERATIONS_AUTH_REQUIRED
+            message: A valid operations bearer token is required
+    Forbidden:
+      description: The authenticated caller is not allowed to perform the action.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            issuerMismatch:
+              summary: The session wallet differs from the claimed issuer.
+              value:
+                statusCode: 403
+                message: JWT subject must equal intent issuer
+                error: Forbidden
+            csrfRejected:
+              summary: A cookie-authenticated mutation has an invalid origin.
+              value:
+                statusCode: 403
+                error: CSRF_ORIGIN_REJECTED
+                message: Cookie-authenticated state changes require the configured Origin
+    NotFound:
+      description: The requested document or intent does not exist.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: DOCUMENT_NOT_FOUND
+            message: Document is not registered on the canonical source chain
+    Conflict:
+      description: |
+        The request conflicts with current state, such as an inactive document,
+        stale nonce, reused idempotency key, expired deadline, or processed
+        intent.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            statusCode: 409
+            message: Issuer nonce is stale
+            error: Conflict
+    PayloadTooLarge:
+      description: The uploaded PDF exceeds the inclusive 5 MiB limit.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            statusCode: 413
+            message: File too large
+            error: Payload Too Large
+    UnprocessableEntity:
+      description: |
+        The request is structurally valid but its PDF, signature, CID, digest,
+        commitment, or derived document identity cannot be verified.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            statusCode: 422
+            message: Invalid intent signature
+            error: Unprocessable Entity
+    RateLimited:
+      description: A configured request rate limit was exceeded.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            statusCode: 429
+            message: RATE_LIMIT_EXCEEDED
+            error: ThrottlerException
+    InternalServerError:
+      description: The service could not complete an internal operation.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServiceUnavailable:
+      description: |
+        A database, blockchain RPC, storage provider, or other required
+        dependency is unavailable or returned unusable data.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: SOURCE_READ_UNAVAILABLE
+            message: Canonical source document read failed
+            kind: RPC_UNAVAILABLE
+
+  schemas:
+    Address:
+      type: string
+      description: EVM address in accepted EIP-55-compatible hexadecimal syntax.
+      pattern: '^0x[0-9a-fA-F]{40}$'
+      example: '0x1234567890123456789012345678901234567890'
+    Bytes32:
+      type: string
+      description: A 32-byte, `0x`-prefixed hexadecimal value.
+      pattern: '^0x[0-9a-fA-F]{64}$'
+      example: '0x1111111111111111111111111111111111111111111111111111111111111111'
+    HexValue:
+      type: string
+      description: A non-empty `0x`-prefixed hexadecimal value.
+      pattern: '^0x[0-9a-fA-F]+$'
+      example: '0x1234abcd'
+    NullableBytes32:
+      type: string
+      nullable: true
+      description: A nullable 32-byte, `0x`-prefixed hexadecimal value.
+      pattern: '^0x[0-9a-fA-F]{64}$'
+    StorageNetwork:
+      type: string
+      enum:
+        - private
+        - public
+    BlockchainErrorKind:
+      type: string
+      enum:
+        - CHAIN_MISMATCH
+        - CONTRACT_REVERT
+        - NOT_FOUND
+        - RPC_UNAVAILABLE
+        - TIMEOUT
+        - UNKNOWN
+
+    RequestNonce:
+      type: object
+      additionalProperties: false
+      required:
+        - address
+      properties:
+        address:
+          $ref: '#/components/schemas/Address'
+    NonceChallenge:
+      type: object
+      additionalProperties: false
+      required:
+        - address
+        - expiresAt
+        - message
+        - nonce
+      properties:
+        address:
+          $ref: '#/components/schemas/Address'
+        expiresAt:
+          type: string
+          format: date-time
+          description: Time after which the challenge cannot be used.
+        message:
+          type: string
+          description: Exact EIP-4361 SIWE message that the wallet must sign.
+        nonce:
+          type: string
+          description: Random SIWE nonce embedded in the message.
+    VerifyAuth:
+      type: object
+      additionalProperties: false
+      required:
+        - message
+        - signature
+      properties:
+        message:
+          type: string
+          maxLength: 4096
+          description: Exact SIWE message returned by the challenge endpoint.
+        signature:
+          allOf:
+            - $ref: '#/components/schemas/HexValue'
+          maxLength: 132000
+          description: Wallet signature over the exact SIWE message.
+    LoginResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - accessToken
+        - address
+        - expiresInSeconds
+      properties:
+        accessToken:
+          type: string
+          description: JWT accepted by protected user endpoints.
+        address:
+          $ref: '#/components/schemas/Address'
+        expiresInSeconds:
+          type: integer
+          minimum: 1
+          description: Session lifetime shared by the JWT and cookie.
+
+    RegisterIntentRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - file
+        - idempotencyKey
+        - issuer
+        - storageNetwork
+      properties:
+        file:
+          type: string
+          format: binary
+          description: PDF file with valid PDF magic bytes, up to 5 MiB.
+        issuer:
+          $ref: '#/components/schemas/Address'
+        idempotencyKey:
+          type: string
+          minLength: 8
+          maxLength: 128
+          description: |
+            Client-generated key used to safely retry the same canonical
+            operation. Reusing it for different input returns a conflict.
+        storageNetwork:
+          $ref: '#/components/schemas/StorageNetwork'
+        documentType:
+          type: string
+          maxLength: 64
+          pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$'
+          description: Optional non-sensitive canonical metadata label.
+    RevokeIntentRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - documentId
+        - idempotencyKey
+        - issuer
+      properties:
+        issuer:
+          $ref: '#/components/schemas/Address'
+        idempotencyKey:
+          type: string
+          minLength: 8
+          maxLength: 128
+          description: |
+            Client-generated key used to safely retry the same canonical
+            operation. Reusing it for different input returns a conflict.
+        documentId:
+          $ref: '#/components/schemas/Bytes32'
+    SupersedeIntentRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - file
+        - idempotencyKey
+        - issuer
+        - oldDocumentId
+        - storageNetwork
+      properties:
+        file:
+          type: string
+          format: binary
+          description: PDF file with valid PDF magic bytes, up to 5 MiB.
+        issuer:
+          $ref: '#/components/schemas/Address'
+        idempotencyKey:
+          type: string
+          minLength: 8
+          maxLength: 128
+          description: |
+            Client-generated key used to safely retry the same canonical
+            operation. Reusing it for different input returns a conflict.
+        storageNetwork:
+          $ref: '#/components/schemas/StorageNetwork'
+        documentType:
+          type: string
+          maxLength: 64
+          pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$'
+          description: Optional non-sensitive canonical metadata label.
+        oldDocumentId:
+          $ref: '#/components/schemas/Bytes32'
+    SubmitIntentSignature:
+      type: object
+      additionalProperties: false
+      required:
+        - signature
+      properties:
+        signature:
+          allOf:
+            - $ref: '#/components/schemas/HexValue'
+          maxLength: 132000
+          description: EOA or ERC-1271 signature over the returned typed data.
+    Intent:
+      type: object
+      additionalProperties: false
+      required:
+        - chainNonce
+        - createdAt
+        - deadline
+        - documentId
+        - failure
+        - id
+        - idempotencyKey
+        - issuer
+        - oldDocumentId
+        - operation
+        - status
+        - typedData
+        - typedDataDigest
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        idempotencyKey:
+          type: string
+        operation:
+          type: string
+          enum:
+            - REGISTER
+            - REVOKE
+            - SUPERSEDE
+        status:
+          type: string
+          enum:
+            - PREPARED
+            - SIGNED
+            - SOURCE_PENDING
+            - SOURCE_CONFIRMED
+            - FAILED_RETRYABLE
+            - FAILED_TERMINAL
+        issuer:
+          $ref: '#/components/schemas/Address'
+        documentId:
+          $ref: '#/components/schemas/NullableBytes32'
+        oldDocumentId:
+          $ref: '#/components/schemas/NullableBytes32'
+        chainNonce:
+          type: string
+          pattern: '^[0-9]+$'
+          description: Unsigned source-contract nonce encoded as a decimal string.
+        deadline:
+          type: string
+          format: date-time
+        typedData:
+          type: object
+          additionalProperties: true
+          description: Exact EIP-712 payload to sign without modification.
+        typedDataDigest:
+          $ref: '#/components/schemas/Bytes32'
+        failure:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Failure'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Failure:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - detail
+      properties:
+        code:
+          type: string
+        detail:
+          type: string
+          nullable: true
+
+    CreateGroupRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - groupName
+        - network
+      properties:
+        network:
+          $ref: '#/components/schemas/StorageNetwork'
+        groupName:
+          type: string
+          maxLength: 128
+          pattern: '.*\S.*'
+          description: Group name containing at least one non-space character.
+    PinataMetadata:
+      type: object
+      additionalProperties: true
+      description: |
+        JSON object returned by Pinata after bounded and type-safe parsing. Its
+        exact fields are controlled by the provider.
+
+    SearchByDocumentId:
+      type: object
+      additionalProperties: false
+      required:
+        - documentId
+      properties:
+        documentId:
+          $ref: '#/components/schemas/Bytes32'
+        issuer:
+          $ref: '#/components/schemas/Address'
+    SearchByFile:
+      type: object
+      additionalProperties: false
+      required:
+        - file
+        - issuer
+      properties:
+        file:
+          type: string
+          format: binary
+          description: PDF file with valid PDF magic bytes, up to 5 MiB.
+        issuer:
+          $ref: '#/components/schemas/Address'
+        documentId:
+          $ref: '#/components/schemas/Bytes32'
+
+    DocumentVerification:
+      type: object
+      additionalProperties: false
+      required:
+        - canonicalSource
+        - destinations
+        - document
+        - integrity
+        - source
+        - storage
+      properties:
+        canonicalSource:
+          type: boolean
+          enum:
+            - true
+          description: Confirms that document state comes from the source chain.
+        document:
+          $ref: '#/components/schemas/CanonicalDocument'
+        integrity:
+          $ref: '#/components/schemas/DocumentIntegrity'
+        source:
+          $ref: '#/components/schemas/SourceEvidence'
+        storage:
+          $ref: '#/components/schemas/StorageAvailability'
+        destinations:
+          type: array
+          items:
+            $ref: '#/components/schemas/DestinationEvidence'
+    CanonicalDocument:
+      type: object
+      additionalProperties: false
+      required:
+        - cid
+        - cidCodec
+        - cidDigest
+        - contentDigest
+        - documentId
+        - issuer
+        - metadataCommitment
+        - registeredAt
+        - schemaVersion
+        - sourceChainId
+        - status
+        - supersededBy
+        - supersedes
+        - updatedAt
+        - version
+      properties:
+        cid:
+          type: string
+          description: Canonical content identifier for the stored bytes.
+        cidCodec:
+          type: integer
+          minimum: 0
+        cidDigest:
+          $ref: '#/components/schemas/Bytes32'
+        contentDigest:
+          $ref: '#/components/schemas/Bytes32'
+        documentId:
+          $ref: '#/components/schemas/Bytes32'
+        issuer:
+          $ref: '#/components/schemas/Address'
+        metadataCommitment:
+          $ref: '#/components/schemas/Bytes32'
+        registeredAt:
+          type: string
+          format: date-time
+        schemaVersion:
+          type: integer
+          minimum: 0
+        sourceChainId:
+          type: string
+          pattern: '^[0-9]+$'
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - REVOKED
+            - SUPERSEDED
+        supersededBy:
+          $ref: '#/components/schemas/NullableBytes32'
+        supersedes:
+          $ref: '#/components/schemas/NullableBytes32'
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: string
+          pattern: '^[0-9]+$'
+    DocumentIntegrity:
+      type: object
+      additionalProperties: false
+      required:
+        - active
+        - contentMatches
+        - issuerMatches
+        - matches
+      properties:
+        active:
+          type: boolean
+          description: Whether source verification reports an active document.
+        contentMatches:
+          type: boolean
+          description: Whether supplied or canonical bytes match the source digest.
+        issuerMatches:
+          type: boolean
+          description: Whether the supplied or canonical issuer matches.
+        matches:
+          type: boolean
+          description: Overall canonical source integrity result.
+    SourceEvidence:
+      type: object
+      additionalProperties: false
+      required:
+        - blockHash
+        - blockNumber
+        - chainId
+        - chainSelector
+        - confirmationDepth
+        - confirmationStatus
+        - contractAddress
+        - transactionHash
+      properties:
+        chainId:
+          type: integer
+          minimum: 1
+        chainSelector:
+          type: string
+          pattern: '^[0-9]+$'
+        confirmationDepth:
+          type: integer
+          minimum: 1
+        contractAddress:
+          $ref: '#/components/schemas/Address'
+        confirmationStatus:
+          type: string
+          enum:
+            - CONFIRMED
+            - MISMATCH
+            - UNAVAILABLE
+            - UNINDEXED
+        confirmations:
+          type: string
+          pattern: '^[0-9]+$'
+        canonical:
+          type: boolean
+        projectionMatches:
+          type: boolean
+        errorKind:
+          $ref: '#/components/schemas/BlockchainErrorKind'
+        transactionHash:
+          $ref: '#/components/schemas/NullableBytes32'
+        blockNumber:
+          type: string
+          nullable: true
+          pattern: '^[0-9]+$'
+        blockHash:
+          $ref: '#/components/schemas/NullableBytes32'
+    StorageAvailability:
+      type: object
+      additionalProperties: false
+      required:
+        - authenticity
+        - available
+        - checkedAt
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - AVAILABLE
+            - NOT_FOUND
+            - UNAVAILABLE
+        available:
+          type: boolean
+        checkedAt:
+          type: string
+          format: date-time
+        authenticity:
+          type: string
+          enum:
+            - NOT_INFERRED_FROM_AVAILABILITY
+    DestinationEvidence:
+      type: object
+      additionalProperties: false
+      required:
+        - chainId
+        - chainSelector
+        - contractAddress
+        - destinationEvidence
+        - effectiveStatus
+        - failure
+        - fee
+        - messageId
+        - receiver
+        - sourceEvidence
+        - status
+        - version
+      properties:
+        chainId:
+          type: integer
+          minimum: 1
+        chainSelector:
+          type: string
+          pattern: '^[0-9]+$'
+        contractAddress:
+          $ref: '#/components/schemas/Address'
+        status:
+          $ref: '#/components/schemas/DispatchStatus'
+        effectiveStatus:
+          type: string
+          enum:
+            - DESTINATION_CONFIRMED
+            - DESTINATION_IGNORED
+            - EVIDENCE_MISMATCH
+            - EVIDENCE_UNAVAILABLE
+            - PENDING
+            - RECOVERY_REQUIRED
+            - SOURCE_ACCEPTED
+        version:
+          type: string
+          pattern: '^[0-9]+$'
+        messageId:
+          $ref: '#/components/schemas/NullableBytes32'
+        failure:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Failure'
+        fee:
+          $ref: '#/components/schemas/DispatchFee'
+        sourceEvidence:
+          $ref: '#/components/schemas/DispatchSourceEvidence'
+        destinationEvidence:
+          $ref: '#/components/schemas/DispatchDestinationEvidence'
+        receiver:
+          oneOf:
+            - $ref: '#/components/schemas/ReceiverNotSubmitted'
+            - $ref: '#/components/schemas/ReceiverAvailable'
+            - $ref: '#/components/schemas/ReceiverUnavailable'
+          discriminator:
+            propertyName: readStatus
+    DispatchStatus:
+      type: string
+      enum:
+        - DESTINATION_CONFIRMED
+        - DESTINATION_IGNORED
+        - PENDING
+        - RECOVERY_REQUIRED
+        - SOURCE_ACCEPTED
+    DispatchFee:
+      type: object
+      additionalProperties: false
+      required:
+        - amount
+        - gasLimit
+        - token
+      properties:
+        amount:
+          type: string
+          nullable: true
+          pattern: '^[0-9]+$'
+        gasLimit:
+          type: integer
+          minimum: 0
+        token:
+          type: string
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Address'
+    DispatchSourceEvidence:
+      type: object
+      additionalProperties: false
+      required:
+        - blockHash
+        - blockNumber
+        - transactionHash
+      properties:
+        blockHash:
+          $ref: '#/components/schemas/NullableBytes32'
+        blockNumber:
+          type: string
+          nullable: true
+          pattern: '^[0-9]+$'
+        transactionHash:
+          $ref: '#/components/schemas/NullableBytes32'
+    DispatchDestinationEvidence:
+      type: object
+      additionalProperties: false
+      required:
+        - blockHash
+        - blockNumber
+        - confirmedAt
+        - transactionHash
+      properties:
+        blockHash:
+          $ref: '#/components/schemas/NullableBytes32'
+        blockNumber:
+          type: string
+          nullable: true
+          pattern: '^[0-9]+$'
+        confirmedAt:
+          type: string
+          format: date-time
+          nullable: true
+        transactionHash:
+          $ref: '#/components/schemas/NullableBytes32'
+    ReceiverNotSubmitted:
+      type: object
+      additionalProperties: false
+      required:
+        - readStatus
+      properties:
+        readStatus:
+          type: string
+          enum:
+            - NOT_SUBMITTED
+    ReceiverAvailable:
+      type: object
+      additionalProperties: false
+      required:
+        - active
+        - integrityMatches
+        - processed
+        - provenanceMatches
+        - readStatus
+        - receiptStatus
+        - replicated
+        - version
+      properties:
+        readStatus:
+          type: string
+          enum:
+            - AVAILABLE
+        active:
+          type: boolean
+        integrityMatches:
+          type: boolean
+        processed:
+          type: boolean
+        provenanceMatches:
+          type: boolean
+        receiptStatus:
+          type: integer
+          minimum: 0
+        replicated:
+          type: boolean
+        version:
+          type: string
+          pattern: '^[0-9]+$'
+    ReceiverUnavailable:
+      type: object
+      additionalProperties: false
+      required:
+        - errorKind
+        - readStatus
+      properties:
+        readStatus:
+          type: string
+          enum:
+            - UNAVAILABLE
+        errorKind:
+          $ref: '#/components/schemas/BlockchainErrorKind'
+
+    LivenessReport:
+      type: object
+      additionalProperties: false
+      required:
+        - checkedAt
+        - status
+      properties:
+        checkedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+            - live
+    ReadinessReport:
+      type: object
+      additionalProperties: false
+      required:
+        - checkedAt
+        - checks
+        - status
+      properties:
+        checkedAt:
+          type: string
+          format: date-time
+        checks:
+          type: object
+          additionalProperties: false
+          required:
+            - blockchainStartup
+            - database
+            - schema
+          properties:
+            blockchainStartup:
+              type: string
+              enum:
+                - ready
+                - starting
+            database:
+              type: string
+              enum:
+                - not_checked
+                - ready
+                - unavailable
+            schema:
+              type: string
+              enum:
+                - missing
+                - not_checked
+                - ready
+                - unknown
+        status:
+          type: string
+          enum:
+            - degraded
+            - ready
+            - shutting_down
+    OperationalStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - generatedAt
+        - indexers
+        - outbox
+        - recoveryRequiredDispatches
+        - shutdown
+        - status
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        indexers:
+          type: object
+          additionalProperties: false
+          required:
+            - destination
+            - source
+          properties:
+            destination:
+              $ref: '#/components/schemas/IndexerStatus'
+            source:
+              $ref: '#/components/schemas/IndexerStatus'
+        outbox:
+          $ref: '#/components/schemas/OutboxStatus'
+        recoveryRequiredDispatches:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/RecoveryDispatch'
+        shutdown:
+          type: object
+          additionalProperties: false
+          required:
+            - inProgress
+          properties:
+            inProgress:
+              type: boolean
+        status:
+          type: string
+          enum:
+            - operational
+    IndexerStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - chainId
+        - cursorBlock
+        - finalizedHead
+        - lagBlocks
+        - lastSuccessfulTickAt
+      properties:
+        chainId:
+          type: integer
+          minimum: 1
+        cursorBlock:
+          type: string
+          nullable: true
+          pattern: '^[0-9]+$'
+        finalizedHead:
+          type: string
+          nullable: true
+          pattern: '^[0-9]+$'
+        lagBlocks:
+          type: integer
+          minimum: 0
+          nullable: true
+        lastSuccessfulTickAt:
+          type: string
+          format: date-time
+          nullable: true
+    OutboxStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - byType
+        - counts
+        - oldestReadyAgeSeconds
+        - recentFailures
+      properties:
+        byType:
+          type: array
+          items:
+            $ref: '#/components/schemas/OutboxTypeCount'
+        counts:
+          $ref: '#/components/schemas/OutboxCounts'
+        oldestReadyAgeSeconds:
+          type: integer
+          minimum: 0
+          nullable: true
+        recentFailures:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/RecentOutboxFailure'
+    OutboxTypeCount:
+      type: object
+      additionalProperties: false
+      required:
+        - count
+        - jobType
+        - state
+      properties:
+        count:
+          type: integer
+          minimum: 0
+        jobType:
+          $ref: '#/components/schemas/OutboxJobType'
+        state:
+          $ref: '#/components/schemas/OutboxState'
+    OutboxCounts:
+      type: object
+      additionalProperties: false
+      required:
+        - completed
+        - expiredLeases
+        - failed
+        - ready
+        - running
+      properties:
+        completed:
+          type: integer
+          minimum: 0
+        expiredLeases:
+          type: integer
+          minimum: 0
+        failed:
+          type: integer
+          minimum: 0
+        ready:
+          type: integer
+          minimum: 0
+        running:
+          type: integer
+          minimum: 0
+    RecentOutboxFailure:
+      type: object
+      additionalProperties: false
+      required:
+        - attemptCount
+        - dispatchId
+        - error
+        - id
+        - intentId
+        - jobType
+        - updatedAt
+      properties:
+        attemptCount:
+          type: integer
+          minimum: 0
+        dispatchId:
+          type: string
+          format: uuid
+          nullable: true
+        error:
+          type: string
+          nullable: true
+        id:
+          type: string
+          format: uuid
+        intentId:
+          type: string
+          format: uuid
+          nullable: true
+        jobType:
+          $ref: '#/components/schemas/OutboxJobType'
+        updatedAt:
+          type: string
+          format: date-time
+    RecoveryDispatch:
+      type: object
+      additionalProperties: false
+      required:
+        - failureCode
+        - failureDetail
+        - id
+        - updatedAt
+      properties:
+        failureCode:
+          type: string
+          nullable: true
+        failureDetail:
+          type: string
+          nullable: true
+        id:
+          type: string
+          format: uuid
+        updatedAt:
+          type: string
+          format: date-time
+    OutboxJobType:
+      type: string
+      enum:
+        - CONFIRM_SOURCE
+        - DISPATCH_DESTINATION
+        - RECONCILE
+        - SUBMIT_SOURCE
+        - TRACK_DESTINATION
+    OutboxState:
+      type: string
+      enum:
+        - COMPLETED
+        - FAILED
+        - READY
+        - RUNNING
+
+    ErrorResponse:
+      type: object
+      description: |
+        NestJS error response. Some domain errors use a stable machine-readable
+        `error` code, while validation failures use the standard HTTP label.
+      required:
+        - message
+      properties:
+        statusCode:
+          type: integer
+          minimum: 400
+          maximum: 599
+        message:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+        error:
+          type: string
+        kind:
+          $ref: '#/components/schemas/BlockchainErrorKind'
+      additionalProperties: true
