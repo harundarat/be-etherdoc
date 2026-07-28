@@ -11,7 +11,8 @@ IDs, and transaction hashes are 32-byte `0x`-prefixed hex values.
 
 ### `POST /auth/nonce`
 
-Creates a one-use, expiring SIWE challenge for one wallet.
+Creates a one-use, expiring SIWE challenge for one wallet. On success, the API returns `201 Created`
+with `address`, `expiresAt`, `message`, and `nonce`.
 
 ```json
 {
@@ -31,7 +32,7 @@ domain, URI, Ethereum Sepolia chain ID, wallet, nonce, issued-at, and expiration
 }
 ```
 
-Successful verification atomically consumes the nonce and returns:
+Successful verification atomically consumes the nonce and returns `201 Created` with:
 
 ```json
 {
@@ -100,9 +101,9 @@ service returns `503` with safe per-check states and no raw dependency error.
 }
 ```
 
-`status` is `ready`, `degraded`, or `shutting_down`. A check that is deliberately skipped during
-shutdown is `not_checked`; startup is `starting`, and dependency failures use `unavailable`,
-`missing`, or `unknown` as applicable.
+The top-level `status` is `ready`, `degraded`, or `shutting_down`. The individual checks use the
+following values: `blockchainStartup` is `ready` or `starting`; `database` is `not_checked`,
+`ready`, or `unavailable`; and `schema` is `missing`, `not_checked`, `ready`, or `unknown`.
 
 ### `GET /health/status`
 
@@ -179,13 +180,14 @@ total parts.
 | `storageNetwork` | yes      | `public` or `private`                          |
 | `documentType`   | no       | Non-PII canonical metadata label               |
 
-The backend uploads, retrieves, and hashes the exact bytes, validates the actual CID, builds the
-metadata commitment, compares its EIP-712 digest with the contract getter, and returns a `PREPARED`
-intent.
+The endpoint returns `201 Created`. The backend uploads, retrieves, and hashes the exact bytes,
+validates the actual CID, builds the metadata commitment, compares its EIP-712 digest with the
+contract getter, and returns a `PREPARED` intent. The issuer must be authorized by the source
+contract.
 
 ### `POST /documents/intents/revoke`
 
-Authentication required.
+Authentication required. The endpoint returns `201 Created`.
 
 ```json
 {
@@ -200,7 +202,7 @@ is embedded in the typed data.
 
 ### `POST /documents/intents/supersede`
 
-Authentication required. Uses the register multipart fields plus:
+Authentication required. The endpoint returns `201 Created`. It uses the register multipart fields plus:
 
 ```text
 oldDocumentId=0x...
@@ -252,13 +254,14 @@ confirmation.
 
 ### `GET /documents/intents/:intentId`
 
-Authentication required. Only the issuer can read the intent.
+Authentication required. Only the issuer can read the intent. It returns `200 OK`.
 
 ## Canonical verification
 
 ### `GET /documents/:documentId`
 
-Public canonical read. Returns the current source record even when it is revoked or superseded.
+Public canonical read. It returns `200 OK` and the current source record even when it is revoked or
+superseded.
 
 ```json
 {
@@ -320,7 +323,8 @@ confirmed it. Destination states are `PENDING`, `SOURCE_ACCEPTED`, `DESTINATION_
 
 ### `POST /documents/search`
 
-Public verification using either:
+Public verification returns `201 Created` using either a JSON body containing a required
+`documentId` (and optional `issuer`), or a multipart body matching one of these forms:
 
 ```json
 {
@@ -328,18 +332,19 @@ Public verification using either:
 }
 ```
 
-or `multipart/form-data` with a PDF `file` and `issuer`. With a file, the backend recomputes SHA-256
-over the exact bytes and derives `documentId`. If an explicit ID is also supplied it must match the
-derived ID. The response is the same canonical read model; a CID’s availability alone never passes
-verification.
+For multipart requests, the body may contain only `documentId`, or a PDF `file` together with the
+required `issuer`; `documentId` may also be included with the file. With a file, the backend
+recomputes SHA-256 over the exact bytes and derives `documentId`. If an explicit ID is also supplied
+it must match the derived ID. The response is the same canonical read model; a CID’s availability
+alone never passes verification.
 
 ## Pinata metadata endpoints
 
 These protected endpoints manage storage metadata only and do not change protocol lifecycle:
 
-- `GET /documents?network=public|private&groupId=<optional>`
-- `GET /documents/groups?network=public|private`
-- `POST /documents/groups` with `{ "network": "public", "groupName": "..." }`
+- `GET /documents?network=public|private&groupId=<optional>` returns `200 OK`.
+- `GET /documents/groups?network=public|private` returns `200 OK`.
+- `POST /documents/groups` with `{ "network": "public", "groupName": "..." }` returns `201 Created`.
 
 `groupName` and `groupId` are limited to 128 characters.
 
